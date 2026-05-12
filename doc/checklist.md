@@ -264,21 +264,37 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 ## 2.1. Auth & Shared UI
 
-- [x] FR-GEN-001 - Trang Login (đã làm ở 0.2)
-- [ ] FR-GEN-002 - Nút Logout + clear store + redirect
+- [x] **Design system** — IBM Plex Sans/Mono, navy formal palette, tailwind theme tokens
+- [x] **UI primitives** — Icon (38 line-icons), Button (5 variants), Card, Badge (5 tones), Stat, Input
+- [x] **Sidebar** — dark navy `#0e1c33`, section grouping, nav theo role với icon + label
+- [x] **TopBar** — breadcrumb tự sinh theo URL, search bar, bell + dot, avatar dropdown logout
+- [x] **Placeholder page** — dùng chung cho 22 route con (đang phát triển + FR-ID tham chiếu)
+- [x] **Routing đầy đủ** — toàn bộ nav trong sidebar đều ấn được, render placeholder + highlight active
+- [x] FR-GEN-001 - Trang Login 3-portal (Sinh viên navy / GV teal / Admin tím) với 2FA toggle
+- [x] FR-GEN-002 - Nút Logout trong TopBar dropdown
 - [ ] FR-GEN-003 - Form đổi mật khẩu
 - [ ] FR-GEN-004 - Form quên mật khẩu (SHOULD)
-- [x] FR-GEN-005 - Fetch `/me` khi boot + show ở sidebar (đã làm ở 0.2)
+- [x] FR-GEN-005 - Fetch `/me` khi boot + show ở sidebar
 - [ ] FR-GEN-006 - Trang profile + form cập nhật
-- [x] FR-GEN-007 - ProtectedRoute theo role (đã làm ở 0.2)
+- [x] FR-GEN-007 - ProtectedRoute theo role
 - [ ] Toast / notification component dùng chung
 - [ ] Confirm dialog component dùng chung
-- [ ] Loading state + skeleton component
+- [x] Loading state cho App bootstrap (spinner ĐK)
+- [ ] Skeleton loader cho list / table
+
+### 2.1.1. Dashboard skeleton (UI mockup với dữ liệu mẫu)
+
+- [x] Dashboard Admin — 4 KPI + tiến độ đăng ký + cần xem xét + activity feed
+- [x] Dashboard Sinh viên — 4 KPI + danh sách môn đăng ký + thông báo
+- [x] Dashboard Giáo viên — 4 KPI + grid 4 lớp phụ trách
 
 ## 2.2. Admin UI
 
+> Tất cả 10 route admin (`/admin/accounts` → `/admin/settings`) đã có **placeholder** kèm FR-ID tham chiếu. Implement chi tiết theo flow: backend model → backend API → frontend page.
+
 ### 2.2.1. Quản lý tài khoản (FR-ADM-ACC)
 
+- [x] Route placeholder `/admin/accounts`
 - [ ] Trang danh sách tài khoản + table + search/filter
 - [ ] Modal tạo SV/GV (chặn role ADMIN ở UI)
 - [ ] Modal cập nhật tài khoản
@@ -287,10 +303,12 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 ### 2.2.2. Quản lý ngành đào tạo (FR-ADM-MAJ)
 
+- [x] Route placeholder `/admin/majors`
 - [ ] Trang danh sách + CRUD ngành
 
 ### 2.2.3. Quản lý chương trình đào tạo (FR-ADM-CUR)
 
+- [x] Route placeholder `/admin/curriculum`
 - [ ] Trang danh sách chương trình theo ngành
 - [ ] Trang chi tiết chương trình + assign môn học
 - [ ] UI phân loại bắt buộc / tự chọn
@@ -298,18 +316,21 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 ### 2.2.4. Quản lý môn học (FR-ADM-CRS)
 
+- [x] Route placeholder `/admin/courses`
 - [ ] Trang danh sách + CRUD môn học
 - [ ] UI quản lý tín chỉ
 - [ ] UI quản lý môn tiên quyết (multi-select)
 
 ### 2.2.5. Quản lý học kỳ (FR-ADM-SEM)
 
+- [x] Route placeholder `/admin/semesters`
 - [ ] Trang danh sách + CRUD học kỳ
 - [ ] UI mở/đóng học kỳ
 - [ ] UI thiết lập thời gian đăng ký
 
 ### 2.2.6. Quản lý lớp học phần (FR-ADM-CLS)
 
+- [x] Route placeholder `/admin/classes`
 - [ ] Trang danh sách + CRUD lớp học phần
 - [ ] UI gán GV cho lớp
 - [ ] UI thiết lập lịch học + phòng
@@ -317,6 +338,7 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 ### 2.2.7. Quản lý đăng ký môn học (FR-ADM-REG)
 
+- [x] Route placeholder `/admin/registrations`
 - [ ] UI mở / đóng đợt đăng ký
 - [ ] Trang theo dõi số SV đăng ký theo lớp
 - [ ] UI hủy đăng ký cho SV (modal lý do)
@@ -324,6 +346,7 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 ### 2.2.8. Báo cáo & thống kê (FR-ADM-RPT)
 
+- [x] Route placeholder `/admin/reports`
 - [ ] Trang dashboard biểu đồ thống kê SV theo môn
 - [ ] Trang thống kê SV theo ngành
 - [ ] Trang thống kê lớp đầy / còn chỗ
@@ -331,14 +354,25 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 ### 2.2.9. Gửi thông báo (FR-ADM-NOT)
 
+- [x] Route placeholder `/admin/notifications`
 - [ ] Trang soạn + gửi thông báo cho SV
 - [ ] Trang soạn + gửi thông báo cho GV
 - [ ] Chọn người nhận (toàn bộ / theo lớp / theo ngành)
 
+### 2.2.10. Cấu hình hệ thống
+
+- [x] Route placeholder `/admin/settings`
+- [ ] UI cấu hình giới hạn tín chỉ min/max
+- [ ] UI cấu hình thời hạn hủy đăng ký
+- [ ] UI cấu hình thời hạn cập nhật điểm
+
 ## 2.3. Student UI
+
+> Tất cả 7 route student (`/student/register` → `/student/profile`) đã có **placeholder** kèm FR-ID tham chiếu.
 
 ### 2.3.1. Xem thông tin học tập (FR-STU-INF, FR-STU-CUR)
 
+- [x] Route placeholder `/student/curriculum`, `/student/profile`
 - [ ] Trang chương trình đào tạo của ngành
 - [ ] Hiển thị danh sách môn + flag bắt buộc / tự chọn
 - [ ] Hiển thị tiến độ hoàn thành (SHOULD)
@@ -352,6 +386,7 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 ### 2.3.3. Đăng ký môn học thủ công (FR-STU-REG)
 
+- [x] Route placeholder `/student/register`
 - [ ] UI chọn môn → chọn lớp học phần
 - [ ] UI lọc theo GV (khi nhiều GV)
 - [ ] UI chọn ngày / ca học mong muốn
@@ -361,6 +396,7 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 ### 2.3.4. Tự động tạo TKB (FR-STU-TKB)
 
+- [x] Route placeholder `/student/auto`
 - [ ] Trang chọn danh sách môn cần đăng ký
 - [ ] UI chọn GV ưu tiên
 - [ ] UI chọn ngày học ưu tiên
@@ -371,6 +407,7 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 ### 2.3.5. Xem TKB & lịch sử (FR-STU-SCH, FR-STU-HIS)
 
+- [x] Route placeholder `/student/schedule`, `/student/history`
 - [ ] TKB view theo tuần (grid)
 - [ ] TKB view theo học kỳ
 - [ ] Nút xuất TKB (SHOULD)
@@ -378,13 +415,17 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 ### 2.3.6. Nhận thông báo (FR-STU-NOT)
 
+- [x] Route placeholder `/student/notifications`
 - [ ] Trang danh sách thông báo (mở/đóng đăng ký, đổi lịch, lớp hủy, từ Admin)
 - [ ] Badge số notification chưa đọc trên layout
 
 ## 2.4. Teacher UI
 
+> Tất cả 5 route teacher (`/teacher/schedule` → `/teacher/profile`) đã có **placeholder** kèm FR-ID tham chiếu.
+
 ### 2.4.1. Xem thông tin & lớp học phần (FR-TEA-INF, FR-TEA-CLS, FR-TEA-SCH)
 
+- [x] Route placeholder `/teacher/schedule`, `/teacher/classes`, `/teacher/profile`
 - [ ] Trang danh sách lớp được phân công
 - [ ] Trang TKB cá nhân GV
 - [ ] Trang chi tiết lớp (danh sách SV, sĩ số, lịch, phòng)
@@ -392,12 +433,14 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 ### 2.4.2. Nhập điểm (FR-TEA-GRD)
 
+- [x] Route placeholder `/teacher/grades`
 - [ ] Trang nhập điểm dạng bảng (quá trình / giữa kỳ / cuối kỳ)
 - [ ] Validation thời hạn cập nhật [!] TBD
 - [ ] Nút xuất bảng điểm Excel
 
 ### 2.4.3. Khác (FR-TEA-REQ, FR-TEA-EXP, FR-TEA-NOT)
 
+- [x] Route placeholder `/teacher/notifications`
 - [ ] UI đề xuất thay đổi lịch dạy (MAY)
 - [ ] Nút xuất danh sách SV
 - [ ] Trang danh sách thông báo từ Admin
@@ -447,7 +490,7 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 ## 5. Open Questions / Risks (plan §12)
 
 - [x] OPEN - Số tín chỉ tối thiểu là 1, tối đa tùy chỉnh
-- [X] OPEN - Công thức tính điểm tổng kết (vd. quá trình 10% + giữa kỳ 40% + cuối kỳ 50%)
+- [x] OPEN - Công thức tính điểm tổng kết (vd. quá trình 10% + giữa kỳ 40% + cuối kỳ 50%)
 - [x] RISK - Độ phức tạp thuật toán TKB tự động khi quy mô tăng (tích hợp agent nâng cấp)
 
 ---

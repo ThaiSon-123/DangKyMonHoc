@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<title>Hệ thống Đăng ký Môn học · Design Canvas</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+  body { background: #f0eee9; }
+  .appshell, .appshell * { box-sizing: border-box; }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="ui.jsx"></script>
+<script type="text/babel" src="screens-auth.jsx"></script>
+<script type="text/babel" src="screens-student.jsx"></script>
+<script type="text/babel" src="screens-admin.jsx"></script>
+<script type="text/babel" src="screens-admin-extra.jsx"></script>
+<script type="text/babel" src="screens-missing.jsx"></script>
+<script type="text/babel" src="screens-teacher.jsx"></script>
+
+<script type="text/babel">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accent": "#1e3a5f",
+  "dark": false
+}/*EDITMODE-END*/;
+
+const ACCENT_OPTIONS = ['#1e3a5f', '#0f766e', '#7c3aed', '#c2410c', '#0e1c33'];
+
+const ARTBOARD_W = 1440;
+const ARTBOARD_H = 900;
+
+const Frame = ({ children }) => (
+  <div style={{ width: ARTBOARD_W, height: ARTBOARD_H, overflow: 'hidden', background: '#f6f8fb', position: 'relative' }}>
+    {children}
+  </div>
+);
+
+const Shell = ({ role, active, breadcrumbs, collapsed, dark, accent, children }) => (
+  <AppShell dark={dark} accent={accent} role={role} sidebarCollapsed={collapsed}
+    sidebar={<Sidebar role={role} active={active} collapsed={collapsed} dark={dark} />}
+    topbar={<TopBar breadcrumbs={breadcrumbs} />}>
+    {children}
+  </AppShell>
+);
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const accent = t.accent;
+  const dark = !!t.dark;
+
+  return (
+    <>
+      <DesignCanvas>
+        <DCSection id="auth" title="01 · Xác thực" subtitle="3 cổng đăng nhập riêng theo vai trò">
+          <DCArtboard id="login-student" label="Cổng Sinh viên" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><AuthLogin role="student" dark={dark} accent={accent} /></Frame>
+          </DCArtboard>
+          <DCArtboard id="login-teacher" label="Cổng Giáo viên" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><AuthLogin role="teacher" dark={dark} accent={accent} /></Frame>
+          </DCArtboard>
+          <DCArtboard id="login-admin" label="Cổng Quản trị viên" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><AuthLogin role="admin" dark={dark} accent={accent} /></Frame>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="student" title="02 · Sinh viên"
+          subtitle="Đăng ký môn · Tạo TKB tự động · Xem TKB · Lịch sử">
+          <DCArtboard id="stu-dash" label="Dashboard sinh viên" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="student" active="dashboard" dark={dark} accent={accent}
+              breadcrumbs={['Sinh viên', 'Trang chủ']}>
+              <StudentDashboard /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="stu-reg" label="Đăng ký môn học (thủ công)" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="student" active="register" dark={dark} accent={accent}
+              breadcrumbs={['Sinh viên', 'Học tập', 'Đăng ký môn học']}>
+              <StudentRegister /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="stu-auto" label="Tạo TKB tự động · so sánh phương án" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="student" active="auto" dark={dark} accent={accent}
+              breadcrumbs={['Sinh viên', 'Học tập', 'Tạo TKB tự động']}>
+              <StudentAutoTKB /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="stu-sched" label="Thời khóa biểu tuần" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="student" active="schedule" dark={dark} accent={accent}
+              breadcrumbs={['Sinh viên', 'Học tập', 'Thời khóa biểu']}>
+              <StudentSchedule /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="stu-cur" label="Chương trình đào tạo (SV)" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="student" active="curriculum" dark={dark} accent={accent}
+              breadcrumbs={['Sinh viên', 'Học tập', 'Chương trình đào tạo']}>
+              <StudentCurriculum /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="stu-grd" label="Xem điểm" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="student" active="grades" dark={dark} accent={accent}
+              breadcrumbs={['Sinh viên', 'Học tập', 'Xem điểm']}>
+              <StudentGrades /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="stu-hist" label="Lịch sử đăng ký" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="student" active="history" dark={dark} accent={accent}
+              breadcrumbs={['Sinh viên', 'Lịch sử đăng ký']}>
+              <StudentHistory /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="stu-not" label="Thông báo" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="student" active="notifications" dark={dark} accent={accent}
+              breadcrumbs={['Sinh viên', 'Thông báo']}>
+              <Notifications role="student" /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="stu-pro" label="Hồ sơ cá nhân" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="student" active="profile" dark={dark} accent={accent}
+              breadcrumbs={['Sinh viên', 'Hồ sơ']}>
+              <StudentProfile /></Shell></Frame>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="admin" title="03 · Quản trị viên"
+          subtitle="Vận hành đăng ký · Quản lý đào tạo · Báo cáo · Thông báo">
+          <DCArtboard id="adm-dash" label="Dashboard vận hành" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="admin" active="dashboard" dark={dark} accent={accent}
+              breadcrumbs={['Quản trị', 'Tổng quan']}>
+              <AdminDashboard /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="adm-acc" label="Quản lý tài khoản" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="admin" active="accounts" dark={dark} accent={accent}
+              breadcrumbs={['Quản trị', 'Đào tạo', 'Tài khoản']}>
+              <AdminAccounts /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="adm-maj" label="Ngành đào tạo" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="admin" active="majors" dark={dark} accent={accent}
+              breadcrumbs={['Quản trị', 'Đào tạo', 'Ngành đào tạo']}>
+              <AdminMajors /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="adm-cur" label="Chương trình đào tạo (CTĐT)" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="admin" active="curriculum" dark={dark} accent={accent}
+              breadcrumbs={['Quản trị', 'Đào tạo', 'Chương trình đào tạo']}>
+              <AdminCurriculum /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="adm-cls" label="Quản lý lớp học phần" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="admin" active="classes" dark={dark} accent={accent}
+              breadcrumbs={['Quản trị', 'Đào tạo', 'Lớp học phần']}>
+              <AdminClasses /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="adm-sem" label="Quản lý học kỳ" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="admin" active="semesters" dark={dark} accent={accent}
+              breadcrumbs={['Quản trị', 'Đào tạo', 'Học kỳ']}>
+              <AdminSemesters /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="adm-reg" label="Quản lý đăng ký · phê duyệt yêu cầu" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="admin" active="registrations" dark={dark} accent={accent}
+              breadcrumbs={['Quản trị', 'Vận hành', 'Đăng ký']}>
+              <AdminRegistrations /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="adm-set" label="Cấu hình hệ thống" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="admin" active="settings" dark={dark} accent={accent}
+              breadcrumbs={['Quản trị', 'Hệ thống', 'Cấu hình']}>
+              <AdminSettings /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="adm-rpt" label="Báo cáo & thống kê" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="admin" active="reports" dark={dark} accent={accent}
+              breadcrumbs={['Quản trị', 'Vận hành', 'Báo cáo']}>
+              <AdminReports /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="adm-not" label="Gửi thông báo" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="admin" active="notifications" dark={dark} accent={accent}
+              breadcrumbs={['Quản trị', 'Vận hành', 'Thông báo']}>
+              <AdminNotifications /></Shell></Frame>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="teacher" title="04 · Giáo viên"
+          subtitle="Lịch dạy · Lớp phụ trách · Nhập điểm">
+          <DCArtboard id="tea-dash" label="Dashboard giáo viên" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="teacher" active="dashboard" dark={dark} accent={accent}
+              breadcrumbs={['Giáo viên', 'Trang chủ']}>
+              <TeacherDashboard /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="tea-sched" label="Lịch dạy cá nhân" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="teacher" active="schedule" dark={dark} accent={accent}
+              breadcrumbs={['Giáo viên', 'Giảng dạy', 'Lịch dạy']}>
+              <TeacherSchedule /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="tea-cls" label="Lớp phụ trách · danh sách SV" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="teacher" active="classes" dark={dark} accent={accent}
+              breadcrumbs={['Giáo viên', 'Giảng dạy', 'Lớp phụ trách']}>
+              <TeacherClasses /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="tea-grd" label="Nhập điểm lớp HP" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="teacher" active="grades" dark={dark} accent={accent}
+              breadcrumbs={['Giáo viên', 'Giảng dạy', 'Nhập điểm', 'IT4409 · 21CLC02']}>
+              <TeacherGrades /></Shell></Frame>
+          </DCArtboard>
+          <DCArtboard id="tea-not" label="Thông báo" width={ARTBOARD_W} height={ARTBOARD_H}>
+            <Frame><Shell role="teacher" active="notifications" dark={dark} accent={accent}
+              breadcrumbs={['Giáo viên', 'Thông báo']}>
+              <Notifications role="teacher" /></Shell></Frame>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+
+      <TweaksPanel>
+        <TweakSection label="Giao diện" />
+        <TweakColor label="Màu nhấn" value={accent}
+          options={ACCENT_OPTIONS}
+          onChange={v => setTweak('accent', v)} />
+        <TweakToggle label="Chế độ tối" value={dark}
+          onChange={v => setTweak('dark', v)} />
+      </TweaksPanel>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
