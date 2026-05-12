@@ -48,10 +48,6 @@ Quy ước:
 
 - [x] SRS v0.2 (`plan.md`)
 - [x] README backend
-- [ ] README root project (mô tả full-stack)
-- [ ] Sơ đồ ERD (TBD trong plan §13)
-- [ ] Sơ đồ use case (TBD trong plan §13)
-- [ ] Sơ đồ luồng đăng ký môn học (TBD trong plan §13)
 
 ---
 
