@@ -33,36 +33,38 @@
 - Quản lý môn học
 - Quản lý học kỳ
 - Mở đăng ký môn học
+- Admin quản lý lớp học phần
 - Sinh viên đăng ký môn học
 - Tự động gợi ý thời khóa biểu phù hợp
-- Giáo viên quản lý lớp học phần
+- Giáo viên xem thời khóa biểu cá nhân và nhập điểm
 
 ## 3. Tech Stack Đề Xuất
 
 ### 3.1. Frontend
 
-- Framework: ReactJS / Next.js
-- UI Library: Ant Design / Material UI / Tailwind CSS
+- Framework: ReactJS
+- UI Library: Tailwind CSS
 - State Management: Redux Toolkit / Zustand
 
 ### 3.2. Backend
 
-- Framework: Node.js Express / NestJS / Spring Boot
+- Ngôn ngữ: Python
+- Framework Backend: FastAPI / Django REST Framework
 - API: RESTful API
 - Authentication: JWT, refresh token
 - Authorization: Role-based access control
 
 ### 3.3. Database
 
-- Hệ quản trị CSDL: PostgreSQL / MySQL / SQL Server
-- ORM: Prisma / TypeORM / Hibernate
+- Hệ quản trị CSDL: PostgreSQL
+- ORM: TypeORM
 
 ### 3.4. Công cụ hỗ trợ
 
 - Version Control: Git, GitHub
 - API Testing: Postman / Insomnia
-- Documentation: Swagger / OpenAPI
-- Deployment: Docker, Nginx
+- Documentation: Swagger
+- Deployment: Docker
 
 ## 4. Yêu Cầu Chức Năng
 
@@ -256,7 +258,7 @@
 
 ### 7.2. Xem danh sách lớp học phần được phân công
 
-### 7.3. Xem lịch giảng dạy
+### 7.3. Xem thời khóa biểu cá nhân
 
 ### 7.4. Xem danh sách sinh viên trong lớp học phần
 
@@ -268,9 +270,21 @@
 
 #### 7.5.3. Gửi thông báo cho sinh viên trong lớp
 
-### 7.6. Đề xuất thay đổi lịch dạy
+### 7.6. Nhập điểm
 
-### 7.7. Xuất danh sách sinh viên
+#### 7.6.1. Nhập điểm quá trình
+
+#### 7.6.2. Nhập điểm giữa kỳ
+
+#### 7.6.3. Nhập điểm cuối kỳ
+
+#### 7.6.4. Cập nhật điểm trong thời gian cho phép
+
+#### 7.6.5. Xuất bảng điểm lớp học phần
+
+### 7.7. Đề xuất thay đổi lịch dạy
+
+### 7.8. Xuất danh sách sinh viên
 
 ## 8. Yêu Cầu Phi Chức Năng
 
@@ -332,7 +346,9 @@
 
 ### 10.13. Registration
 
-### 10.14. Notification
+### 10.14. Grade
+
+### 10.15. Notification
 
 ## 11. Giao Diện Người Dùng
 
@@ -358,6 +374,10 @@
 
 ### 11.11. Giao diện xem thời khóa biểu
 
+### 11.12. Giao diện xem thời khóa biểu cá nhân của giáo viên
+
+### 11.13. Giao diện nhập điểm
+
 ## 12. Use Case
 
 ### 12.1. Use case Admin quản lý tài khoản
@@ -378,7 +398,11 @@
 
 ### 12.9. Use case Giáo viên xem lớp học phần
 
-### 12.10. Use case Giáo viên gửi thông báo cho sinh viên
+### 12.10. Use case Giáo viên xem thời khóa biểu cá nhân
+
+### 12.11. Use case Giáo viên nhập điểm
+
+### 12.12. Use case Giáo viên gửi thông báo cho sinh viên
 
 ## 13. Ràng Buộc Hệ Thống
 
@@ -405,6 +429,8 @@
 ### 14.6. Test thuật toán tạo thời khóa biểu tự động
 
 ### 14.7. Test phân quyền theo role
+
+### 14.8. Test chức năng nhập điểm của giáo viên
 
 ## 15. Phụ Lục
 
