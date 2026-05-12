@@ -9,6 +9,8 @@ Quy ước:
 - `[x]` = đã xong
 - `[!]` = bị block / chờ quyết định
 
+Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **Frontend** (UI + state). Cùng 1 FR-ID có thể xuất hiện ở cả 2 phần — tick độc lập theo công việc thực tế.
+
 ---
 
 ## 0. Hạ tầng & Setup
@@ -40,9 +42,12 @@ Quy ước:
 
 - [x] Dockerfile backend
 - [x] docker-compose backend + postgres
-- [ ] Dockerfile frontend
-- [ ] docker-compose tích hợp full-stack
-- [ ] File `.env.production.example`
+- [x] Dockerfile frontend (multi-stage: dev / build / production nginx)
+- [x] docker-compose tích hợp full-stack (`docker-compose.yml` ở root)
+- [x] docker-compose production (`docker-compose.prod.yml`)
+- [x] File `.env.production.example`
+- [x] `.dockerignore` cho backend & frontend
+- [x] `.gitignore` ở root project
 
 ### 0.4. Tài liệu
 
@@ -51,9 +56,9 @@ Quy ước:
 
 ---
 
-## 1. Data Model (plan §7)
+# 1. Backend (Django REST Framework)
 
-Tạo migration + model + serializer + viewset cho từng entity.
+## 1.1. Data Models & Migrations (plan §7)
 
 - [x] `User` (accounts) - 3 role
 - [ ] `Major` - ngành đào tạo (CNTT, KTPM, HTTT, KHMT, ATTT)
@@ -69,181 +74,173 @@ Tạo migration + model + serializer + viewset cho từng entity.
 - [ ] `Student` profile - mở rộng từ User
 - [ ] `Teacher` profile - mở rộng từ User
 
----
+## 1.2. Auth & Account API
 
-## 2. Yêu cầu chung (plan §4.1)
+### 1.2.1. Auth chung (FR-GEN)
 
-- [x] FR-GEN-001 - Login bằng tài khoản hợp lệ
-- [ ] FR-GEN-002 - Logout (blacklist refresh token)
-- [ ] FR-GEN-003 - Đổi mật khẩu
-- [ ] FR-GEN-004 - Quên mật khẩu (SHOULD)
-- [x] FR-GEN-005 - Xem thông tin cá nhân (`/api/accounts/users/me/`)
-- [ ] FR-GEN-006 - Cập nhật thông tin cá nhân
-- [x] FR-GEN-007 - Phân quyền theo role (permission class)
+- [x] FR-GEN-001 - `POST /api/auth/login/` (JWT)
+- [ ] FR-GEN-002 - `POST /api/auth/logout/` (blacklist refresh token)
+- [ ] FR-GEN-003 - `POST /api/accounts/change-password/`
+- [ ] FR-GEN-004 - Quên mật khẩu (gửi email reset) (SHOULD)
+- [x] FR-GEN-005 - `GET /api/accounts/users/me/`
+- [ ] FR-GEN-006 - `PATCH /api/accounts/users/me/`
+- [x] FR-GEN-007 - Permission class theo role
 
----
+### 1.2.2. Admin quản lý tài khoản (FR-ADM-ACC)
 
-## 3. Admin (plan §4.2)
+- [x] FR-ADM-ACC-001 - API tạo SV/GV
+- [ ] FR-ADM-ACC-002 - API cập nhật user
+- [ ] FR-ADM-ACC-003 - API khoá/mở khoá (`is_locked`)
+- [ ] FR-ADM-ACC-004 - API gán/đổi role
+- [ ] FR-ADM-ACC-005 - Query param search/filter users
+- [x] FR-ADM-ACC-006 - Chặn role=ADMIN khi tạo qua API
 
-### 3.1. Quản lý tài khoản
+## 1.3. Admin domain APIs
 
-- [x] FR-ADM-ACC-001 - Tạo tài khoản SV/GV
-- [ ] FR-ADM-ACC-002 - Cập nhật thông tin tài khoản
-- [ ] FR-ADM-ACC-003 - Khóa / mở khóa tài khoản (toggle `is_locked`)
-- [ ] FR-ADM-ACC-004 - Phân quyền theo role
-- [ ] FR-ADM-ACC-005 - Tìm kiếm / lọc danh sách tài khoản
-- [x] FR-ADM-ACC-006 - Chặn tạo tài khoản Admin qua API
+### 1.3.1. Ngành đào tạo (FR-ADM-MAJ)
 
-### 3.2. Quản lý ngành đào tạo
-
-- [ ] FR-ADM-MAJ-001 - Thêm ngành
-- [ ] FR-ADM-MAJ-002 - Cập nhật ngành
-- [ ] FR-ADM-MAJ-003 - Xoá / ngừng ngành (soft delete)
+- [ ] FR-ADM-MAJ-001 - API thêm ngành
+- [ ] FR-ADM-MAJ-002 - API cập nhật ngành
+- [ ] FR-ADM-MAJ-003 - API xoá / ngừng ngành (soft delete)
 - [ ] FR-ADM-MAJ-004 - Seed dữ liệu CNTT, KTPM, HTTT, KHMT, ATTT
 
-### 3.3. Quản lý chương trình đào tạo
+### 1.3.2. Chương trình đào tạo (FR-ADM-CUR)
 
-- [ ] FR-ADM-CUR-001 - Tạo chương trình theo ngành
-- [ ] FR-ADM-CUR-002 - Cập nhật chương trình
-- [ ] FR-ADM-CUR-003 - Gán môn học vào chương trình
-- [ ] FR-ADM-CUR-004 - Phân loại bắt buộc / tự chọn
-- [ ] FR-ADM-CUR-005 - Quản lý tổng tín chỉ yêu cầu
+- [ ] FR-ADM-CUR-001 - API tạo chương trình theo ngành
+- [ ] FR-ADM-CUR-002 - API cập nhật chương trình
+- [ ] FR-ADM-CUR-003 - API gán môn học vào chương trình
+- [ ] FR-ADM-CUR-004 - Field `is_required` cho môn (bắt buộc/tự chọn)
+- [ ] FR-ADM-CUR-005 - Field tổng tín chỉ yêu cầu
 
-### 3.4. Quản lý môn học
+### 1.3.3. Môn học (FR-ADM-CRS)
 
-- [ ] FR-ADM-CRS-001 - Thêm môn học
-- [ ] FR-ADM-CRS-002 - Cập nhật môn học
-- [ ] FR-ADM-CRS-003 - Xoá / ngừng mở môn học
-- [ ] FR-ADM-CRS-004 - Quản lý số tín chỉ
-- [ ] FR-ADM-CRS-005 - Quản lý môn tiên quyết
+- [ ] FR-ADM-CRS-001 - API thêm môn học
+- [ ] FR-ADM-CRS-002 - API cập nhật môn học
+- [ ] FR-ADM-CRS-003 - API xoá / ngừng môn học
+- [ ] FR-ADM-CRS-004 - Field `credits`
+- [ ] FR-ADM-CRS-005 - API gán môn tiên quyết
 
-### 3.5. Quản lý học kỳ
+### 1.3.4. Học kỳ (FR-ADM-SEM)
 
-- [ ] FR-ADM-SEM-001 - Tạo học kỳ
-- [ ] FR-ADM-SEM-002 - Cập nhật thời gian học kỳ
-- [ ] FR-ADM-SEM-003 - Mở / đóng học kỳ
-- [ ] FR-ADM-SEM-004 - Cấu hình thời gian đăng ký
+- [ ] FR-ADM-SEM-001 - API tạo học kỳ
+- [ ] FR-ADM-SEM-002 - API cập nhật thời gian học kỳ
+- [ ] FR-ADM-SEM-003 - API mở / đóng học kỳ
+- [ ] FR-ADM-SEM-004 - Field `registration_start/end` cho học kỳ
 
-### 3.6. Quản lý lớp học phần
+### 1.3.5. Lớp học phần (FR-ADM-CLS)
 
-- [ ] FR-ADM-CLS-001 - Tạo lớp học phần cho môn
-- [ ] FR-ADM-CLS-002 - Gán giáo viên
-- [ ] FR-ADM-CLS-003 - Thiết lập lịch học
-- [ ] FR-ADM-CLS-004 - Thiết lập phòng học
-- [ ] FR-ADM-CLS-005 - Thiết lập sĩ số tối đa
-- [ ] FR-ADM-CLS-006 - Cập nhật thông tin lớp học phần
+- [ ] FR-ADM-CLS-001 - API tạo lớp học phần
+- [ ] FR-ADM-CLS-002 - API gán giáo viên
+- [ ] FR-ADM-CLS-003 - API set lịch học (Schedule)
+- [ ] FR-ADM-CLS-004 - Field `room` trong Schedule
+- [ ] FR-ADM-CLS-005 - Field `max_students`
+- [ ] FR-ADM-CLS-006 - API cập nhật lớp học phần
 
-### 3.7. Quản lý đăng ký môn học
+### 1.3.6. Đăng ký môn học - Admin (FR-ADM-REG)
 
-- [ ] FR-ADM-REG-001 - Mở đợt đăng ký
-- [ ] FR-ADM-REG-002 - Đóng đợt đăng ký
-- [ ] FR-ADM-REG-003 - Theo dõi số lượng SV đăng ký theo lớp
-- [ ] FR-ADM-REG-004 - Phát hiện đăng ký trùng lịch
-- [ ] FR-ADM-REG-005 - Hủy đăng ký cho SV (có lý do)
-- [ ] FR-ADM-REG-006 - Xuất danh sách đăng ký
+- [ ] FR-ADM-REG-001 - API mở đợt đăng ký
+- [ ] FR-ADM-REG-002 - API đóng đợt đăng ký
+- [ ] FR-ADM-REG-003 - API thống kê SV theo lớp
+- [ ] FR-ADM-REG-004 - Logic detect trùng lịch
+- [ ] FR-ADM-REG-005 - API hủy đăng ký SV
+- [ ] FR-ADM-REG-006 - Endpoint xuất CSV/Excel danh sách đăng ký
 
-### 3.8. Báo cáo và thống kê
+### 1.3.7. Báo cáo & thống kê (FR-ADM-RPT)
 
-- [ ] FR-ADM-RPT-001 - Thống kê SV đăng ký theo môn
-- [ ] FR-ADM-RPT-002 - Thống kê SV đăng ký theo ngành
-- [ ] FR-ADM-RPT-003 - Thống kê lớp đầy / còn chỗ
-- [ ] FR-ADM-RPT-004 - Xuất báo cáo Excel / PDF (SHOULD)
+- [ ] FR-ADM-RPT-001 - API thống kê SV theo môn
+- [ ] FR-ADM-RPT-002 - API thống kê SV theo ngành
+- [ ] FR-ADM-RPT-003 - API thống kê lớp đầy / còn chỗ
+- [ ] FR-ADM-RPT-004 - Xuất Excel / PDF (SHOULD)
 
-### 3.9. Gửi thông báo
+### 1.3.8. Thông báo Admin (FR-ADM-NOT)
 
-- [ ] FR-ADM-NOT-001 - Gửi thông báo cho SV
-- [ ] FR-ADM-NOT-002 - Gửi thông báo cho GV
+- [ ] FR-ADM-NOT-001 - API gửi thông báo cho SV
+- [ ] FR-ADM-NOT-002 - API gửi thông báo cho GV
 
----
+## 1.4. Student domain APIs
 
-## 4. Sinh viên (plan §4.3)
+### 1.4.1. Xem thông tin học tập (FR-STU-INF, FR-STU-CUR)
 
-### 4.1. Xem thông tin học tập
+- [ ] FR-STU-INF-001 - API thông tin cá nhân SV
+- [ ] FR-STU-CUR-001 - API xem chương trình đào tạo của ngành mình
+- [ ] FR-STU-CUR-002 - API xem danh sách môn theo ngành
+- [ ] FR-STU-CUR-003 - Trả về flag bắt buộc / tự chọn
+- [ ] FR-STU-CUR-004 - API tính tiến độ hoàn thành CTĐT (SHOULD)
 
-- [ ] FR-STU-INF-001 - Xem thông tin cá nhân
-- [ ] FR-STU-CUR-001 - Xem chương trình đào tạo của ngành
-- [ ] FR-STU-CUR-002 - Xem danh sách môn theo ngành
-- [ ] FR-STU-CUR-003 - Phân biệt bắt buộc / tự chọn
-- [ ] FR-STU-CUR-004 - Xem tiến độ hoàn thành (SHOULD)
+### 1.4.2. Xem môn học được đăng ký (FR-STU-CRS)
 
-### 4.2. Xem môn học được đăng ký
+- [ ] FR-STU-CRS-001 - API danh sách lớp học phần SV được phép đăng ký
+- [ ] FR-STU-CRS-002 - Filter theo `semester_id`
+- [ ] FR-STU-CRS-003 - Filter theo `major_id`
+- [ ] FR-STU-CRS-004 - Detail trả về môn + tín chỉ + tiên quyết
 
-- [ ] FR-STU-CRS-001 - Xem danh sách môn được phép đăng ký
-- [ ] FR-STU-CRS-002 - Lọc theo học kỳ
-- [ ] FR-STU-CRS-003 - Lọc theo ngành
-- [ ] FR-STU-CRS-004 - Xem chi tiết môn, tín chỉ, tiên quyết
+### 1.4.3. Đăng ký môn học thủ công (FR-STU-REG)
 
-### 4.3. Đăng ký môn học thủ công
+- [ ] FR-STU-REG-001 - API chọn course
+- [ ] FR-STU-REG-002 - API chọn ClassSection
+- [ ] FR-STU-REG-003 - Logic lọc theo teacher (nếu có nhiều GV)
+- [ ] FR-STU-REG-004 - Logic lọc theo ngày/ca học
+- [ ] FR-STU-REG-005 - Validation trùng lịch trước khi commit
+- [ ] FR-STU-REG-006 - Validation môn tiên quyết
+- [ ] FR-STU-REG-007 - Validation giới hạn tín chỉ
+- [ ] FR-STU-REG-008 - `POST /api/registrations/` xác nhận
+- [ ] FR-STU-REG-009 - `DELETE /api/registrations/{id}/`
 
-- [ ] FR-STU-REG-001 - Chọn môn học
-- [ ] FR-STU-REG-002 - Chọn lớp học phần
-- [ ] FR-STU-REG-003 - Chọn giáo viên (nếu nhiều GV)
-- [ ] FR-STU-REG-004 - Chọn ngày học / ca học mong muốn
-- [ ] FR-STU-REG-005 - Kiểm tra trùng lịch
-- [ ] FR-STU-REG-006 - Kiểm tra môn tiên quyết
-- [ ] FR-STU-REG-007 - Kiểm tra giới hạn tín chỉ
-- [ ] FR-STU-REG-008 - Xác nhận đăng ký
-- [ ] FR-STU-REG-009 - Hủy đăng ký trong thời gian cho phép
+### 1.4.4. Tự động tạo TKB (FR-STU-TKB)
 
-### 4.4. Tự động tạo thời khóa biểu
+- [ ] FR-STU-TKB-001 - API nhận danh sách courses đăng ký
+- [ ] FR-STU-TKB-002 - Input giáo viên ưu tiên
+- [ ] FR-STU-TKB-003 - Input ngày học ưu tiên
+- [ ] FR-STU-TKB-004 - Input ca học ưu tiên
+- [ ] FR-STU-TKB-005 - Thuật toán search tổ hợp TKB không trùng
+- [ ] FR-STU-TKB-006 - Trả về nhiều phương án (SHOULD)
+- [ ] FR-STU-TKB-007 - Score & sort phương án (SHOULD)
+- [ ] FR-STU-TKB-008 - Trả về 409/422 khi không tìm được
+- [ ] FR-STU-TKB-009 - Endpoint commit phương án đã chọn
 
-- [ ] FR-STU-TKB-001 - Chọn danh sách môn cần đăng ký
-- [ ] FR-STU-TKB-002 - Chọn giáo viên ưu tiên
-- [ ] FR-STU-TKB-003 - Chọn ngày học ưu tiên
-- [ ] FR-STU-TKB-004 - Chọn ca học ưu tiên
-- [ ] FR-STU-TKB-005 - Thuật toán tìm TKB phù hợp
-- [ ] FR-STU-TKB-006 - Gợi ý nhiều phương án (SHOULD)
-- [ ] FR-STU-TKB-007 - Sắp xếp phương án theo ưu tiên (SHOULD)
-- [ ] FR-STU-TKB-008 - Cảnh báo không tìm được TKB hợp lệ
-- [ ] FR-STU-TKB-009 - Xác nhận phương án trước khi ghi nhận
+### 1.4.5. Xem TKB & lịch sử (FR-STU-SCH, FR-STU-HIS)
 
-### 4.5. Xem thời khóa biểu và lịch sử
+- [ ] FR-STU-SCH-001 - API TKB theo tuần
+- [ ] FR-STU-SCH-002 - API TKB theo học kỳ
+- [ ] FR-STU-SCH-003 - Endpoint xuất TKB (PDF/Excel) (SHOULD)
+- [ ] FR-STU-HIS-001 - API lịch sử đăng ký
 
-- [ ] FR-STU-SCH-001 - Xem TKB theo tuần
-- [ ] FR-STU-SCH-002 - Xem TKB theo học kỳ
-- [ ] FR-STU-SCH-003 - Xuất TKB (SHOULD)
-- [ ] FR-STU-HIS-001 - Xem lịch sử đăng ký
+### 1.4.6. Nhận thông báo (FR-STU-NOT)
 
-### 4.6. Nhận thông báo
+- [ ] FR-STU-NOT-001 - Sinh notification khi mở/đóng đăng ký (signal)
+- [ ] FR-STU-NOT-002 - Sinh notification khi lịch học thay đổi
+- [ ] FR-STU-NOT-003 - Sinh notification khi lớp bị hủy
+- [ ] FR-STU-NOT-004 - API list notifications của user
 
-- [ ] FR-STU-NOT-001 - Nhận thông báo mở / đóng đăng ký
-- [ ] FR-STU-NOT-002 - Nhận thông báo lịch học thay đổi
-- [ ] FR-STU-NOT-003 - Nhận thông báo lớp bị hủy
-- [ ] FR-STU-NOT-004 - Nhận thông báo từ Admin
+## 1.5. Teacher domain APIs
 
----
+### 1.5.1. Xem thông tin & lớp học phần (FR-TEA-INF, FR-TEA-CLS, FR-TEA-SCH)
 
-## 5. Giáo viên (plan §4.4)
+- [ ] FR-TEA-INF-001 - API thông tin GV (có thể dùng chung `/me`)
+- [ ] FR-TEA-CLS-001 - API danh sách lớp được phân công
+- [ ] FR-TEA-SCH-001 - API TKB cá nhân GV
+- [ ] FR-TEA-CLS-002 - API danh sách SV trong lớp
+- [ ] FR-TEA-CLS-003 - Trường `enrolled_count` / `max_students`
+- [ ] FR-TEA-CLS-004 - Detail trả lịch học + phòng
+- [ ] FR-TEA-CLS-005 - API gửi thông báo cho lớp (MAY)
 
-### 5.1. Xem thông tin và lớp học phần
+### 1.5.2. Nhập điểm (FR-TEA-GRD)
 
-- [ ] FR-TEA-INF-001 - Xem thông tin cá nhân
-- [ ] FR-TEA-CLS-001 - Xem danh sách lớp được phân công
-- [ ] FR-TEA-SCH-001 - Xem TKB cá nhân
-- [ ] FR-TEA-CLS-002 - Xem danh sách SV trong lớp
-- [ ] FR-TEA-CLS-003 - Xem sĩ số lớp
-- [ ] FR-TEA-CLS-004 - Xem lịch học và phòng học
-- [ ] FR-TEA-CLS-005 - Gửi thông báo cho SV trong lớp (MAY)
+- [ ] FR-TEA-GRD-001 - API nhập điểm quá trình
+- [ ] FR-TEA-GRD-002 - API nhập điểm giữa kỳ
+- [ ] FR-TEA-GRD-003 - API nhập điểm cuối kỳ
+- [ ] FR-TEA-GRD-004 - Validation thời hạn cập nhật điểm [!] TBD
+- [ ] FR-TEA-GRD-005 - Endpoint xuất bảng điểm Excel
 
-### 5.2. Nhập điểm
+### 1.5.3. Khác (FR-TEA-REQ, FR-TEA-EXP, FR-TEA-NOT)
 
-- [ ] FR-TEA-GRD-001 - Nhập điểm quá trình
-- [ ] FR-TEA-GRD-002 - Nhập điểm giữa kỳ
-- [ ] FR-TEA-GRD-003 - Nhập điểm cuối kỳ
-- [ ] FR-TEA-GRD-004 - Cập nhật điểm trong thời gian cho phép
-- [ ] FR-TEA-GRD-005 - Xuất bảng điểm lớp
+- [ ] FR-TEA-REQ-001 - API đề xuất thay đổi lịch dạy (MAY)
+- [ ] FR-TEA-EXP-001 - Endpoint xuất danh sách SV
+- [ ] FR-TEA-NOT-001 - API list notifications của GV
 
-### 5.3. Khác
+## 1.6. Business Rules (plan §5)
 
-- [ ] FR-TEA-REQ-001 - Đề xuất thay đổi lịch dạy (MAY)
-- [ ] FR-TEA-EXP-001 - Xuất danh sách SV trong lớp
-- [ ] FR-TEA-NOT-001 - Nhận thông báo từ Admin
-
----
-
-## 6. Business Rules (plan §5)
-
-- [ ] BR-001 - Giới hạn tín chỉ tối thiểu / tối đa mỗi học kỳ
+- [ ] BR-001 - Giới hạn tín chỉ tối thiểu / tối đa mỗi học kỳ (min=1, max TBD)
 - [ ] BR-002 - Check môn tiên quyết khi đăng ký
 - [ ] BR-003 - Chỉ cho đăng ký trong thời gian mở
 - [ ] BR-004 - Chặn đăng ký khi trùng lịch
@@ -251,11 +248,171 @@ Tạo migration + model + serializer + viewset cho từng entity.
 - [ ] BR-006 - Áp dụng thời hạn hủy đăng ký
 - [ ] BR-007 - GV chỉ nhập điểm cho lớp được phân công
 
-[!] TBD: Số tín chỉ min/max, thời hạn hủy đăng ký, thời hạn cập nhật điểm (plan §5 TBD).
+## 1.7. Backend testing
+
+- [ ] Setup pytest-django + factories
+- [ ] Unit test cho models
+- [ ] API test cho auth flow
+- [ ] API test cho admin CRUD
+- [ ] API test cho student registration
+- [ ] API test cho TKB algorithm
+- [ ] API test cho grade entry
 
 ---
 
-## 7. Non-Functional (plan §6)
+# 2. Frontend (React + Vite)
+
+## 2.1. Auth & Shared UI
+
+- [x] FR-GEN-001 - Trang Login (đã làm ở 0.2)
+- [ ] FR-GEN-002 - Nút Logout + clear store + redirect
+- [ ] FR-GEN-003 - Form đổi mật khẩu
+- [ ] FR-GEN-004 - Form quên mật khẩu (SHOULD)
+- [x] FR-GEN-005 - Fetch `/me` khi boot + show ở sidebar (đã làm ở 0.2)
+- [ ] FR-GEN-006 - Trang profile + form cập nhật
+- [x] FR-GEN-007 - ProtectedRoute theo role (đã làm ở 0.2)
+- [ ] Toast / notification component dùng chung
+- [ ] Confirm dialog component dùng chung
+- [ ] Loading state + skeleton component
+
+## 2.2. Admin UI
+
+### 2.2.1. Quản lý tài khoản (FR-ADM-ACC)
+
+- [ ] Trang danh sách tài khoản + table + search/filter
+- [ ] Modal tạo SV/GV (chặn role ADMIN ở UI)
+- [ ] Modal cập nhật tài khoản
+- [ ] Toggle khoá/mở khoá
+- [ ] Dropdown đổi role
+
+### 2.2.2. Quản lý ngành đào tạo (FR-ADM-MAJ)
+
+- [ ] Trang danh sách + CRUD ngành
+
+### 2.2.3. Quản lý chương trình đào tạo (FR-ADM-CUR)
+
+- [ ] Trang danh sách chương trình theo ngành
+- [ ] Trang chi tiết chương trình + assign môn học
+- [ ] UI phân loại bắt buộc / tự chọn
+- [ ] UI quản lý tổng tín chỉ yêu cầu
+
+### 2.2.4. Quản lý môn học (FR-ADM-CRS)
+
+- [ ] Trang danh sách + CRUD môn học
+- [ ] UI quản lý tín chỉ
+- [ ] UI quản lý môn tiên quyết (multi-select)
+
+### 2.2.5. Quản lý học kỳ (FR-ADM-SEM)
+
+- [ ] Trang danh sách + CRUD học kỳ
+- [ ] UI mở/đóng học kỳ
+- [ ] UI thiết lập thời gian đăng ký
+
+### 2.2.6. Quản lý lớp học phần (FR-ADM-CLS)
+
+- [ ] Trang danh sách + CRUD lớp học phần
+- [ ] UI gán GV cho lớp
+- [ ] UI thiết lập lịch học + phòng
+- [ ] UI thiết lập sĩ số tối đa
+
+### 2.2.7. Quản lý đăng ký môn học (FR-ADM-REG)
+
+- [ ] UI mở / đóng đợt đăng ký
+- [ ] Trang theo dõi số SV đăng ký theo lớp
+- [ ] UI hủy đăng ký cho SV (modal lý do)
+- [ ] Nút xuất danh sách đăng ký
+
+### 2.2.8. Báo cáo & thống kê (FR-ADM-RPT)
+
+- [ ] Trang dashboard biểu đồ thống kê SV theo môn
+- [ ] Trang thống kê SV theo ngành
+- [ ] Trang thống kê lớp đầy / còn chỗ
+- [ ] Nút export Excel / PDF (SHOULD)
+
+### 2.2.9. Gửi thông báo (FR-ADM-NOT)
+
+- [ ] Trang soạn + gửi thông báo cho SV
+- [ ] Trang soạn + gửi thông báo cho GV
+- [ ] Chọn người nhận (toàn bộ / theo lớp / theo ngành)
+
+## 2.3. Student UI
+
+### 2.3.1. Xem thông tin học tập (FR-STU-INF, FR-STU-CUR)
+
+- [ ] Trang chương trình đào tạo của ngành
+- [ ] Hiển thị danh sách môn + flag bắt buộc / tự chọn
+- [ ] Hiển thị tiến độ hoàn thành (SHOULD)
+
+### 2.3.2. Xem môn học được đăng ký (FR-STU-CRS)
+
+- [ ] Trang danh sách môn được phép đăng ký
+- [ ] Filter theo học kỳ
+- [ ] Filter theo ngành
+- [ ] Modal chi tiết môn (tín chỉ, tiên quyết, các lớp mở)
+
+### 2.3.3. Đăng ký môn học thủ công (FR-STU-REG)
+
+- [ ] UI chọn môn → chọn lớp học phần
+- [ ] UI lọc theo GV (khi nhiều GV)
+- [ ] UI chọn ngày / ca học mong muốn
+- [ ] Hiển thị warning trùng lịch / thiếu tiên quyết / vượt tín chỉ
+- [ ] Confirm modal xác nhận đăng ký
+- [ ] Action hủy đăng ký
+
+### 2.3.4. Tự động tạo TKB (FR-STU-TKB)
+
+- [ ] Trang chọn danh sách môn cần đăng ký
+- [ ] UI chọn GV ưu tiên
+- [ ] UI chọn ngày học ưu tiên
+- [ ] UI chọn ca học ưu tiên
+- [ ] Hiển thị nhiều phương án TKB (SHOULD)
+- [ ] Hiển thị warning khi không có phương án
+- [ ] Confirm modal xác nhận phương án
+
+### 2.3.5. Xem TKB & lịch sử (FR-STU-SCH, FR-STU-HIS)
+
+- [ ] TKB view theo tuần (grid)
+- [ ] TKB view theo học kỳ
+- [ ] Nút xuất TKB (SHOULD)
+- [ ] Trang lịch sử đăng ký
+
+### 2.3.6. Nhận thông báo (FR-STU-NOT)
+
+- [ ] Trang danh sách thông báo (mở/đóng đăng ký, đổi lịch, lớp hủy, từ Admin)
+- [ ] Badge số notification chưa đọc trên layout
+
+## 2.4. Teacher UI
+
+### 2.4.1. Xem thông tin & lớp học phần (FR-TEA-INF, FR-TEA-CLS, FR-TEA-SCH)
+
+- [ ] Trang danh sách lớp được phân công
+- [ ] Trang TKB cá nhân GV
+- [ ] Trang chi tiết lớp (danh sách SV, sĩ số, lịch, phòng)
+- [ ] UI gửi thông báo cho lớp (MAY)
+
+### 2.4.2. Nhập điểm (FR-TEA-GRD)
+
+- [ ] Trang nhập điểm dạng bảng (quá trình / giữa kỳ / cuối kỳ)
+- [ ] Validation thời hạn cập nhật [!] TBD
+- [ ] Nút xuất bảng điểm Excel
+
+### 2.4.3. Khác (FR-TEA-REQ, FR-TEA-EXP, FR-TEA-NOT)
+
+- [ ] UI đề xuất thay đổi lịch dạy (MAY)
+- [ ] Nút xuất danh sách SV
+- [ ] Trang danh sách thông báo từ Admin
+
+## 2.5. Frontend testing
+
+- [ ] Setup Vitest + Testing Library
+- [ ] Unit test cho store auth (Zustand)
+- [ ] Test interceptor JWT refresh
+- [ ] Component test cho Login, ProtectedRoute
+- [ ] Test cho form chính (đăng ký môn, nhập điểm)
+
+---
+
+## 3. Non-Functional (plan §6)
 
 - [x] NFR-SEC-001 - Xác thực trước khi truy cập (JWT)
 - [x] NFR-SEC-002 - Phân quyền theo role
@@ -268,7 +425,7 @@ Tạo migration + model + serializer + viewset cho từng entity.
 
 ---
 
-## 8. Verification / Testing (plan §11)
+## 4. Verification / Testing (plan §11)
 
 - [ ] TEST-001 - Login, logout, đổi mật khẩu, phân quyền
 - [ ] TEST-002 - Quản lý tài khoản
@@ -287,14 +444,14 @@ Tạo migration + model + serializer + viewset cho từng entity.
 
 ---
 
-## 9. Open Questions / Risks (plan §12)
+## 5. Open Questions / Risks (plan §12)
 
-- [x] OPEN - Số tín chỉ tối thiểu là 1 , tối đa tùy chỉnh
-- [!] OPEN - Công thức tính điểm tổng kết (quá trình + giữa kỳ + cuối kỳ) theo % ví dụ quá trình 10% + giữa kỳ 40% + cuối kỳ 50%
+- [x] OPEN - Số tín chỉ tối thiểu là 1, tối đa tùy chỉnh
+- [X] OPEN - Công thức tính điểm tổng kết (vd. quá trình 10% + giữa kỳ 40% + cuối kỳ 50%)
 - [x] RISK - Độ phức tạp thuật toán TKB tự động khi quy mô tăng (tích hợp agent nâng cấp)
 
 ---
 
-## Sửa SRS
+## 6. Sửa SRS
 
-- [x] Cập nhật `plan.md` §2.2: `TypeORM` → `Django ORM` (TypeORM chỉ chạy với JS/TS, không tương thích Django)
+- [x] Cập nhật `plan.md` §2.2: `TypeORM` → `Django ORM`
