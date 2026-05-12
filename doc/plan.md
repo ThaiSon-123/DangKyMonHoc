@@ -9,7 +9,7 @@
 | Document Name | Software Requirements Specification - Hệ Thống Đăng Ký Môn Học |
 | Document ID   | SRS-DKMH                                                       |
 | Project       | Hệ Thống Đăng Ký Môn Học                                       |
-| Version       | v0.1                                                           |
+| Version       | v0.2                                                           |
 | Status        | Draft                                                          |
 | Writer        | AI Agent                                                       |
 | Reviewer      | TBD                                                            |
@@ -20,12 +20,15 @@
 | Version | Date       | Updater  | Changes                                                                                                                              |
 | ------- | ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | v0.1    | 12/05/2026 | AI Agent | Chuẩn hóa tài liệu `plan.md` theo `doc/00-standard-for-ai-agent.md`, giữ nguyên các nội dung đã chốt về phạm vi, role và tech stack. |
+| v0.2    | 12/05/2026 | AI Agent | Chốt Django REST Framework, Zustand, cách lưu phòng học, quyền tạo tài khoản và chức năng thông báo của Admin.                       |
 
 ### 1.3. Document Type
 
 Tài liệu này là bản SRS cấp kế hoạch cho hệ thống đăng ký môn học.
 
 DECISION: Tài liệu MUST tuân theo định hướng trong `doc/00-standard-for-ai-agent.md`.
+
+DECISION: Phạm vi tài liệu hiện tại chỉ là SRS, không triển khai HLD/LLD.
 
 TBD: Chưa có file quy ước mã tài liệu chi tiết được tham chiếu bởi `00 #3.1`, nên `Document ID` đang được đặt tạm là `SRS-DKMH`.
 
@@ -36,6 +39,10 @@ TBD: Chưa có file quy ước mã tài liệu chi tiết được tham chiếu 
 DECISION: Hệ thống MUST hỗ trợ 3 role: `Admin`, `Sinh viên`, `Giáo viên`.
 
 DECISION: Admin MUST quản lý tài khoản, ngành đào tạo, chương trình đào tạo, môn học, học kỳ, lớp học phần và đăng ký môn học.
+
+DECISION: Admin MUST NOT tạo tài khoản Admin.
+
+DECISION: Admin MUST gửi được thông báo cho Sinh viên và Giáo viên.
 
 DECISION: Sinh viên MUST đăng ký môn học và MUST có chức năng tự động tìm kiếm thời khóa biểu phù hợp.
 
@@ -55,19 +62,19 @@ DECISION: UI library MUST sử dụng Tailwind CSS.
 
 DECISION: Backend MUST sử dụng Python.
 
+DECISION: Backend framework MUST sử dụng Django REST Framework.
+
+DECISION: State management library MUST sử dụng Zustand.
+
 DECISION: Database MUST sử dụng PostgreSQL.
 
 DECISION: ORM MUST sử dụng TypeORM.
 
 DECISION: API documentation MUST sử dụng Swagger.
 
+DECISION: API testing MUST sử dụng Swagger.
+
 DECISION: Deployment MUST sử dụng Docker.
-
-TBD: Backend framework cụ thể chưa được chốt. Candidate hiện tại: FastAPI hoặc Django REST Framework.
-
-TBD: State management library cho ReactJS chưa được chốt. Candidate hiện tại: Redux Toolkit hoặc Zustand.
-
-RISK: TypeORM thường được sử dụng trong hệ sinh thái Node.js/TypeScript. Việc kết hợp backend Python với TypeORM MUST được reviewer xác nhận về tính khả thi kỹ thuật trước khi thiết kế chi tiết.
 
 ## 3. System Overview
 
@@ -97,10 +104,10 @@ Hệ thống MUST bao gồm các module chính sau:
 - Tự động tạo thời khóa biểu cho sinh viên.
 - Quản lý thời khóa biểu cá nhân của giáo viên.
 - Nhập điểm.
-- Thông báo.
+- Admin gửi thông báo cho Sinh viên và Giáo viên.
 - Báo cáo và thống kê.
 
-OPEN QUESTION: Hệ thống có cần module quản lý phòng học chi tiết hay chỉ lưu phòng học như thuộc tính của lịch học?
+DECISION: Hệ thống chỉ lưu phòng học như thuộc tính của lịch học hoặc lớp học phần, không xây dựng module quản lý phòng học chi tiết.
 
 ## 4. Functional Requirements
 
@@ -120,13 +127,14 @@ OPEN QUESTION: Hệ thống có cần module quản lý phòng học chi tiết 
 
 #### 4.2.1. Quản lý tài khoản
 
-| ID             | Requirement                                                  |
-| -------------- | ------------------------------------------------------------ |
-| FR-ADM-ACC-001 | Admin MUST tạo được tài khoản Admin, Sinh viên và Giáo viên. |
-| FR-ADM-ACC-002 | Admin MUST cập nhật được thông tin tài khoản.                |
-| FR-ADM-ACC-003 | Admin MUST khóa và mở khóa được tài khoản.                   |
-| FR-ADM-ACC-004 | Admin MUST phân quyền người dùng theo role.                  |
-| FR-ADM-ACC-005 | Admin MUST tìm kiếm và lọc danh sách tài khoản.              |
+| ID             | Requirement                                           |
+| -------------- | ----------------------------------------------------- |
+| FR-ADM-ACC-001 | Admin MUST tạo được tài khoản Sinh viên và Giáo viên. |
+| FR-ADM-ACC-002 | Admin MUST cập nhật được thông tin tài khoản.         |
+| FR-ADM-ACC-003 | Admin MUST khóa và mở khóa được tài khoản.            |
+| FR-ADM-ACC-004 | Admin MUST phân quyền người dùng theo role.           |
+| FR-ADM-ACC-005 | Admin MUST tìm kiếm và lọc danh sách tài khoản.       |
+| FR-ADM-ACC-006 | Admin MUST NOT tạo tài khoản Admin.                   |
 
 #### 4.2.2. Quản lý ngành đào tạo
 
@@ -197,6 +205,13 @@ OPEN QUESTION: Hệ thống có cần module quản lý phòng học chi tiết 
 | FR-ADM-RPT-003 | Admin MUST xem được thống kê lớp học phần đầy hoặc còn chỗ.           |
 | FR-ADM-RPT-004 | Admin SHOULD xuất được báo cáo dưới định dạng Excel hoặc PDF.         |
 
+#### 4.2.9. Gửi thông báo
+
+| ID             | Requirement                                  |
+| -------------- | -------------------------------------------- |
+| FR-ADM-NOT-001 | Admin MUST gửi được thông báo cho Sinh viên. |
+| FR-ADM-NOT-002 | Admin MUST gửi được thông báo cho Giáo viên. |
+
 ### 4.3. Sinh Viên Requirements
 
 #### 4.3.1. Xem thông tin học tập
@@ -262,6 +277,7 @@ OPEN QUESTION: Hệ thống có cần module quản lý phòng học chi tiết 
 | FR-STU-NOT-001 | Sinh viên MUST nhận được thông báo mở hoặc đóng đăng ký môn học. |
 | FR-STU-NOT-002 | Sinh viên MUST nhận được thông báo khi lịch học thay đổi.        |
 | FR-STU-NOT-003 | Sinh viên MUST nhận được thông báo khi lớp học phần bị hủy.      |
+| FR-STU-NOT-004 | Sinh viên MUST nhận được thông báo từ Admin.                     |
 
 ### 4.4. Giáo Viên Requirements
 
@@ -293,6 +309,7 @@ OPEN QUESTION: Hệ thống có cần module quản lý phòng học chi tiết 
 | -------------- | ---------------------------------------------------------------- |
 | FR-TEA-REQ-001 | Giáo viên MAY đề xuất thay đổi lịch dạy.                         |
 | FR-TEA-EXP-001 | Giáo viên MUST xuất được danh sách sinh viên trong lớp học phần. |
+| FR-TEA-NOT-001 | Giáo viên MUST nhận được thông báo từ Admin.                     |
 
 ## 5. Business Rules
 
@@ -340,23 +357,22 @@ Hệ thống SHOULD có các entity dữ liệu dự kiến sau:
 - Semester.
 - ClassSection.
 - Schedule.
-- Room.
 - Registration.
 - Grade.
 - Notification.
 
 ### 7.2. Key Relationships
 
-| Relationship                          | Description                                                   |
-| ------------------------------------- | ------------------------------------------------------------- |
-| Major - Curriculum                    | Một ngành đào tạo có một hoặc nhiều chương trình đào tạo.     |
-| Curriculum - Course                   | Một chương trình đào tạo gồm nhiều môn học.                   |
-| Course - Prerequisite                 | Một môn học MAY có một hoặc nhiều môn tiên quyết.             |
-| Course - ClassSection                 | Một môn học MAY có nhiều lớp học phần.                        |
-| ClassSection - Teacher                | Một lớp học phần MUST có giáo viên được phân công.            |
-| ClassSection - Schedule               | Một lớp học phần MUST có lịch học.                            |
-| Student - Registration - ClassSection | Sinh viên đăng ký vào lớp học phần thông qua bản ghi đăng ký. |
-| ClassSection - Grade - Student        | Điểm được nhập theo sinh viên trong từng lớp học phần.        |
+| Relationship                          | Description                                                          |
+| ------------------------------------- | -------------------------------------------------------------------- |
+| Major - Curriculum                    | Một ngành đào tạo có một hoặc nhiều chương trình đào tạo.            |
+| Curriculum - Course                   | Một chương trình đào tạo gồm nhiều môn học.                          |
+| Course - Prerequisite                 | Một môn học MAY có một hoặc nhiều môn tiên quyết.                    |
+| Course - ClassSection                 | Một môn học MAY có nhiều lớp học phần.                               |
+| ClassSection - Teacher                | Một lớp học phần MUST có giáo viên được phân công.                   |
+| ClassSection - Schedule               | Một lớp học phần MUST có lịch học; lịch học lưu thông tin phòng học. |
+| Student - Registration - ClassSection | Sinh viên đăng ký vào lớp học phần thông qua bản ghi đăng ký.        |
+| ClassSection - Grade - Student        | Điểm được nhập theo sinh viên trong từng lớp học phần.               |
 
 TBD: Thuộc tính chi tiết, khóa chính, khóa ngoại và ràng buộc database sẽ được xác định trong tài liệu thiết kế cơ sở dữ liệu.
 
@@ -375,6 +391,7 @@ Hệ thống SHOULD có các màn hình chính sau:
 - Giao diện quản lý học kỳ.
 - Giao diện quản lý lớp học phần.
 - Giao diện quản lý đăng ký môn học.
+- Giao diện gửi thông báo của Admin.
 - Giao diện đăng ký môn học của sinh viên.
 - Giao diện tạo thời khóa biểu tự động.
 - Giao diện xem thời khóa biểu của sinh viên.
@@ -384,43 +401,43 @@ Hệ thống SHOULD có các màn hình chính sau:
 
 ## 9. Use Cases
 
-| ID         | Use Case                                   |
-| ---------- | ------------------------------------------ |
-| UC-ADM-001 | Admin quản lý tài khoản.                   |
-| UC-ADM-002 | Admin quản lý ngành đào tạo.               |
-| UC-ADM-003 | Admin quản lý chương trình đào tạo.        |
-| UC-ADM-004 | Admin quản lý môn học.                     |
-| UC-ADM-005 | Admin quản lý học kỳ.                      |
-| UC-ADM-006 | Admin quản lý lớp học phần.                |
-| UC-ADM-007 | Admin quản lý đăng ký môn học.             |
-| UC-STU-001 | Sinh viên đăng ký môn học thủ công.        |
-| UC-STU-002 | Sinh viên tạo thời khóa biểu tự động.      |
-| UC-STU-003 | Sinh viên hủy đăng ký môn học.             |
-| UC-STU-004 | Sinh viên xem thời khóa biểu.              |
-| UC-TEA-001 | Giáo viên xem lớp học phần được phân công. |
-| UC-TEA-002 | Giáo viên xem thời khóa biểu cá nhân.      |
-| UC-TEA-003 | Giáo viên nhập điểm.                       |
-| UC-TEA-004 | Giáo viên gửi thông báo cho sinh viên.     |
+| ID         | Use Case                                        |
+| ---------- | ----------------------------------------------- |
+| UC-ADM-001 | Admin quản lý tài khoản.                        |
+| UC-ADM-002 | Admin quản lý ngành đào tạo.                    |
+| UC-ADM-003 | Admin quản lý chương trình đào tạo.             |
+| UC-ADM-004 | Admin quản lý môn học.                          |
+| UC-ADM-005 | Admin quản lý học kỳ.                           |
+| UC-ADM-006 | Admin quản lý lớp học phần.                     |
+| UC-ADM-007 | Admin quản lý đăng ký môn học.                  |
+| UC-ADM-008 | Admin gửi thông báo cho Sinh viên và Giáo viên. |
+| UC-STU-001 | Sinh viên đăng ký môn học thủ công.             |
+| UC-STU-002 | Sinh viên tạo thời khóa biểu tự động.           |
+| UC-STU-003 | Sinh viên hủy đăng ký môn học.                  |
+| UC-STU-004 | Sinh viên xem thời khóa biểu.                   |
+| UC-TEA-001 | Giáo viên xem lớp học phần được phân công.      |
+| UC-TEA-002 | Giáo viên xem thời khóa biểu cá nhân.           |
+| UC-TEA-003 | Giáo viên nhập điểm.                            |
+| UC-TEA-004 | Giáo viên gửi thông báo cho sinh viên.          |
 
 ## 10. Technology Stack
 
-| Layer              | Decision                                |
-| ------------------ | --------------------------------------- |
-| Frontend framework | ReactJS                                 |
-| UI library         | Tailwind CSS                            |
-| Backend language   | Python                                  |
-| Backend framework  | TBD: FastAPI hoặc Django REST Framework |
-| API style          | RESTful API                             |
-| Authentication     | JWT, refresh token                      |
-| Authorization      | Role-based access control               |
-| Database           | PostgreSQL                              |
-| ORM                | TypeORM                                 |
-| API documentation  | Swagger                                 |
-| Deployment         | Docker                                  |
-| Version control    | Git, GitHub                             |
-| API testing        | Postman hoặc Insomnia                   |
-
-RISK: Backend Python và ORM TypeORM có thể không đồng nhất về hệ sinh thái. Reviewer SHOULD xác nhận lại trước khi triển khai HLD/LLD.
+| Layer              | Decision                  |
+| ------------------ | ------------------------- |
+| Frontend framework | ReactJS                   |
+| UI library         | Tailwind CSS              |
+| State management   | Zustand                   |
+| Backend language   | Python                    |
+| Backend framework  | Django REST Framework     |
+| API style          | RESTful API               |
+| Authentication     | JWT, refresh token        |
+| Authorization      | Role-based access control |
+| Database           | PostgreSQL                |
+| ORM                | TypeORM                   |
+| API documentation  | Swagger                   |
+| Deployment         | Docker                    |
+| Version control    | Git, GitHub               |
+| API testing        | Swagger                   |
 
 ## 11. Verification Plan
 
@@ -438,18 +455,12 @@ RISK: Backend Python và ORM TypeORM có thể không đồng nhất về hệ s
 | TEST-010 | Test chức năng xem thời khóa biểu của sinh viên.                         |
 | TEST-011 | Test chức năng xem thời khóa biểu cá nhân của giáo viên.                 |
 | TEST-012 | Test chức năng nhập điểm của giáo viên.                                  |
-| TEST-013 | Test chức năng thông báo.                                                |
+| TEST-013 | Test chức năng Admin gửi thông báo và người nhận xem thông báo.          |
 | TEST-014 | Test báo cáo và thống kê.                                                |
 
 ## 12. Open Questions, Assumptions and Risks
 
 ### 12.1. Open Questions
-
-OPEN QUESTION: Reviewer cần xác nhận backend framework cụ thể: FastAPI hay Django REST Framework.
-
-OPEN QUESTION: Reviewer cần xác nhận state management library cho ReactJS.
-
-OPEN QUESTION: Reviewer cần xác nhận cách sử dụng TypeORM với backend Python.
 
 OPEN QUESTION: Reviewer cần cung cấp quy định cụ thể về số tín chỉ tối thiểu, số tín chỉ tối đa, thời hạn hủy đăng ký và thời hạn cập nhật điểm.
 
@@ -468,8 +479,6 @@ ASSUMPTION: Một môn học có thể có nhiều lớp học phần và nhiề
 RISK: Thuật toán tự động tạo thời khóa biểu có thể phức tạp nếu số lượng môn học, giáo viên, phòng học và ràng buộc ưu tiên tăng cao.
 
 RISK: Nếu quy định nghiệp vụ về tín chỉ, môn tiên quyết và thời hạn đăng ký chưa rõ, hệ thống có thể xử lý đăng ký không đúng mong đợi.
-
-RISK: Stack Python + TypeORM cần được kiểm chứng sớm để tránh ảnh hưởng đến thiết kế backend và database.
 
 ## 13. Appendix
 
