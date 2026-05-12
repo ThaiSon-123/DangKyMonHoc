@@ -3,6 +3,7 @@
 Tham chiếu: [`plan.md`](./plan.md) (SRS-DKMH v0.2).
 
 Quy ước:
+
 - `[ ]` = chưa làm
 - `[~]` = đang làm
 - `[x]` = đã xong
@@ -41,7 +42,6 @@ Quy ước:
 - [x] docker-compose backend + postgres
 - [ ] Dockerfile frontend
 - [ ] docker-compose tích hợp full-stack
-- [ ] CI cơ bản (lint + test) trên GitHub Actions
 - [ ] File `.env.production.example`
 
 ### 0.4. Tài liệu
@@ -293,13 +293,12 @@ Tạo migration + model + serializer + viewset cho từng entity.
 
 ## 9. Open Questions / Risks (plan §12)
 
-- [!] OPEN - Quy định cụ thể số tín chỉ min/max, thời hạn hủy đăng ký, thời hạn cập nhật điểm
+- [x] OPEN - Quy định cụ thể số tín chỉ min/max, thời hạn hủy đăng ký, thời hạn cập nhật điểm
 - [!] OPEN - Công thức tính điểm tổng kết (quá trình + giữa kỳ + cuối kỳ)
-- [!] RISK - Độ phức tạp thuật toán TKB tự động khi quy mô tăng
-- [!] RISK - Nghiệp vụ chưa rõ → có thể xử lý đăng ký không đúng mong đợi
+- [x] RISK - Độ phức tạp thuật toán TKB tự động khi quy mô tăng (tích hợp agent nâng cấp)
 
 ---
 
 ## Sửa SRS
 
-- [ ] Cập nhật `plan.md` §2.2: `TypeORM` → `Django ORM` (TypeORM chỉ chạy với JS/TS, không tương thích Django)
+- [x] Cập nhật `plan.md` §2.2: `TypeORM` → `Django ORM` (TypeORM chỉ chạy với JS/TS, không tương thích Django)
