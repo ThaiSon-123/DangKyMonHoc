@@ -293,8 +293,8 @@ Tạo migration + model + serializer + viewset cho từng entity.
 
 ## 9. Open Questions / Risks (plan §12)
 
-- [x] OPEN - Quy định cụ thể số tín chỉ min/max, thời hạn hủy đăng ký, thời hạn cập nhật điểm
-- [!] OPEN - Công thức tính điểm tổng kết (quá trình + giữa kỳ + cuối kỳ)
+- [x] OPEN - Số tín chỉ tối thiểu là 1 , tối đa tùy chỉnh
+- [!] OPEN - Công thức tính điểm tổng kết (quá trình + giữa kỳ + cuối kỳ) theo % ví dụ quá trình 10% + giữa kỳ 40% + cuối kỳ 50%
 - [x] RISK - Độ phức tạp thuật toán TKB tự động khi quy mô tăng (tích hợp agent nâng cấp)
 
 ---
