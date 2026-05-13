@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Badge, Button, Card, Modal, Pagination, Table, type Column } from "@/components/ui";
 import Icon from "@/components/ui/Icon";
 import {
@@ -8,9 +8,11 @@ import {
   updateCourse,
   type CourseInput,
 } from "@/api/courses";
+import { listCurriculums } from "@/api/curriculums";
+import { listMajors } from "@/api/majors";
 import { extractApiError } from "@/lib/errors";
 import { PAGE_SIZE } from "@/lib/constants";
-import type { Course } from "@/types/domain";
+import type { Course, Curriculum, Major } from "@/types/domain";
 
 const EMPTY: CourseInput = {
   code: "",
@@ -20,6 +22,7 @@ const EMPTY: CourseInput = {
   practice_hours: 0,
   description: "",
   is_active: true,
+  prerequisite_ids: [],
 };
 
 export default function CoursesPage() {
@@ -31,13 +34,67 @@ export default function CoursesPage() {
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  const [majors, setMajors] = useState<Major[]>([]);
+  const [curriculums, setCurriculums] = useState<Curriculum[]>([]);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [filterDepartment, setFilterDepartment] = useState("");
+  const [filterMajor, setFilterMajor] = useState<number | "">("");
+  const [filterCurriculum, setFilterCurriculum] = useState<number | "">("");
+
   const [editing, setEditing] = useState<Course | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<CourseInput>(EMPTY);
+  const [prerequisiteSearch, setPrerequisiteSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<Course | null>(null);
+
+  const departments = useMemo(
+    () => Array.from(new Set(majors.map((m) => m.department).filter(Boolean))).sort(),
+    [majors],
+  );
+
+  const filteredMajors = useMemo(
+    () =>
+      filterDepartment
+        ? majors.filter((m) => m.department === filterDepartment)
+        : majors,
+    [filterDepartment, majors],
+  );
+
+  const filteredCurriculums = useMemo(() => {
+    if (filterMajor) return curriculums.filter((c) => c.major === filterMajor);
+    if (!filterDepartment) return curriculums;
+    const majorIds = new Set(filteredMajors.map((m) => m.id));
+    return curriculums.filter((c) => majorIds.has(c.major));
+  }, [curriculums, filterDepartment, filterMajor, filteredMajors]);
+
+  const selectedPrerequisites = useMemo(
+    () =>
+      form.prerequisite_ids.map((id) => {
+        const course = allCourses.find((c) => c.id === id) || items.find((c) => c.id === id);
+        const detail = editing?.prerequisites_detail.find((p) => p.required_course === id);
+        return {
+          id,
+          code: course?.code ?? detail?.required_course_code ?? `#${id}`,
+          name: course?.name ?? detail?.required_course_name ?? "",
+        };
+      }),
+    [allCourses, editing, form.prerequisite_ids, items],
+  );
+
+  const prerequisiteCandidates = useMemo(() => {
+    const query = prerequisiteSearch.trim().toLowerCase();
+    const selectedIds = new Set(form.prerequisite_ids);
+    return allCourses
+      .filter((c) => c.id !== editing?.id && !selectedIds.has(c.id))
+      .filter((c) => {
+        if (!query) return true;
+        return c.code.toLowerCase().includes(query) || c.name.toLowerCase().includes(query);
+      })
+      .slice(0, 8);
+  }, [allCourses, editing?.id, form.prerequisite_ids, prerequisiteSearch]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -45,6 +102,9 @@ export default function CoursesPage() {
     try {
       const data = await listCourses({
         search: appliedSearch || undefined,
+        department: filterDepartment || undefined,
+        major: filterMajor || undefined,
+        curriculum: filterCurriculum || undefined,
         page,
       });
       setItems(data.results);
@@ -54,20 +114,48 @@ export default function CoursesPage() {
     } finally {
       setLoading(false);
     }
-  }, [appliedSearch, page]);
+  }, [appliedSearch, filterCurriculum, filterDepartment, filterMajor, page]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    async function loadFilters() {
+      try {
+        const [majorsData, curriculumsData, coursesData] = await Promise.all([
+          listMajors({ page_size: 1000 }),
+          listCurriculums({ page_size: 1000 }),
+          listCourses({ page_size: 1000 }),
+        ]);
+        setMajors(majorsData.results);
+        setCurriculums(curriculumsData.results);
+        setAllCourses(coursesData.results);
+      } catch (err) {
+        setError(extractApiError(err, "Không tải được dữ liệu bộ lọc."));
+      }
+    }
+    loadFilters();
+  }, []);
 
   function applySearch() {
     setPage(1);
     setAppliedSearch(search);
   }
 
+  function clearFilters() {
+    setSearch("");
+    setAppliedSearch("");
+    setFilterDepartment("");
+    setFilterMajor("");
+    setFilterCurriculum("");
+    setPage(1);
+  }
+
   function openCreate() {
     setEditing(null);
-    setForm(EMPTY);
+    setForm({ ...EMPTY, prerequisite_ids: [] });
+    setPrerequisiteSearch("");
     setFormError(null);
     setShowForm(true);
   }
@@ -82,9 +170,26 @@ export default function CoursesPage() {
       practice_hours: c.practice_hours,
       description: c.description,
       is_active: c.is_active,
+      prerequisite_ids: c.prerequisites_detail.map((p) => p.required_course),
     });
+    setPrerequisiteSearch("");
     setFormError(null);
     setShowForm(true);
+  }
+
+  function addPrerequisite(course: Course) {
+    setForm((current) => ({
+      ...current,
+      prerequisite_ids: [...current.prerequisite_ids, course.id],
+    }));
+    setPrerequisiteSearch("");
+  }
+
+  function removePrerequisite(id: number) {
+    setForm((current) => ({
+      ...current,
+      prerequisite_ids: current.prerequisite_ids.filter((courseId) => courseId !== id),
+    }));
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -94,6 +199,8 @@ export default function CoursesPage() {
     try {
       if (editing) await updateCourse(editing.id, form);
       else await createCourse(form);
+      const coursesData = await listCourses({ page_size: 1000 });
+      setAllCourses(coursesData.results);
       setShowForm(false);
       await refresh();
     } catch (err) {
@@ -135,11 +242,11 @@ export default function CoursesPage() {
       label: "Tiên quyết",
       render: (c) =>
         c.prerequisites_detail.length === 0 ? (
-          <span className="text-ink-faint">—</span>
+          <span className="text-ink-faint">-</span>
         ) : (
           <div className="flex flex-wrap gap-1">
             {c.prerequisites_detail.map((p) => (
-              <Badge key={p.id} tone="neutral">
+              <Badge key={p.id} tone="neutral" className="font-mono">
                 {p.required_course_code}
               </Badge>
             ))}
@@ -171,6 +278,8 @@ export default function CoursesPage() {
     },
   ];
 
+  const hasFilters = appliedSearch || filterDepartment || filterMajor || filterCurriculum;
+
   return (
     <div className="space-y-5">
       <div className="flex items-start gap-4">
@@ -186,7 +295,7 @@ export default function CoursesPage() {
       </div>
 
       <Card>
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex flex-wrap items-end gap-2 mb-3">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface border border-line w-72">
             <Icon name="search" size={15} className="text-ink-faint" />
             <input
@@ -195,20 +304,61 @@ export default function CoursesPage() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") applySearch();
               }}
-              placeholder="Tìm theo mã / tên môn…"
+              placeholder="Tìm theo mã / tên môn..."
               className="flex-1 bg-transparent outline-none text-[13px] min-w-0"
             />
           </div>
+          <FilterSelect
+            label="Khoa"
+            value={filterDepartment}
+            onChange={(value) => {
+              setFilterDepartment(value);
+              setFilterMajor("");
+              setFilterCurriculum("");
+              setPage(1);
+            }}
+          >
+            <option value="">Tất cả khoa</option>
+            {departments.map((department) => (
+              <option key={department} value={department}>
+                {department}
+              </option>
+            ))}
+          </FilterSelect>
+          <FilterSelect
+            label="Ngành"
+            value={filterMajor}
+            onChange={(value) => {
+              setFilterMajor(value ? Number(value) : "");
+              setFilterCurriculum("");
+              setPage(1);
+            }}
+          >
+            <option value="">Tất cả ngành</option>
+            {filteredMajors.map((major) => (
+              <option key={major.id} value={major.id}>
+                {major.code} - {major.name}
+              </option>
+            ))}
+          </FilterSelect>
+          <FilterSelect
+            label="CTĐT"
+            value={filterCurriculum}
+            onChange={(value) => {
+              setFilterCurriculum(value ? Number(value) : "");
+              setPage(1);
+            }}
+          >
+            <option value="">Tất cả CTĐT</option>
+            {filteredCurriculums.map((curriculum) => (
+              <option key={curriculum.id} value={curriculum.id}>
+                {curriculum.code}
+              </option>
+            ))}
+          </FilterSelect>
           <Button onClick={applySearch}>Tìm</Button>
-          {appliedSearch && (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setSearch("");
-                setAppliedSearch("");
-                setPage(1);
-              }}
-            >
+          {hasFilters && (
+            <Button variant="ghost" onClick={clearFilters}>
               Xoá filter
             </Button>
           )}
@@ -261,7 +411,7 @@ export default function CoursesPage() {
             <Label>Số tín chỉ</Label>
             <input
               type="number"
-              min={0}
+              min={1}
               value={form.credits}
               onChange={(e) => setForm({ ...form, credits: Number(e.target.value) })}
               className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
@@ -306,6 +456,58 @@ export default function CoursesPage() {
               className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none resize-y"
             />
           </div>
+          <div className="col-span-2">
+            <Label>Môn tiên quyết</Label>
+            <div className="rounded-md border border-line bg-surface p-2">
+              <div className="flex flex-wrap gap-1.5 min-h-7 mb-2">
+                {selectedPrerequisites.length === 0 ? (
+                  <span className="text-[12.5px] text-ink-faint px-1 py-1">
+                    Chưa chọn môn tiên quyết
+                  </span>
+                ) : (
+                  selectedPrerequisites.map((course) => (
+                    <span
+                      key={course.id}
+                      className="inline-flex items-center gap-1 rounded-full bg-white border border-line px-2 py-0.5 text-[12px]"
+                    >
+                      <span className="font-mono text-ink">{course.code}</span>
+                      <span className="text-ink-muted max-w-[220px] truncate">{course.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removePrerequisite(course.id)}
+                        className="text-ink-faint hover:text-danger"
+                        aria-label={`Bỏ ${course.code}`}
+                      >
+                        x
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+              <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-card border border-line">
+                <Icon name="search" size={14} className="text-ink-faint" />
+                <input
+                  value={prerequisiteSearch}
+                  onChange={(e) => setPrerequisiteSearch(e.target.value)}
+                  placeholder="Nhập mã hoặc tên môn..."
+                  className="flex-1 bg-transparent outline-none text-[13px] min-w-0"
+                />
+              </div>
+              <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-36 overflow-y-auto">
+                {prerequisiteCandidates.map((course) => (
+                  <button
+                    key={course.id}
+                    type="button"
+                    onClick={() => addPrerequisite(course)}
+                    className="text-left rounded-md border border-line bg-card px-2 py-1.5 hover:border-navy-300 hover:bg-navy-50"
+                  >
+                    <span className="font-mono text-[12px] text-ink">{course.code}</span>
+                    <span className="ml-2 text-[12.5px] text-ink-muted">{course.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
           <label className="col-span-2 inline-flex items-center gap-2 text-[13px] cursor-pointer">
             <input
               type="checkbox"
@@ -349,6 +551,31 @@ export default function CoursesPage() {
   );
 }
 
-function Label({ children }: { children: React.ReactNode }) {
+function Label({ children }: { children: ReactNode }) {
   return <div className="text-[12.5px] font-medium text-ink mb-1.5">{children}</div>;
+}
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  children,
+}: {
+  label: string;
+  value: string | number;
+  onChange: (value: string) => void;
+  children: ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="block text-[11.5px] font-medium text-ink-muted mb-1">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-9 min-w-40 rounded-md bg-card border border-line px-2 text-[13px] outline-none focus:border-navy-400 focus:ring-2 focus:ring-navy-50"
+      >
+        {children}
+      </select>
+    </label>
+  );
 }

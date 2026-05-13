@@ -9,7 +9,7 @@ class StudentProfileViewSet(viewsets.ModelViewSet):
     serializer_class = StudentProfileSerializer
     permission_classes = [IsAdminOrReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["student_code", "user__username", "user__email", "user__first_name", "user__last_name"]
+    search_fields = ["student_code", "user__username", "user__email", "user__full_name"]
     ordering_fields = ["student_code", "enrollment_year", "gpa"]
 
     def get_queryset(self):

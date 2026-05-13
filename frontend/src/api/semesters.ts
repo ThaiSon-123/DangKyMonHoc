@@ -9,6 +9,7 @@ export type SemesterInput = Pick<
 export async function listSemesters(params?: {
   search?: string;
   page?: number;
+  page_size?: number;
 }): Promise<Paginated<Semester>> {
   const res = await api.get<Paginated<Semester>>("/semesters/", { params });
   return res.data;
