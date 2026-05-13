@@ -8,7 +8,10 @@ export type MajorInput = Pick<
 export async function listMajors(params?: {
   search?: string;
   page?: number;
+<<<<<<< HEAD
   page_size?: number;
+=======
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
 }): Promise<Paginated<Major>> {
   const res = await api.get<Paginated<Major>>("/majors/", { params });
   return res.data;

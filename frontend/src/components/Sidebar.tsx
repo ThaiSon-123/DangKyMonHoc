@@ -1,6 +1,9 @@
 import { NavLink } from "react-router-dom";
 import { useAuthStore } from "@/stores/auth";
+<<<<<<< HEAD
 import { getInitials } from "@/lib/names";
+=======
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
 import type { Role } from "@/types";
 import Icon, { type IconName } from "./ui/Icon";
 
@@ -56,7 +59,11 @@ export default function Sidebar() {
   const navItems = user ? NAV_BY_ROLE[user.role] : [];
   const roleLabel = user ? ROLE_LABEL[user.role] : "";
   const initials = user
+<<<<<<< HEAD
     ? getInitials(user.full_name || user.username)
+=======
+    ? `${user.last_name?.[0] ?? user.username[0]}${user.first_name?.[0] ?? ""}`.toUpperCase()
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
     : "?";
 
   return (
@@ -110,7 +117,11 @@ export default function Sidebar() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[12.5px] text-white font-medium leading-tight truncate">
+<<<<<<< HEAD
                 {user.full_name || user.username}
+=======
+                {user.last_name} {user.first_name || user.username}
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
               </div>
               <div className="text-[11px] text-slate-500 font-mono truncate">
                 {user.email || user.username}

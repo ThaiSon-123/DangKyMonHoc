@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+=======
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
 import { Badge, Button, Card, Modal, Pagination, Table, type Column } from "@/components/ui";
 import Icon from "@/components/ui/Icon";
 import {
@@ -8,11 +12,17 @@ import {
   updateCourse,
   type CourseInput,
 } from "@/api/courses";
+<<<<<<< HEAD
 import { listCurriculums } from "@/api/curriculums";
 import { listMajors } from "@/api/majors";
 import { extractApiError } from "@/lib/errors";
 import { PAGE_SIZE } from "@/lib/constants";
 import type { Course, Curriculum, Major } from "@/types/domain";
+=======
+import { extractApiError } from "@/lib/errors";
+import { PAGE_SIZE } from "@/lib/constants";
+import type { Course } from "@/types/domain";
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
 
 const EMPTY: CourseInput = {
   code: "",
@@ -22,7 +32,10 @@ const EMPTY: CourseInput = {
   practice_hours: 0,
   description: "",
   is_active: true,
+<<<<<<< HEAD
   prerequisite_ids: [],
+=======
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
 };
 
 export default function CoursesPage() {
@@ -34,6 +47,7 @@ export default function CoursesPage() {
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+<<<<<<< HEAD
   const [majors, setMajors] = useState<Major[]>([]);
   const [curriculums, setCurriculums] = useState<Curriculum[]>([]);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
@@ -45,11 +59,17 @@ export default function CoursesPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<CourseInput>(EMPTY);
   const [prerequisiteSearch, setPrerequisiteSearch] = useState("");
+=======
+  const [editing, setEditing] = useState<Course | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState<CourseInput>(EMPTY);
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<Course | null>(null);
 
+<<<<<<< HEAD
   const departments = useMemo(
     () => Array.from(new Set(majors.map((m) => m.department).filter(Boolean))).sort(),
     [majors],
@@ -96,15 +116,20 @@ export default function CoursesPage() {
       .slice(0, 8);
   }, [allCourses, editing?.id, form.prerequisite_ids, prerequisiteSearch]);
 
+=======
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await listCourses({
         search: appliedSearch || undefined,
+<<<<<<< HEAD
         department: filterDepartment || undefined,
         major: filterMajor || undefined,
         curriculum: filterCurriculum || undefined,
+=======
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
         page,
       });
       setItems(data.results);
@@ -114,12 +139,17 @@ export default function CoursesPage() {
     } finally {
       setLoading(false);
     }
+<<<<<<< HEAD
   }, [appliedSearch, filterCurriculum, filterDepartment, filterMajor, page]);
+=======
+  }, [appliedSearch, page]);
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
+<<<<<<< HEAD
   useEffect(() => {
     async function loadFilters() {
       try {
@@ -138,11 +168,14 @@ export default function CoursesPage() {
     loadFilters();
   }, []);
 
+=======
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
   function applySearch() {
     setPage(1);
     setAppliedSearch(search);
   }
 
+<<<<<<< HEAD
   function clearFilters() {
     setSearch("");
     setAppliedSearch("");
@@ -156,6 +189,11 @@ export default function CoursesPage() {
     setEditing(null);
     setForm({ ...EMPTY, prerequisite_ids: [] });
     setPrerequisiteSearch("");
+=======
+  function openCreate() {
+    setEditing(null);
+    setForm(EMPTY);
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
     setFormError(null);
     setShowForm(true);
   }
@@ -170,13 +208,18 @@ export default function CoursesPage() {
       practice_hours: c.practice_hours,
       description: c.description,
       is_active: c.is_active,
+<<<<<<< HEAD
       prerequisite_ids: c.prerequisites_detail.map((p) => p.required_course),
     });
     setPrerequisiteSearch("");
+=======
+    });
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
     setFormError(null);
     setShowForm(true);
   }
 
+<<<<<<< HEAD
   function addPrerequisite(course: Course) {
     setForm((current) => ({
       ...current,
@@ -192,6 +235,8 @@ export default function CoursesPage() {
     }));
   }
 
+=======
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -199,8 +244,11 @@ export default function CoursesPage() {
     try {
       if (editing) await updateCourse(editing.id, form);
       else await createCourse(form);
+<<<<<<< HEAD
       const coursesData = await listCourses({ page_size: 1000 });
       setAllCourses(coursesData.results);
+=======
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
       setShowForm(false);
       await refresh();
     } catch (err) {
@@ -242,11 +290,19 @@ export default function CoursesPage() {
       label: "Tiên quyết",
       render: (c) =>
         c.prerequisites_detail.length === 0 ? (
+<<<<<<< HEAD
           <span className="text-ink-faint">-</span>
         ) : (
           <div className="flex flex-wrap gap-1">
             {c.prerequisites_detail.map((p) => (
               <Badge key={p.id} tone="neutral" className="font-mono">
+=======
+          <span className="text-ink-faint">—</span>
+        ) : (
+          <div className="flex flex-wrap gap-1">
+            {c.prerequisites_detail.map((p) => (
+              <Badge key={p.id} tone="neutral">
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
                 {p.required_course_code}
               </Badge>
             ))}
@@ -278,8 +334,11 @@ export default function CoursesPage() {
     },
   ];
 
+<<<<<<< HEAD
   const hasFilters = appliedSearch || filterDepartment || filterMajor || filterCurriculum;
 
+=======
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
   return (
     <div className="space-y-5">
       <div className="flex items-start gap-4">
@@ -295,7 +354,11 @@ export default function CoursesPage() {
       </div>
 
       <Card>
+<<<<<<< HEAD
         <div className="flex flex-wrap items-end gap-2 mb-3">
+=======
+        <div className="flex items-center gap-2 mb-3">
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface border border-line w-72">
             <Icon name="search" size={15} className="text-ink-faint" />
             <input
@@ -304,6 +367,7 @@ export default function CoursesPage() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") applySearch();
               }}
+<<<<<<< HEAD
               placeholder="Tìm theo mã / tên môn..."
               className="flex-1 bg-transparent outline-none text-[13px] min-w-0"
             />
@@ -359,6 +423,22 @@ export default function CoursesPage() {
           <Button onClick={applySearch}>Tìm</Button>
           {hasFilters && (
             <Button variant="ghost" onClick={clearFilters}>
+=======
+              placeholder="Tìm theo mã / tên môn…"
+              className="flex-1 bg-transparent outline-none text-[13px] min-w-0"
+            />
+          </div>
+          <Button onClick={applySearch}>Tìm</Button>
+          {appliedSearch && (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setSearch("");
+                setAppliedSearch("");
+                setPage(1);
+              }}
+            >
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
               Xoá filter
             </Button>
           )}
@@ -411,7 +491,11 @@ export default function CoursesPage() {
             <Label>Số tín chỉ</Label>
             <input
               type="number"
+<<<<<<< HEAD
               min={1}
+=======
+              min={0}
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
               value={form.credits}
               onChange={(e) => setForm({ ...form, credits: Number(e.target.value) })}
               className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
@@ -456,6 +540,7 @@ export default function CoursesPage() {
               className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none resize-y"
             />
           </div>
+<<<<<<< HEAD
           <div className="col-span-2">
             <Label>Môn tiên quyết</Label>
             <div className="rounded-md border border-line bg-surface p-2">
@@ -508,6 +593,8 @@ export default function CoursesPage() {
               </div>
             </div>
           </div>
+=======
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
           <label className="col-span-2 inline-flex items-center gap-2 text-[13px] cursor-pointer">
             <input
               type="checkbox"
@@ -551,6 +638,7 @@ export default function CoursesPage() {
   );
 }
 
+<<<<<<< HEAD
 function Label({ children }: { children: ReactNode }) {
   return <div className="text-[12.5px] font-medium text-ink mb-1.5">{children}</div>;
 }
@@ -579,3 +667,8 @@ function FilterSelect({
     </label>
   );
 }
+=======
+function Label({ children }: { children: React.ReactNode }) {
+  return <div className="text-[12.5px] font-medium text-ink mb-1.5">{children}</div>;
+}
+>>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
