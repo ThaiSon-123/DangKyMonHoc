@@ -1,0 +1,80 @@
+from datetime import timedelta
+
+from django.conf import settings
+from django.utils import timezone
+from rest_framework import filters, permissions, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.response import Response
+
+from .models import Registration
+from .serializers import RegistrationSerializer
+
+
+class RegistrationViewSet(viewsets.ModelViewSet):
+    queryset = Registration.objects.select_related(
+        "student__user", "class_section__course", "semester"
+    ).prefetch_related("class_section__schedules")
+    serializer_class = RegistrationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["student__student_code", "class_section__code"]
+    ordering_fields = ["registered_at"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        # Sinh viên chỉ xem được đăng ký của chính mình
+        if getattr(user, "role", None) == "STUDENT":
+            qs = qs.filter(student__user=user)
+        params = self.request.query_params
+        for field in ("student", "class_section", "semester", "status"):
+            value = params.get(field)
+            if value:
+                key = f"{field}{'_id' if field != 'status' else ''}"
+                qs = qs.filter(**{key: value})
+        return qs
+
+    # ---------- BR-006: thời hạn hủy đăng ký ----------
+
+    @staticmethod
+    def _within_cancel_window(registration: Registration) -> tuple[bool, str | None]:
+        now = timezone.now()
+        semester = registration.semester
+        grace_days = settings.REGISTRATION_CANCEL_GRACE_DAYS
+        if semester.registration_end:
+            deadline = semester.registration_end + timedelta(days=grace_days)
+            if now <= deadline:
+                return True, None
+            return False, f"Đã quá thời hạn hủy ({deadline:%Y-%m-%d})."
+        # Không có registration_end → so với registered_at
+        deadline = registration.registered_at + timedelta(days=grace_days)
+        if now <= deadline:
+            return True, None
+        return False, f"Đã quá thời hạn hủy ({deadline:%Y-%m-%d})."
+
+    def perform_destroy(self, instance):
+        """Soft delete: chuyển sang CANCELLED thay vì xoá thật."""
+        ok, reason = self._within_cancel_window(instance)
+        if not ok and getattr(self.request.user, "role", None) != "ADMIN":
+            raise PermissionDenied(reason)
+        instance.status = Registration.Status.CANCELLED
+        instance.cancelled_at = timezone.now()
+        if not instance.cancel_reason:
+            instance.cancel_reason = self.request.data.get("cancel_reason", "Hủy bởi người dùng")
+        instance.save(update_fields=["status", "cancelled_at", "cancel_reason"])
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        """POST /api/registrations/{id}/cancel/ — hủy có lý do."""
+        registration = self.get_object()
+        if registration.status == Registration.Status.CANCELLED:
+            return Response({"detail": "Đăng ký này đã bị hủy."}, status=status.HTTP_400_BAD_REQUEST)
+        ok, reason = self._within_cancel_window(registration)
+        if not ok and getattr(request.user, "role", None) != "ADMIN":
+            return Response({"detail": reason}, status=status.HTTP_403_FORBIDDEN)
+        registration.status = Registration.Status.CANCELLED
+        registration.cancelled_at = timezone.now()
+        registration.cancel_reason = request.data.get("cancel_reason", "Hủy bởi người dùng")
+        registration.save(update_fields=["status", "cancelled_at", "cancel_reason"])
+        return Response(RegistrationSerializer(registration).data)
