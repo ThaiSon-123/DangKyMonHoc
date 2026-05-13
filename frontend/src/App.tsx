@@ -7,6 +7,13 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import StudentDashboard from "@/pages/StudentDashboard";
 import TeacherDashboard from "@/pages/TeacherDashboard";
 import Placeholder from "@/pages/Placeholder";
+import MajorsPage from "@/pages/admin/MajorsPage";
+import CoursesPage from "@/pages/admin/CoursesPage";
+import SemestersPage from "@/pages/admin/SemestersPage";
+import CurriculumsPage from "@/pages/admin/CurriculumsPage";
+import CurriculumDetailPage from "@/pages/admin/CurriculumDetailPage";
+import ClassesPage from "@/pages/admin/ClassesPage";
+import ClassDetailPage from "@/pages/admin/ClassDetailPage";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import { useAuthStore } from "@/stores/auth";
 import type { IconName } from "@/components/ui/Icon";
@@ -29,11 +36,6 @@ interface PlaceholderRoute {
 
 const ADMIN_ROUTES: PlaceholderRoute[] = [
   { path: "accounts", title: "Quản lý tài khoản", description: "Tạo / cập nhật / khoá tài khoản Sinh viên và Giáo viên.", frId: "FR-ADM-ACC", icon: "users" },
-  { path: "majors", title: "Ngành đào tạo", description: "Quản lý các ngành CNTT, KTPM, HTTT, KHMT, ATTT...", frId: "FR-ADM-MAJ", icon: "graduation" },
-  { path: "curriculum", title: "Chương trình đào tạo", description: "Tạo chương trình theo ngành, gán môn bắt buộc / tự chọn.", frId: "FR-ADM-CUR", icon: "layers" },
-  { path: "courses", title: "Môn học", description: "Quản lý môn học, số tín chỉ, môn tiên quyết.", frId: "FR-ADM-CRS", icon: "book" },
-  { path: "semesters", title: "Học kỳ", description: "Mở / đóng học kỳ, cấu hình thời gian đăng ký.", frId: "FR-ADM-SEM", icon: "calendar" },
-  { path: "classes", title: "Lớp học phần", description: "Tạo lớp, gán giáo viên, thiết lập lịch học và sĩ số.", frId: "FR-ADM-CLS", icon: "clipboard" },
   { path: "registrations", title: "Quản lý đăng ký", description: "Mở / đóng đợt đăng ký, theo dõi sĩ số, phê duyệt yêu cầu.", frId: "FR-ADM-REG", icon: "doc" },
   { path: "reports", title: "Báo cáo & thống kê", description: "Thống kê đăng ký theo môn, theo ngành, lớp đầy / còn chỗ.", frId: "FR-ADM-RPT", icon: "chart" },
   { path: "notifications", title: "Gửi thông báo", description: "Gửi thông báo cho Sinh viên và Giáo viên.", frId: "FR-ADM-NOT", icon: "megaphone" },
@@ -96,6 +98,13 @@ export default function App() {
 
           <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/majors" element={<MajorsPage />} />
+            <Route path="/admin/courses" element={<CoursesPage />} />
+            <Route path="/admin/semesters" element={<SemestersPage />} />
+            <Route path="/admin/curriculum" element={<CurriculumsPage />} />
+            <Route path="/admin/curriculum/:id" element={<CurriculumDetailPage />} />
+            <Route path="/admin/classes" element={<ClassesPage />} />
+            <Route path="/admin/classes/:id" element={<ClassDetailPage />} />
             {ADMIN_ROUTES.map((r) => (
               <Route
                 key={r.path}
