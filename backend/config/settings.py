@@ -21,6 +21,15 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "corsheaders",
     "apps.accounts",
+    "apps.majors",
+    "apps.courses",
+    "apps.semesters",
+    "apps.profiles",
+    "apps.curriculums",
+    "apps.classes",
+    "apps.registrations",
+    "apps.grades",
+    "apps.notifications",
 ]
 
 MIDDLEWARE = [
@@ -91,6 +100,8 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_PAGINATION_CLASS": "config.pagination.StandardPagination",
+    "PAGE_SIZE": 25,
 }
 
 SIMPLE_JWT = {
@@ -113,3 +124,13 @@ CORS_ALLOWED_ORIGINS = config(
     default="http://localhost:5173,http://localhost:3000",
     cast=Csv(),
 )
+
+# --- Business rules (plan §5 - các giá trị tạm, có thể override qua env) ---
+REGISTRATION_MIN_CREDITS_PER_SEMESTER = config("REG_MIN_CREDITS", default=1, cast=int)
+REGISTRATION_MAX_CREDITS_PER_SEMESTER = config("REG_MAX_CREDITS", default=24, cast=int)
+# Số ngày sau khi mở đăng ký, sinh viên vẫn được hủy reg đã CONFIRMED
+REGISTRATION_CANCEL_GRACE_DAYS = config("REG_CANCEL_GRACE_DAYS", default=14, cast=int)
+# Số ngày sau khi học kỳ kết thúc, GV vẫn được cập nhật điểm
+GRADE_UPDATE_GRACE_DAYS = config("GRADE_UPDATE_GRACE_DAYS", default=30, cast=int)
+# Điểm tối thiểu để coi 1 môn là PASSED (dùng cho check tiên quyết)
+GRADE_PASSING_SCORE = config("GRADE_PASSING_SCORE", default=4.0, cast=float)
