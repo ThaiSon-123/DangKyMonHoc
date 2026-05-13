@@ -1,0 +1,22 @@
+from rest_framework import filters, viewsets
+
+from apps.accounts.mixins import HandleProtectedDeleteMixin
+from apps.accounts.permissions import IsAdminOrReadOnly
+from .models import Course, Prerequisite
+from .serializers import CourseSerializer, PrerequisiteSerializer
+
+
+class CourseViewSet(HandleProtectedDeleteMixin, viewsets.ModelViewSet):
+    queryset = Course.objects.all().prefetch_related("prerequisite_links__required_course")
+    serializer_class = CourseSerializer
+    permission_classes = [IsAdminOrReadOnly]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["code", "name"]
+    ordering_fields = ["code", "name", "credits"]
+    object_label_singular = "môn học"
+
+
+class PrerequisiteViewSet(viewsets.ModelViewSet):
+    queryset = Prerequisite.objects.select_related("course", "required_course")
+    serializer_class = PrerequisiteSerializer
+    permission_classes = [IsAdminOrReadOnly]

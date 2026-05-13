@@ -7,6 +7,7 @@ const BREADCRUMB_MAP: Record<string, string[]> = {
   "/admin/accounts": ["Quản trị", "Đào tạo", "Tài khoản"],
   "/admin/majors": ["Quản trị", "Đào tạo", "Ngành đào tạo"],
   "/admin/curriculum": ["Quản trị", "Đào tạo", "Chương trình"],
+  // Chi tiết CTĐT: /admin/curriculum/:id — fallback prefix match xử lý ở component
   "/admin/courses": ["Quản trị", "Đào tạo", "Môn học"],
   "/admin/semesters": ["Quản trị", "Đào tạo", "Học kỳ"],
   "/admin/classes": ["Quản trị", "Đào tạo", "Lớp học phần"],
@@ -34,7 +35,15 @@ export default function TopBar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const breadcrumbs = BREADCRUMB_MAP[location.pathname] ?? ["Trang"];
+  let breadcrumbs = BREADCRUMB_MAP[location.pathname] ?? ["Trang"];
+  // Fallback prefix matching cho route con (vd. /admin/curriculum/123)
+  if (breadcrumbs[0] === "Trang") {
+    if (location.pathname.startsWith("/admin/curriculum/")) {
+      breadcrumbs = ["Quản trị", "Đào tạo", "Chương trình", "Chi tiết"];
+    } else if (location.pathname.startsWith("/admin/classes/")) {
+      breadcrumbs = ["Quản trị", "Đào tạo", "Lớp học phần", "Chi tiết"];
+    }
+  }
   const initials = user
     ? `${user.last_name?.[0] ?? user.username[0]}${user.first_name?.[0] ?? ""}`.toUpperCase()
     : "?";
