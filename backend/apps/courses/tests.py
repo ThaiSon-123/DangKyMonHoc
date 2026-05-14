@@ -37,6 +37,26 @@ def test_course_create_accepts_prerequisite_ids(admin_user):
     ).exists()
 
 
+def test_course_duplicate_code_returns_plain_admin_message(admin_user):
+    Course.objects.create(code="CS101", name="Nhap mon lap trinh")
+    api = _api_for(admin_user)
+
+    res = api.post(
+        "/api/courses/",
+        {
+            "code": "CS101",
+            "name": "Nhap mon lap trinh 2",
+            "credits": 3,
+            "theory_hours": 30,
+            "practice_hours": 0,
+        },
+        format="json",
+    )
+
+    assert res.status_code == status.HTTP_400_BAD_REQUEST
+    assert res.data["code"] == ["Mã môn học đã tồn tại"]
+
+
 def test_course_update_replaces_prerequisite_ids(admin_user):
     old_required = Course.objects.create(code="CS101", name="Nhap mon lap trinh")
     new_required = Course.objects.create(code="MA101", name="Toan cao cap")

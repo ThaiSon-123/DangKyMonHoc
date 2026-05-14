@@ -145,6 +145,8 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [x] FR-ADM-SEM-002 - API cập nhật thời gian học kỳ
 - [x] FR-ADM-SEM-003 - API mở / đóng (`POST /api/semesters/{id}/open/`, `/close/`)
 - [x] FR-ADM-SEM-004 - Field `registration_start/end`
+- [x] Validation: `end_date` phải lớn hơn `start_date` khi tạo và cập nhật học kỳ
+- [x] Cho phép `registration_start/end` nằm trước thời gian học kỳ, miễn là `registration_end > registration_start`
 
 ### 1.3.5. Lớp học phần (FR-ADM-CLS)
 
@@ -155,6 +157,9 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [x] FR-ADM-CLS-005 - Field `max_students` + auto `enrolled_count` qua signal
 - [x] FR-ADM-CLS-006 - API cập nhật lớp học phần
 - [x] BR-011: Field `periods_per_session` (1-5) bắt buộc khi tạo
+- [x] Validation: ngày bắt đầu/kết thúc học của Schedule phải nằm trong `Semester.start_date/end_date`
+- [x] Validation: 1 phòng không thể có 2 lớp trùng thứ + giao tiết + giao khoảng ngày
+- [x] Validation: 1 giáo viên không thể dạy 2 lớp trùng thứ + giao tiết + giao khoảng ngày
 
 ### 1.3.6. Đăng ký môn học - Admin (FR-ADM-REG)
 
@@ -285,15 +290,16 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [x] Setup pytest-django + conftest fixtures
 - [x] API test BR-002 → BR-006 (Registration) — 14 cases
 - [x] API test BR-007 + BR-008 + BR-009 (Grade) — 4 cases
-- [x] API test accounts (locked user / CRUD / role validation) — 6 cases
-- [x] API test courses (CRUD + prerequisites + filter) — 6 cases
-- [x] API test majors (CRUD) — 3 cases
-- [x] API test classes/notify_class (FR-TEA-CLS-005) — 6 cases
-- [x] **Tổng: 39/39 tests pass**
+- [x] API test accounts (locked user / profile theo role) — 11 cases
+- [x] API test courses (prerequisites + filter) — 3 cases
+- [x] API test majors (`duration_years`) — 1 case
+- [x] API test classes/notify_class + schedule conflict/date validations + atomic class schedule — 12 cases
+- [x] API test semesters date range + registration window trước học kỳ — 3 cases
+- [x] **Tổng: 48/48 tests pass**
 - [ ] Unit test cho models (validators, custom methods, `Schedule.clean()`)
 - [ ] API test cho auth flow (login / refresh / 401 → refresh)
 - [ ] API test cho TKB algorithm
-- [ ] API test cho Schedule conflict detection (BR-010 boundary cases)
+- [x] API test cho Schedule conflict detection: phòng/GV giao tiết và khoảng ngày
 
 ---
 
@@ -583,8 +589,8 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [x] TEST-002 - Quản lý tài khoản (UI + API tests)
 - [x] TEST-003 - Quản lý CTĐT (CRUD via UI + import xlsx)
 - [x] TEST-004 - Quản lý môn học và tiên quyết (CRUD via UI + 6 pytest)
-- [x] TEST-005 - Quản lý học kỳ và thời gian đăng ký (CRUD via UI + open/close)
-- [x] TEST-006 - Quản lý lớp học phần (CRUD + schedule via UI)
+- [x] TEST-005 - Quản lý học kỳ và thời gian đăng ký (CRUD + open/close + validate end_date > start_date)
+- [x] TEST-006 - Quản lý lớp học phần (CRUD + schedule + chặn trùng phòng/GV + validate ngày học trong học kỳ)
 - [ ] TEST-007 - Đăng ký môn học thủ công SV side (BE ready, FE pending)
 - [x] TEST-008 - BR-002 → BR-006 + signal (18 pytest cases pass)
 - [ ] TEST-009 - Thuật toán tạo TKB tự động (chưa implement)
@@ -623,8 +629,8 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 | Backend models (1.1) | 100% | 15 entity đầy đủ, migration OK, đã có seed scripts |
 | Backend Admin API (1.2 – 1.3) | ~90% | Còn Reports + nút export CSV/Excel |
 | Backend SV/GV API (1.4 – 1.5) | ~70% | Cơ bản qua các ViewSet + `/curriculums/my/`, `/students/me/`, `/notifications/mark-read/`, etc. |
-| Backend BR (1.6) | 100% | Tất cả 11 BR đã wire + 39 tests pass |
-| Backend testing (1.7) | 55% | 39 tests (BR + accounts + courses + majors + notify_class); còn auth/algorithm tests |
+| Backend BR (1.6) | 100% | Tất cả 11 BR đã wire + 48 tests pass |
+| Backend testing (1.7) | 60% | 48 tests (BR + accounts + courses + majors + semesters + schedule conflict + notify_class + atomic class schedule); còn auth/algorithm tests |
 | Frontend foundation (2.1) | 95% | Có ScheduleGrid mới. Còn toast, confirm dialog, skeleton loader |
 | Frontend admin (2.2) | ~80% | **8/10 module** xong; còn Reports, Settings |
 | Frontend student (2.3) | ~85% | **5/6 module** xong (Curriculum, Đăng ký, TKB, Lịch sử, Thông báo, Hồ sơ); chỉ thiếu **Auto TKB** (defer) |
@@ -687,7 +693,7 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 ### Phase 3 — Backend BR (mục 1.6)
 
 - 11 Business Rules wire vào serializer / view / signal
-- 33 pytest cases pass
+- 48 pytest cases pass
 
 ### Phase 4 — Frontend foundation (mục 2.1)
 
@@ -719,3 +725,12 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - Backend mới: `?class_section=` filter cho `/grades/`, `student_name` field trong Registration + Grade serializer
 - API service mới: `api/grades.ts` (create/update + auto-compute readonly fields)
 - Highlight: **GradesPage** với inline-edit + auto-preview total/letter ngay khi gõ + batch save
+
+### Phase 9 — Admin validation hardening
+
+- Học kỳ: validate `end_date > start_date` khi tạo và cập nhật; vẫn cho phép thời gian đăng ký nằm trước thời gian học kỳ
+- Lớp học phần/Schedule: validate ngày học nằm trong thời gian học kỳ
+- Lớp học phần/Schedule: chặn trùng phòng và trùng giáo viên khi cùng thứ, giao tiết, giao khoảng ngày
+- Lớp học phần: lưu thông tin lớp + lịch học chính trong cùng transaction; nếu lịch lỗi thì rollback, không còn lưu lớp vào DB
+- Thêm regression tests cho semester date range, registration window trước học kỳ, schedule date range, phòng/GV giao tiết, rollback khi lịch chính lỗi
+- Verify backend: `48/48` pytest pass

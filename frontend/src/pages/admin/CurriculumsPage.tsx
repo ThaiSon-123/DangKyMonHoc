@@ -11,6 +11,7 @@ import {
 } from "@/api/curriculums";
 import { listMajors } from "@/api/majors";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast } from "@/lib/toast";
 import { PAGE_SIZE } from "@/lib/constants";
 import type { Curriculum, Major } from "@/types/domain";
 
@@ -106,7 +107,9 @@ export default function CurriculumsPage() {
       setShowForm(false);
       await refresh();
     } catch (err) {
-      setFormError(extractApiError(err));
+      const message = extractApiError(err);
+      setFormError(message);
+      showErrorToast(message, "Không lưu được CTĐT");
     } finally {
       setSubmitting(false);
     }
@@ -194,9 +197,6 @@ export default function CurriculumsPage() {
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">
             Chương trình đào tạo
           </h1>
-          <p className="mt-1 text-[13.5px] text-ink-muted">
-            Quản lý CTĐT theo ngành và khóa. Click vào tên để vào trang chi tiết quản lý môn học.
-          </p>
         </div>
         <Button variant="primary" icon="plus" onClick={openCreate}>
           Thêm CTĐT

@@ -9,6 +9,7 @@ import {
   type ScheduleInput,
 } from "@/api/classes";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast } from "@/lib/toast";
 import {
   SESSION_LABELS,
   SESSION_PERIODS,
@@ -110,7 +111,9 @@ export default function ClassDetailPage() {
       setShowForm(false);
       await refresh();
     } catch (err) {
-      setFormError(extractApiError(err));
+      const message = extractApiError(err);
+      setFormError(message);
+      showErrorToast(message, "Không lưu được lịch học");
     } finally {
       setSubmitting(false);
     }
@@ -261,8 +264,10 @@ export default function ClassDetailPage() {
           icon="clock"
         />
         <Stat
-          label="Số buổi / tuần"
-          value={data.schedules.length}
+          label="Phòng học"
+          value={
+            Array.from(new Set(data.schedules.map((schedule) => schedule.room).filter(Boolean))).join(", ") || "—"
+          }
           icon="calendar"
         />
         <Stat label="Số tín chỉ" value={data.course_credits} icon="book" />

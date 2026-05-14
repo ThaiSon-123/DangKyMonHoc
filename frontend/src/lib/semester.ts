@@ -1,8 +1,8 @@
 /**
  * Tính nhãn hiển thị cho 1 ô "học kỳ gợi ý" trong CTĐT.
  *
- * Quy ước: 2 học kỳ chính (HK1 + HK2) mỗi năm học, không tính HK hè
- * (HK hè không xếp trong dòng chảy CTĐT chính).
+ * Quy ước: 2 học kỳ chính (HK1 + HK2) mỗi năm học, không tính HK3.
+ * (HK3 không xếp trong dòng chảy CTĐT chính).
  *
  * Ví dụ với cohort_year = 2023:
  *   - suggested=1 → "Học kỳ 1 - Năm học 2023 - 2024"

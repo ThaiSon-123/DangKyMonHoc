@@ -194,7 +194,11 @@ class Command(BaseCommand):
                     defaults={
                         "is_required": p["is_required"],
                         "suggested_semester": p["suggested_semester"],
-                        "knowledge_block": opts["knowledge_block"],
+                        "knowledge_block": (
+                            CurriculumCourse.Knowledge.GENERAL
+                            if course.code.upper().startswith("KTCH")
+                            else opts["knowledge_block"]
+                        ),
                     },
                 )
                 if link_created:

@@ -7,9 +7,12 @@ import pytest
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from apps.accounts.models import Role, User
 from apps.classes.models import ClassSection, Schedule
 from apps.courses.models import Prerequisite
 from apps.grades.models import Grade
+from apps.majors.models import Major
+from apps.profiles.models import StudentProfile
 from apps.registrations.models import Registration
 
 
@@ -248,3 +251,43 @@ def test_br006_admin_can_force_cancel_after_deadline(
         {"cancel_reason": "admin force"}, format="json"
     )
     assert res.status_code == 200
+
+
+def test_admin_can_filter_registrations_by_department_and_major(
+    admin_api, student_profile, open_semester, course_factory, class_section_factory
+):
+    cntt = student_profile.major
+    cntt.department = "Khoa CNTT"
+    cntt.save(update_fields=["department"])
+    kinh_te = Major.objects.create(code="REGKT", name="Kinh te", department="Khoa Kinh te")
+    other_user = User.objects.create_user(username="sv_reg_kt", password="pass", role=Role.STUDENT)
+    other_student = StudentProfile.objects.create(
+        user=other_user,
+        student_code="SV-REG-KT",
+        major=kinh_te,
+        enrollment_year=2021,
+    )
+    cntt_class = class_section_factory(course_factory(code="REG101"))
+    kt_class = class_section_factory(
+        course_factory(code="REG102"),
+        weekday=1,
+        start_period=1,
+    )
+    Registration.objects.create(
+        student=student_profile,
+        class_section=cntt_class,
+        semester=open_semester,
+        status=Registration.Status.CONFIRMED,
+    )
+    Registration.objects.create(
+        student=other_student,
+        class_section=kt_class,
+        semester=open_semester,
+        status=Registration.Status.CONFIRMED,
+    )
+
+    by_department = admin_api.get("/api/registrations/", {"department": "Khoa CNTT"})
+    by_major = admin_api.get("/api/registrations/", {"major": cntt.id})
+
+    assert [r["student_code"] for r in by_department.data["results"]] == [student_profile.student_code]
+    assert [r["student_code"] for r in by_major.data["results"]] == [student_profile.student_code]

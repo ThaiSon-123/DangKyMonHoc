@@ -199,3 +199,37 @@ def test_admin_can_lock_existing_student_without_profile(admin_user, db):
     assert res.status_code == status.HTTP_200_OK
     student.refresh_from_db()
     assert student.is_locked is True
+
+
+def test_admin_can_filter_users_by_department(admin_user, db):
+    cntt = Major.objects.create(code="CNTT2", name="Cong nghe thong tin", department="Khoa CNTT")
+    kinh_te = Major.objects.create(code="KT2", name="Kinh te", department="Khoa Kinh te")
+    cntt_user = User.objects.create_user(username="sv_cntt", password="pass", role=Role.STUDENT)
+    kt_user = User.objects.create_user(username="sv_kt", password="pass", role=Role.STUDENT)
+    teacher_user = User.objects.create_user(username="gv_cntt", password="pass", role=Role.TEACHER)
+    StudentProfile.objects.create(user=cntt_user, student_code="SV-CNTT", major=cntt, enrollment_year=2026)
+    StudentProfile.objects.create(user=kt_user, student_code="SV-KT", major=kinh_te, enrollment_year=2026)
+    TeacherProfile.objects.create(user=teacher_user, teacher_code="GV-CNTT", department="Khoa CNTT")
+    client = APIClient()
+    client.force_authenticate(admin_user)
+
+    res = client.get("/api/accounts/users/", {"department": "Khoa CNTT"})
+
+    assert res.status_code == status.HTTP_200_OK
+    assert {u["username"] for u in res.data["results"]} == {"sv_cntt", "gv_cntt"}
+
+
+def test_admin_can_filter_users_by_student_major(admin_user, db):
+    cntt = Major.objects.create(code="CNTT3", name="Cong nghe thong tin", department="Khoa CNTT")
+    kinh_te = Major.objects.create(code="KT3", name="Kinh te", department="Khoa Kinh te")
+    cntt_user = User.objects.create_user(username="sv_major_cntt", password="pass", role=Role.STUDENT)
+    kt_user = User.objects.create_user(username="sv_major_kt", password="pass", role=Role.STUDENT)
+    StudentProfile.objects.create(user=cntt_user, student_code="SV-M-CNTT", major=cntt, enrollment_year=2026)
+    StudentProfile.objects.create(user=kt_user, student_code="SV-M-KT", major=kinh_te, enrollment_year=2026)
+    client = APIClient()
+    client.force_authenticate(admin_user)
+
+    res = client.get("/api/accounts/users/", {"major": cntt.id})
+
+    assert res.status_code == status.HTTP_200_OK
+    assert [u["username"] for u in res.data["results"]] == ["sv_major_cntt"]

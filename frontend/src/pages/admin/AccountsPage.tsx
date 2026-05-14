@@ -10,6 +10,7 @@ import {
 } from "@/api/users";
 import { listMajors } from "@/api/majors";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast } from "@/lib/toast";
 import { PAGE_SIZE } from "@/lib/constants";
 import { useAuthStore } from "@/stores/auth";
 import type { Role, User } from "@/types";
@@ -53,6 +54,8 @@ export default function AccountsPage() {
   const [appliedSearch, setAppliedSearch] = useState("");
   const [filterRole, setFilterRole] = useState<Role | "">("");
   const [filterLocked, setFilterLocked] = useState<"" | "true" | "false">("");
+  const [filterDepartment, setFilterDepartment] = useState("");
+  const [filterMajor, setFilterMajor] = useState<number | "">("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +79,14 @@ export default function AccountsPage() {
     return Array.from(set).sort();
   }, [majors, form.teacher_department]);
 
+  const filteredMajors = useMemo(
+    () =>
+      filterDepartment
+        ? majors.filter((m) => m.department === filterDepartment)
+        : majors,
+    [filterDepartment, majors],
+  );
+
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -84,6 +95,8 @@ export default function AccountsPage() {
       if (appliedSearch) params.search = appliedSearch;
       if (filterRole) params.role = filterRole;
       if (filterLocked) params.is_locked = filterLocked === "true";
+      if (filterDepartment) params.department = filterDepartment;
+      if (filterMajor) params.major = filterMajor;
       const data = await listUsers(params);
       setItems(data.results);
       setTotal(data.count);
@@ -92,7 +105,7 @@ export default function AccountsPage() {
     } finally {
       setLoading(false);
     }
-  }, [appliedSearch, filterRole, filterLocked, page]);
+  }, [appliedSearch, filterDepartment, filterMajor, filterRole, filterLocked, page]);
 
   useEffect(() => {
     refresh();
@@ -166,7 +179,9 @@ export default function AccountsPage() {
       setShowForm(false);
       await refresh();
     } catch (err) {
-      setFormError(extractApiError(err));
+      const message = extractApiError(err);
+      setFormError(message);
+      showErrorToast(message, "Không lưu được tài khoản");
     } finally {
       setSubmitting(false);
     }
@@ -309,10 +324,6 @@ export default function AccountsPage() {
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">
             Quản lý tài khoản
           </h1>
-          <p className="mt-1 text-[13.5px] text-ink-muted">
-            Tạo và quản lý tài khoản Sinh viên / Giáo viên. Tài khoản Admin chỉ tạo qua command{" "}
-            <code className="font-mono text-[12px] bg-surface px-1 rounded">createsuperuser</code>.
-          </p>
         </div>
         <Button variant="primary" icon="plus" onClick={openCreate}>
           Thêm tài khoản
@@ -358,8 +369,39 @@ export default function AccountsPage() {
             <option value="false">Đang hoạt động</option>
             <option value="true">Đã khoá</option>
           </select>
+          <select
+            value={filterDepartment}
+            onChange={(e) => {
+              setFilterDepartment(e.target.value);
+              setFilterMajor("");
+              setPage(1);
+            }}
+            className="px-3 py-1.5 rounded-md bg-surface border border-line text-[13px]"
+          >
+            <option value="">Tất cả khoa</option>
+            {departments.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterMajor}
+            onChange={(e) => {
+              setFilterMajor(e.target.value === "" ? "" : Number(e.target.value));
+              setPage(1);
+            }}
+            className="px-3 py-1.5 rounded-md bg-surface border border-line text-[13px] max-w-[220px]"
+          >
+            <option value="">Tất cả ngành</option>
+            {filteredMajors.map((major) => (
+              <option key={major.id} value={major.id}>
+                {major.code} - {major.name}
+              </option>
+            ))}
+          </select>
           <Button onClick={applyFilters}>Tìm</Button>
-          {(appliedSearch || filterRole || filterLocked) && (
+          {(appliedSearch || filterRole || filterLocked || filterDepartment || filterMajor) && (
             <Button
               variant="ghost"
               onClick={() => {
@@ -367,6 +409,8 @@ export default function AccountsPage() {
                 setAppliedSearch("");
                 setFilterRole("");
                 setFilterLocked("");
+                setFilterDepartment("");
+                setFilterMajor("");
                 setPage(1);
               }}
             >

@@ -17,6 +17,7 @@ import ClassDetailPage from "@/pages/admin/ClassDetailPage";
 import AccountsPage from "@/pages/admin/AccountsPage";
 import RegistrationsPage from "@/pages/admin/RegistrationsPage";
 import NotificationsPage from "@/pages/admin/NotificationsPage";
+import AdminProfilePage from "@/pages/admin/ProfilePage";
 import StudentCurriculumPage from "@/pages/student/CurriculumPage";
 import StudentNotificationsPage from "@/pages/student/NotificationsPage";
 import StudentProfilePage from "@/pages/student/ProfilePage";
@@ -31,6 +32,7 @@ import TeacherClassDetailPage from "@/pages/teacher/ClassDetailPage";
 import TeacherGradesPage from "@/pages/teacher/GradesPage";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import { useAuthStore } from "@/stores/auth";
+import { ToastHost } from "@/components/ui";
 import type { IconName } from "@/components/ui/Icon";
 
 function RoleHome() {
@@ -89,6 +91,7 @@ export default function App() {
   }
 
   return (
+    <>
     <Routes>
       <Route path="/login" element={<Login />} />
 
@@ -101,6 +104,7 @@ export default function App() {
             <Route path="/admin/accounts" element={<AccountsPage />} />
             <Route path="/admin/registrations" element={<RegistrationsPage />} />
             <Route path="/admin/notifications" element={<NotificationsPage />} />
+            <Route path="/admin/profile" element={<AdminProfilePage />} />
             <Route path="/admin/majors" element={<MajorsPage />} />
             <Route path="/admin/courses" element={<CoursesPage />} />
             <Route path="/admin/semesters" element={<SemestersPage />} />
@@ -155,5 +159,7 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    <ToastHost />
+    </>
   );
 }

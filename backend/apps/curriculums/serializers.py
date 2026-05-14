@@ -16,6 +16,12 @@ class CurriculumCourseSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id",)
 
+    def validate(self, attrs):
+        course = attrs.get("course") or (self.instance.course if self.instance else None)
+        if course and course.code.upper().startswith("KTCH"):
+            attrs["knowledge_block"] = CurriculumCourse.Knowledge.GENERAL
+        return attrs
+
 
 class CurriculumSerializer(serializers.ModelSerializer):
     major_code = serializers.CharField(source="major.code", read_only=True)

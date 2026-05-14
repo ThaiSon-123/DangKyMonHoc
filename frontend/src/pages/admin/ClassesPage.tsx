@@ -1,21 +1,21 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { Badge, Button, Card, Modal, Pagination, Table, type Column } from "@/components/ui";
 import Icon from "@/components/ui/Icon";
 import {
   createClassSection,
-  createSchedule,
   deleteClassSection,
   listClassSections,
   updateClassSection,
-  updateSchedule,
   type ClassSectionInput,
   type ScheduleInput,
 } from "@/api/classes";
 import { listCourses } from "@/api/courses";
+import { listMajors } from "@/api/majors";
 import { listSemesters } from "@/api/semesters";
 import { listTeachers } from "@/api/teachers";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast } from "@/lib/toast";
 import { PAGE_SIZE } from "@/lib/constants";
 import {
   CLASS_STATUS_LABELS,
@@ -25,7 +25,7 @@ import {
   type ClassSection,
   type ClassStatus,
   type Course,
-  type Schedule,
+  type Major,
   type Semester,
   type SessionType,
   type TeacherProfile,
@@ -64,6 +64,7 @@ const EDITABLE_CLASS_STATUSES: ClassStatus[] = ["OPEN", "CLOSED", "CANCELLED"];
 export default function ClassesPage() {
   const [items, setItems] = useState<ClassSection[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [majors, setMajors] = useState<Major[]>([]);
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [teachers, setTeachers] = useState<TeacherProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,6 +73,9 @@ export default function ClassesPage() {
   const [appliedSearch, setAppliedSearch] = useState("");
   const [filterSemester, setFilterSemester] = useState<number | "">("");
   const [filterStatus, setFilterStatus] = useState<ClassStatus | "">("");
+  const [filterTeacher, setFilterTeacher] = useState<number | "">("");
+  const [filterDepartment, setFilterDepartment] = useState("");
+  const [filterMajor, setFilterMajor] = useState<number | "">("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +85,6 @@ export default function ClassesPage() {
   const [form, setForm] = useState<ClassSectionInput>(EMPTY);
   const [scheduleForm, setScheduleForm] =
     useState<Omit<ScheduleInput, "class_section">>(EMPTY_SCHEDULE);
-  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -95,6 +98,9 @@ export default function ClassesPage() {
       if (appliedSearch) params.search = appliedSearch;
       if (filterSemester) params.semester = filterSemester;
       if (filterStatus) params.status = filterStatus;
+      if (filterTeacher) params.teacher = filterTeacher;
+      if (filterDepartment) params.department = filterDepartment;
+      if (filterMajor) params.major = filterMajor;
       const data = await listClassSections(params);
       setItems(data.results);
       setTotal(data.count);
@@ -103,11 +109,25 @@ export default function ClassesPage() {
     } finally {
       setLoading(false);
     }
-  }, [appliedSearch, filterSemester, filterStatus, page]);
+  }, [appliedSearch, filterDepartment, filterMajor, filterSemester, filterStatus, filterTeacher, page]);
+
+  const departments = useMemo(
+    () => Array.from(new Set(majors.map((m) => m.department).filter(Boolean))).sort(),
+    [majors],
+  );
+
+  const filteredMajors = useMemo(
+    () =>
+      filterDepartment
+        ? majors.filter((m) => m.department === filterDepartment)
+        : majors,
+    [filterDepartment, majors],
+  );
 
   useEffect(() => {
     // Fetch full list cho dropdown (page_size lớn)
     listCourses({ page_size: 1000 }).then((r) => setCourses(r.results));
+    listMajors({ page_size: 1000 }).then((r) => setMajors(r.results));
     listSemesters({ page: 1 }).then((r) => setSemesters(r.results));
     listTeachers({ page_size: 1000 }).then((r) => setTeachers(r.results));
   }, []);
@@ -126,7 +146,6 @@ export default function ClassesPage() {
     const defaultSemester = semesters.find((s) => s.is_open)?.id ?? semesters[0]?.id ?? 0;
     setForm({ ...EMPTY, semester: defaultSemester, course: courses[0]?.id ?? 0 });
     setScheduleForm(EMPTY_SCHEDULE);
-    setEditingSchedule(null);
     setFormError(null);
     setShowForm(true);
   }
@@ -147,7 +166,6 @@ export default function ClassesPage() {
       setForm((current) => ({ ...current, status: "CLOSED" }));
     }
     const firstSchedule = cs.schedules[0] ?? null;
-    setEditingSchedule(firstSchedule);
     setScheduleForm(
       firstSchedule
         ? {
@@ -169,11 +187,7 @@ export default function ClassesPage() {
     setSubmitting(true);
     setFormError(null);
     try {
-      const savedClass = editing
-        ? await updateClassSection(editing.id, form)
-        : await createClassSection(form);
-      const schedulePayload: ScheduleInput = {
-        class_section: savedClass.id,
+      const primary_schedule: Omit<ScheduleInput, "class_section"> = {
         weekday: scheduleForm.weekday,
         session: scheduleForm.session,
         start_period: scheduleForm.start_period,
@@ -181,12 +195,15 @@ export default function ClassesPage() {
         start_date: scheduleForm.start_date || null,
         end_date: scheduleForm.end_date || null,
       };
-      if (editingSchedule) await updateSchedule(editingSchedule.id, schedulePayload);
-      else await createSchedule(schedulePayload);
+      const payload: ClassSectionInput = { ...form, primary_schedule };
+      if (editing) await updateClassSection(editing.id, payload);
+      else await createClassSection(payload);
       setShowForm(false);
       await refresh();
     } catch (err) {
-      setFormError(extractApiError(err));
+      const message = extractApiError(err);
+      setFormError(message);
+      showErrorToast(message, "Không lưu được lớp học phần");
     } finally {
       setSubmitting(false);
     }
@@ -287,15 +304,22 @@ export default function ClassesPage() {
     },
     {
       key: "schedules",
-      label: "Lịch",
-      width: "80px",
+      label: "Phòng học",
+      width: "120px",
       align: "center",
-      render: (cs) =>
-        cs.schedules.length === 0 ? (
-          <Badge tone="warn">Chưa có</Badge>
-        ) : (
-          <Badge tone="accent">{cs.schedules.length} buổi</Badge>
-        ),
+      render: (cs) => {
+        const rooms = Array.from(new Set(cs.schedules.map((s) => s.room).filter(Boolean)));
+        if (rooms.length === 0) return <span className="text-ink-faint">—</span>;
+        return (
+          <div className="flex flex-wrap justify-center gap-1">
+            {rooms.map((room) => (
+              <Badge key={room} tone="accent" className="font-mono">
+                {room}
+              </Badge>
+            ))}
+          </div>
+        );
+      },
     },
     {
       key: "status",
@@ -333,9 +357,6 @@ export default function ClassesPage() {
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">
             Lớp học phần
           </h1>
-          <p className="mt-1 text-[13.5px] text-ink-muted">
-            Tạo lớp cho từng môn học theo học kỳ, gán giáo viên, thiết lập sĩ số và lịch học.
-          </p>
         </div>
         <Button variant="primary" icon="plus" onClick={openCreate}>
           Thêm lớp
@@ -352,7 +373,7 @@ export default function ClassesPage() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") applyFilters();
               }}
-              placeholder="Tìm theo mã lớp / mã môn…"
+              placeholder="Tìm theo mã lớp / mã môn / phòng học…"
               className="flex-1 bg-transparent outline-none text-[13px] min-w-0"
             />
           </div>
@@ -372,6 +393,52 @@ export default function ClassesPage() {
             ))}
           </select>
           <select
+            value={filterTeacher}
+            onChange={(e) => {
+              setFilterTeacher(e.target.value === "" ? "" : Number(e.target.value));
+              setPage(1);
+            }}
+            className="px-3 py-1.5 rounded-md bg-surface border border-line text-[13px] max-w-[220px]"
+          >
+            <option value="">Tất cả giáo viên</option>
+            {teachers.map((teacher) => (
+              <option key={teacher.id} value={teacher.id}>
+                {teacher.teacher_code} - {teacher.full_name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterDepartment}
+            onChange={(e) => {
+              setFilterDepartment(e.target.value);
+              setFilterMajor("");
+              setPage(1);
+            }}
+            className="px-3 py-1.5 rounded-md bg-surface border border-line text-[13px]"
+          >
+            <option value="">Tất cả khoa</option>
+            {departments.map((department) => (
+              <option key={department} value={department}>
+                {department}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterMajor}
+            onChange={(e) => {
+              setFilterMajor(e.target.value === "" ? "" : Number(e.target.value));
+              setPage(1);
+            }}
+            className="px-3 py-1.5 rounded-md bg-surface border border-line text-[13px] max-w-[220px]"
+          >
+            <option value="">Tất cả ngành</option>
+            {filteredMajors.map((major) => (
+              <option key={major.id} value={major.id}>
+                {major.code} - {major.name}
+              </option>
+            ))}
+          </select>
+          <select
             value={filterStatus}
             onChange={(e) => {
               setFilterStatus(e.target.value as ClassStatus | "");
@@ -387,13 +454,21 @@ export default function ClassesPage() {
             ))}
           </select>
           <Button onClick={applyFilters}>Tìm</Button>
-          {(appliedSearch || filterSemester !== "" || filterStatus !== "") && (
+          {(appliedSearch ||
+            filterSemester !== "" ||
+            filterTeacher !== "" ||
+            filterDepartment ||
+            filterMajor !== "" ||
+            filterStatus !== "") && (
             <Button
               variant="ghost"
               onClick={() => {
                 setSearch("");
                 setAppliedSearch("");
                 setFilterSemester("");
+                setFilterTeacher("");
+                setFilterDepartment("");
+                setFilterMajor("");
                 setFilterStatus("");
                 setPage(1);
               }}
