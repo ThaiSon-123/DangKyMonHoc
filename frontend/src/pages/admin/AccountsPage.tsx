@@ -10,6 +10,7 @@ import {
 } from "@/api/users";
 import { listMajors } from "@/api/majors";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast } from "@/lib/toast";
 import { PAGE_SIZE } from "@/lib/constants";
 import { useAuthStore } from "@/stores/auth";
 import type { Role, User } from "@/types";
@@ -166,7 +167,9 @@ export default function AccountsPage() {
       setShowForm(false);
       await refresh();
     } catch (err) {
-      setFormError(extractApiError(err));
+      const message = extractApiError(err);
+      setFormError(message);
+      showErrorToast(message, "Không lưu được tài khoản");
     } finally {
       setSubmitting(false);
     }

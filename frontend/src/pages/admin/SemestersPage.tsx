@@ -11,6 +11,7 @@ import {
   type SemesterInput,
 } from "@/api/semesters";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast } from "@/lib/toast";
 import type { Semester, SemesterTerm } from "@/types/domain";
 
 const TERM_OPTIONS: { value: SemesterTerm; label: string }[] = [
@@ -114,7 +115,9 @@ export default function SemestersPage() {
       setShowForm(false);
       await refresh();
     } catch (err) {
-      setFormError(extractApiError(err));
+      const message = extractApiError(err);
+      setFormError(message);
+      showErrorToast(message, "Không lưu được học kỳ");
     } finally {
       setSubmitting(false);
     }

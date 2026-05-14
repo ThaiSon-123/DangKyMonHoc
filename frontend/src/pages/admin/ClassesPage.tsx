@@ -4,11 +4,9 @@ import { Badge, Button, Card, Modal, Pagination, Table, type Column } from "@/co
 import Icon from "@/components/ui/Icon";
 import {
   createClassSection,
-  createSchedule,
   deleteClassSection,
   listClassSections,
   updateClassSection,
-  updateSchedule,
   type ClassSectionInput,
   type ScheduleInput,
 } from "@/api/classes";
@@ -16,6 +14,7 @@ import { listCourses } from "@/api/courses";
 import { listSemesters } from "@/api/semesters";
 import { listTeachers } from "@/api/teachers";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast } from "@/lib/toast";
 import { PAGE_SIZE } from "@/lib/constants";
 import {
   CLASS_STATUS_LABELS,
@@ -25,7 +24,6 @@ import {
   type ClassSection,
   type ClassStatus,
   type Course,
-  type Schedule,
   type Semester,
   type SessionType,
   type TeacherProfile,
@@ -81,7 +79,6 @@ export default function ClassesPage() {
   const [form, setForm] = useState<ClassSectionInput>(EMPTY);
   const [scheduleForm, setScheduleForm] =
     useState<Omit<ScheduleInput, "class_section">>(EMPTY_SCHEDULE);
-  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -126,7 +123,6 @@ export default function ClassesPage() {
     const defaultSemester = semesters.find((s) => s.is_open)?.id ?? semesters[0]?.id ?? 0;
     setForm({ ...EMPTY, semester: defaultSemester, course: courses[0]?.id ?? 0 });
     setScheduleForm(EMPTY_SCHEDULE);
-    setEditingSchedule(null);
     setFormError(null);
     setShowForm(true);
   }
@@ -147,7 +143,6 @@ export default function ClassesPage() {
       setForm((current) => ({ ...current, status: "CLOSED" }));
     }
     const firstSchedule = cs.schedules[0] ?? null;
-    setEditingSchedule(firstSchedule);
     setScheduleForm(
       firstSchedule
         ? {
@@ -169,11 +164,7 @@ export default function ClassesPage() {
     setSubmitting(true);
     setFormError(null);
     try {
-      const savedClass = editing
-        ? await updateClassSection(editing.id, form)
-        : await createClassSection(form);
-      const schedulePayload: ScheduleInput = {
-        class_section: savedClass.id,
+      const primary_schedule: Omit<ScheduleInput, "class_section"> = {
         weekday: scheduleForm.weekday,
         session: scheduleForm.session,
         start_period: scheduleForm.start_period,
@@ -181,12 +172,15 @@ export default function ClassesPage() {
         start_date: scheduleForm.start_date || null,
         end_date: scheduleForm.end_date || null,
       };
-      if (editingSchedule) await updateSchedule(editingSchedule.id, schedulePayload);
-      else await createSchedule(schedulePayload);
+      const payload: ClassSectionInput = { ...form, primary_schedule };
+      if (editing) await updateClassSection(editing.id, payload);
+      else await createClassSection(payload);
       setShowForm(false);
       await refresh();
     } catch (err) {
-      setFormError(extractApiError(err));
+      const message = extractApiError(err);
+      setFormError(message);
+      showErrorToast(message, "Không lưu được lớp học phần");
     } finally {
       setSubmitting(false);
     }

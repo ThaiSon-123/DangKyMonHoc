@@ -9,6 +9,7 @@ import {
   type MajorInput,
 } from "@/api/majors";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast } from "@/lib/toast";
 import { PAGE_SIZE } from "@/lib/constants";
 import type { Major } from "@/types/domain";
 
@@ -98,7 +99,9 @@ export default function MajorsPage() {
       setShowForm(false);
       await refresh();
     } catch (err) {
-      setFormError(extractApiError(err));
+      const message = extractApiError(err);
+      setFormError(message);
+      showErrorToast(message, "Không lưu được ngành");
     } finally {
       setSubmitting(false);
     }

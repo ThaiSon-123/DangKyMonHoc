@@ -14,6 +14,7 @@ import {
 } from "@/api/notifications";
 import { listUsers } from "@/api/users";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast } from "@/lib/toast";
 import { PAGE_SIZE } from "@/lib/constants";
 import type { User } from "@/types";
 
@@ -156,7 +157,9 @@ export default function NotificationsPage() {
       setShowForm(false);
       await refresh();
     } catch (err) {
-      setFormError(extractApiError(err));
+      const message = extractApiError(err);
+      setFormError(message);
+      showErrorToast(message, "Không gửi được thông báo");
     } finally {
       setSubmitting(false);
     }

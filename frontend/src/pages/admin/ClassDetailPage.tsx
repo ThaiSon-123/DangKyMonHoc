@@ -9,6 +9,7 @@ import {
   type ScheduleInput,
 } from "@/api/classes";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast } from "@/lib/toast";
 import {
   SESSION_LABELS,
   SESSION_PERIODS,
@@ -110,7 +111,9 @@ export default function ClassDetailPage() {
       setShowForm(false);
       await refresh();
     } catch (err) {
-      setFormError(extractApiError(err));
+      const message = extractApiError(err);
+      setFormError(message);
+      showErrorToast(message, "Không lưu được lịch học");
     } finally {
       setSubmitting(false);
     }

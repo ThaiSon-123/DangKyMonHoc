@@ -31,6 +31,7 @@ import TeacherClassDetailPage from "@/pages/teacher/ClassDetailPage";
 import TeacherGradesPage from "@/pages/teacher/GradesPage";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import { useAuthStore } from "@/stores/auth";
+import { ToastHost } from "@/components/ui";
 import type { IconName } from "@/components/ui/Icon";
 
 function RoleHome() {
@@ -89,6 +90,7 @@ export default function App() {
   }
 
   return (
+    <>
     <Routes>
       <Route path="/login" element={<Login />} />
 
@@ -155,5 +157,7 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    <ToastHost />
+    </>
   );
 }

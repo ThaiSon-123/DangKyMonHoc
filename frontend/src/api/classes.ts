@@ -17,6 +17,7 @@ export type ClassSectionInput = {
   max_students: number;
   status: ClassStatus;
   note: string;
+  primary_schedule?: Omit<ScheduleInput, "class_section">;
 };
 
 export async function listClassSections(params?: {

@@ -11,6 +11,7 @@ import {
 import { listCurriculums } from "@/api/curriculums";
 import { listMajors } from "@/api/majors";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast } from "@/lib/toast";
 import { PAGE_SIZE } from "@/lib/constants";
 import type { Course, Curriculum, Major } from "@/types/domain";
 
@@ -204,7 +205,9 @@ export default function CoursesPage() {
       setShowForm(false);
       await refresh();
     } catch (err) {
-      setFormError(extractApiError(err));
+      const message = extractApiError(err);
+      setFormError(message);
+      showErrorToast(message, "Không lưu được môn học");
     } finally {
       setSubmitting(false);
     }

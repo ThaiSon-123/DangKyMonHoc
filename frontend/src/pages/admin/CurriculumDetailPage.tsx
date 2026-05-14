@@ -10,6 +10,7 @@ import {
 } from "@/api/curriculums";
 import { listCourses } from "@/api/courses";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast } from "@/lib/toast";
 import { semesterLabel } from "@/lib/semester";
 import {
   KNOWLEDGE_BLOCK_LABELS,
@@ -125,7 +126,9 @@ export default function CurriculumDetailPage() {
       setShowForm(false);
       await refresh();
     } catch (err) {
-      setFormError(extractApiError(err));
+      const message = extractApiError(err);
+      setFormError(message);
+      showErrorToast(message, "Không lưu được môn trong CTĐT");
     } finally {
       setSubmitting(false);
     }
