@@ -15,6 +15,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
         queryset=Semester.objects.all(), required=False, allow_null=True
     )
     student_code = serializers.CharField(source="student.student_code", read_only=True)
+    student_name = serializers.SerializerMethodField()
     class_section_code = serializers.CharField(source="class_section.code", read_only=True)
     course_code = serializers.CharField(source="class_section.course.code", read_only=True)
     course_name = serializers.CharField(source="class_section.course.name", read_only=True)
@@ -25,7 +26,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Registration
         fields = (
-            "id", "student", "student_code",
+            "id", "student", "student_code", "student_name",
             "class_section", "class_section_code", "course_code", "course_name", "course_credits",
             "semester", "semester_code",
             "status", "status_display", "registered_at", "cancelled_at", "cancel_reason",
@@ -33,6 +34,10 @@ class RegistrationSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "registered_at", "cancelled_at")
         # Disable auto UniqueTogetherValidator vì nó bắt student field phải có sẵn
         validators = []
+
+    def get_student_name(self, obj) -> str:
+        u = obj.student.user
+        return u.get_full_name() or u.username
 
     # ---------- Validation helpers ----------
 
