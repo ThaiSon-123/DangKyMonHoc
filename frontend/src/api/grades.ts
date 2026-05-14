@@ -8,8 +8,10 @@ export interface Grade {
   student_name: string;
   course_code: string;
   course_name: string;
+  course_credits: number;
   class_section_code: string;
   semester_code: string;
+  semester_name: string;
   process_score: string | null;
   midterm_score: string | null;
   final_score: string | null;

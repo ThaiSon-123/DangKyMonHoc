@@ -51,10 +51,16 @@ class Grade(models.Model):
         s = float(self.total_score)
         if s >= 8.5:
             return "A"
+        if s >= 8.0:
+            return "B+"
         if s >= 7.0:
             return "B"
+        if s >= 6.5:
+            return "C+"
         if s >= 5.5:
             return "C"
+        if s >= 5.0:
+            return "D+"
         if s >= 4.0:
             return "D"
         return "F"
@@ -66,10 +72,16 @@ class Grade(models.Model):
         s = float(self.total_score)
         if s >= 8.5:
             return Decimal("4.00")
+        if s >= 8.0:
+            return Decimal("3.50")
         if s >= 7.0:
             return Decimal("3.00")
+        if s >= 6.5:
+            return Decimal("2.50")
         if s >= 5.5:
             return Decimal("2.00")
+        if s >= 5.0:
+            return Decimal("1.50")
         if s >= 4.0:
             return Decimal("1.00")
         return Decimal("0.00")

@@ -32,6 +32,7 @@ const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { to: "/student/schedule", label: "Thời khóa biểu", icon: "calendar" },
     { to: "/student/curriculum", label: "Chương trình đào tạo", icon: "layers" },
     { to: "/student/history", label: "Lịch sử đăng ký", icon: "clock" },
+    { to: "/student/grades", label: "Bảng điểm", icon: "graduation" },
     { to: "/student/notifications", label: "Thông báo", icon: "bell", section: "Khác" },
     { to: "/student/profile", label: "Hồ sơ", icon: "user" },
   ],

@@ -1,12 +1,14 @@
 """Tests for BR-007: GV chỉ nhập điểm cho lớp được phân công."""
 
 from datetime import timedelta
+from decimal import Decimal
 
 import pytest
 from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import Role, User
+from apps.grades.models import Grade
 from apps.profiles.models import TeacherProfile
 from apps.registrations.models import Registration
 
@@ -86,6 +88,26 @@ def test_grade_auto_compute_total_and_letter(
     assert res.status_code == 201
     assert float(res.data["total_score"]) == 5.9
     assert res.data["grade_letter"] == "C"
+
+
+@pytest.mark.parametrize(
+    ("total_score", "grade_letter", "gpa_4"),
+    [
+        ("8.50", "A", "4.00"),
+        ("8.00", "B+", "3.50"),
+        ("7.00", "B", "3.00"),
+        ("6.50", "C+", "2.50"),
+        ("5.50", "C", "2.00"),
+        ("5.00", "D+", "1.50"),
+        ("4.00", "D", "1.00"),
+        ("3.99", "F", "0.00"),
+    ],
+)
+def test_grade_letter_and_gpa_follow_score_table(total_score, grade_letter, gpa_4):
+    grade = Grade(total_score=total_score)
+
+    assert grade.compute_letter() == grade_letter
+    assert grade.compute_gpa_4() == Decimal(gpa_4)
 
 
 def test_grade_update_window_blocks_late_update(

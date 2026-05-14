@@ -509,7 +509,20 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [x] Nút Huỷ trên dòng `status != CANCELLED` + warning banner BR-006
 - [x] 4 KPI stats: tổng / confirmed / cancelled / TC đang học
 
-### 2.3.6. Nhận thông báo (FR-STU-NOT) ✅ DONE
+### 2.3.6. Bảng điểm (FR-STU-GRD) ✅ DONE
+
+- [x] **Route `/student/grades`** — trang xem bảng điểm cá nhân
+- [x] Sidebar entry "Bảng điểm" (icon graduation) trong section Học tập
+- [x] Backend `GradeSerializer` thêm `course_credits` + `semester_name` cho tính GPA HK weighted
+- [x] Backend filter `Q(student=user)` đã có sẵn từ `GradeViewSet.get_queryset` → SV chỉ thấy điểm của mình
+- [x] **Group theo học kỳ** (sort code desc) — mỗi HK 1 Card với GPA HK + số môn + TC đạt/tổng
+- [x] **4 KPI tổng**: GPA tích lũy (weighted by TC) / TC tích lũy / Số môn đạt / Số môn chờ điểm
+- [x] Bảng đầy đủ cột: Mã / Tên môn (kèm lớp HP) / TC / QT / GK / CK / Tổng / Chữ / GPA-4
+- [x] Badge tone theo điểm chữ: A=success, B/B+=accent, C/C+=neutral, D/D+=warn, F=danger
+- [x] Empty state khi chưa có điểm
+- [x] Đồng bộ thang điểm 7 bậc backend ↔ frontend (A/B+/B/C+/C/D+/D/F) — `compute_letter` + `compute_gpa_4` + tests parametrize 8 boundary case
+
+### 2.3.7. Nhận thông báo (FR-STU-NOT) ✅ DONE
 
 - [x] **Route `/student/notifications`** — trang thật
 - [x] Trang danh sách thông báo (card list, không phải table) + pagination
@@ -633,7 +646,7 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 | Backend testing (1.7) | 60% | 48 tests (BR + accounts + courses + majors + semesters + schedule conflict + notify_class + atomic class schedule); còn auth/algorithm tests |
 | Frontend foundation (2.1) | 95% | Có ScheduleGrid mới. Còn toast, confirm dialog, skeleton loader |
 | Frontend admin (2.2) | ~80% | **8/10 module** xong; còn Reports, Settings |
-| Frontend student (2.3) | ~85% | **5/6 module** xong (Curriculum, Đăng ký, TKB, Lịch sử, Thông báo, Hồ sơ); chỉ thiếu **Auto TKB** (defer) |
+| Frontend student (2.3) | ~88% | **6/7 module** xong (Curriculum, Đăng ký, TKB, Lịch sử, Bảng điểm, Thông báo, Hồ sơ); chỉ thiếu **Auto TKB** (defer) |
 | Frontend teacher (2.4) | ~95% | **5/5 module** xong + tính năng **gửi noti cho lớp**; chỉ thiếu export Excel + đề xuất đổi lịch (MAY) |
 | Frontend testing (2.5) | 0% | Chưa setup Vitest |
 
@@ -653,13 +666,14 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - ⬜ Báo cáo (`/admin/reports`) — chưa làm
 - ⬜ Cấu hình (`/admin/settings`) — chưa làm
 
-**Sinh viên — 5/6 module:**
+**Sinh viên — 6/7 module:**
 1. ✅ Chương trình đào tạo (`/student/curriculum`) — auto match theo major + cohort
 2. ✅ Đăng ký môn học (`/student/register`) — wire BR-002 → BR-006
 3. ✅ Thời khóa biểu (`/student/schedule`) — grid 7×15 với 8 màu
 4. ✅ Lịch sử đăng ký (`/student/history`) — filter + cancel
-5. ✅ Thông báo (`/student/notifications`) — mark-read + autocomplete
-6. ✅ Hồ sơ cá nhân (`/student/profile`)
+5. ✅ Bảng điểm (`/student/grades`) — group theo HK, GPA HK + GPA tích lũy weighted by TC
+6. ✅ Thông báo (`/student/notifications`) — mark-read + autocomplete
+7. ✅ Hồ sơ cá nhân (`/student/profile`)
 - ⏸ Tạo TKB tự động (`/student/auto`) — defer
 
 **Giáo viên — 5/5 module:**
@@ -714,10 +728,20 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 ### Phase 7 — Student UI modules (mục 2.3)
 
-- 5/6 module DONE: Chương trình đào tạo, Thông báo, Hồ sơ, Đăng ký môn học, Thời khóa biểu, Lịch sử đăng ký
+- 6/7 module DONE: Chương trình đào tạo, Đăng ký môn học, Thời khóa biểu, Lịch sử đăng ký, **Bảng điểm**, Thông báo, Hồ sơ
 - Backend mới: `GET /curriculums/my/`, `GET /students/me/`, `GET /teachers/me/`, `POST /notifications/{id}/mark-read/`, `POST /notifications/mark-all-read/`, `GET /notifications/unread-count/`
 - Component mới: `ScheduleGrid` (7 ngày × 15 tiết, 8 màu, click event, BR-010 session boundaries)
 - Module **Auto TKB** defer vì cần thuật toán search tổ hợp lớp HP phức tạp
+
+### Phase 9 — Bảng điểm SV + đồng bộ thang điểm (mục 2.3.6)
+
+- Backend `apps/grades/models.py`: `compute_letter` + `compute_gpa_4` chuyển từ thang 5 (A/B/C/D/F) sang **thang 7** (A/B+/B/C+/C/D+/D/F) khớp quy chế phổ biến
+- Backend tests parametrize 8 boundary case (8.50/8.00/7.00/6.50/5.50/5.00/4.00/3.99) — 12/12 pass
+- `GradeSerializer` thêm `course_credits` + `semester_name` để FE tính GPA HK weighted
+- Frontend `pages/student/GradesPage.tsx`: 4 KPI (GPA tích lũy/TC tích lũy/môn đạt/môn chờ) + group theo HK + 9 cột chi tiết
+- Fix bug **GPA không cập nhật khi chỉnh điểm** (TeacherGradesPage `updateRow` chỉ recalc total + letter, bổ sung `calcGpa` mirror backend)
+- Thêm **Compose noti tại `/teacher/notifications`** — GV soạn noti gửi lớp ngay từ trang thông báo (không cần vào ClassDetailPage)
+- Backend `NotificationViewSet.get_queryset` thêm `Q(sender=user)` để GV thấy noti mình đã gửi
 
 ### Phase 8 — Teacher UI modules (mục 2.4)
 
