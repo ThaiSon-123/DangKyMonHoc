@@ -33,10 +33,7 @@ export interface Course {
     required_course_name: string;
     note: string;
   }>;
-<<<<<<< HEAD
   prerequisite_ids?: number[];
-=======
->>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
   created_at: string;
   updated_at: string;
 }

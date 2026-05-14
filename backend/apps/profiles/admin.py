@@ -6,11 +6,7 @@ from .models import StudentProfile, TeacherProfile
 class StudentProfileAdmin(admin.ModelAdmin):
     list_display = ("student_code", "user", "major", "enrollment_year", "gpa", "is_active")
     list_filter = ("major", "enrollment_year", "is_active")
-<<<<<<< HEAD
     search_fields = ("student_code", "user__username", "user__email", "user__full_name")
-=======
-    search_fields = ("student_code", "user__username", "user__email", "user__first_name", "user__last_name")
->>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
     autocomplete_fields = ("user", "major")
 
 

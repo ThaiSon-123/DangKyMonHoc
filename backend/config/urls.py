@@ -12,13 +12,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
 
     # Auth
-<<<<<<< HEAD
     path("api/auth/login/", LockedAwareTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/refresh/", LockedAwareTokenRefreshView.as_view(), name="token_refresh"),
-=======
-    path("api/auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
->>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
 
     # Domain APIs
     path("api/accounts/", include("apps.accounts.urls")),

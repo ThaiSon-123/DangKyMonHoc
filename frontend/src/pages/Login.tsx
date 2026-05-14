@@ -4,10 +4,7 @@ import { fetchCurrentUser, login } from "@/api/auth";
 import { useAuthStore } from "@/stores/auth";
 import Icon, { type IconName } from "@/components/ui/Icon";
 import Button from "@/components/ui/Button";
-<<<<<<< HEAD
 import { extractApiError } from "@/lib/errors";
-=======
->>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
 
 type Portal = "student" | "teacher" | "admin";
 

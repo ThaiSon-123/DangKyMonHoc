@@ -14,12 +14,9 @@ import CurriculumsPage from "@/pages/admin/CurriculumsPage";
 import CurriculumDetailPage from "@/pages/admin/CurriculumDetailPage";
 import ClassesPage from "@/pages/admin/ClassesPage";
 import ClassDetailPage from "@/pages/admin/ClassDetailPage";
-<<<<<<< HEAD
 import AccountsPage from "@/pages/admin/AccountsPage";
 import RegistrationsPage from "@/pages/admin/RegistrationsPage";
 import NotificationsPage from "@/pages/admin/NotificationsPage";
-=======
->>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import { useAuthStore } from "@/stores/auth";
 import type { IconName } from "@/components/ui/Icon";
@@ -41,14 +38,7 @@ interface PlaceholderRoute {
 }
 
 const ADMIN_ROUTES: PlaceholderRoute[] = [
-<<<<<<< HEAD
   { path: "reports", title: "Báo cáo & thống kê", description: "Thống kê đăng ký theo môn, theo ngành, lớp đầy / còn chỗ.", frId: "FR-ADM-RPT", icon: "chart" },
-=======
-  { path: "accounts", title: "Quản lý tài khoản", description: "Tạo / cập nhật / khoá tài khoản Sinh viên và Giáo viên.", frId: "FR-ADM-ACC", icon: "users" },
-  { path: "registrations", title: "Quản lý đăng ký", description: "Mở / đóng đợt đăng ký, theo dõi sĩ số, phê duyệt yêu cầu.", frId: "FR-ADM-REG", icon: "doc" },
-  { path: "reports", title: "Báo cáo & thống kê", description: "Thống kê đăng ký theo môn, theo ngành, lớp đầy / còn chỗ.", frId: "FR-ADM-RPT", icon: "chart" },
-  { path: "notifications", title: "Gửi thông báo", description: "Gửi thông báo cho Sinh viên và Giáo viên.", frId: "FR-ADM-NOT", icon: "megaphone" },
->>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
   { path: "settings", title: "Cấu hình hệ thống", description: "Giới hạn tín chỉ, thời hạn hủy đăng ký, quy tắc nghiệp vụ.", icon: "settings" },
 ];
 
@@ -108,12 +98,9 @@ export default function App() {
 
           <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
             <Route path="/admin" element={<AdminDashboard />} />
-<<<<<<< HEAD
             <Route path="/admin/accounts" element={<AccountsPage />} />
             <Route path="/admin/registrations" element={<RegistrationsPage />} />
             <Route path="/admin/notifications" element={<NotificationsPage />} />
-=======
->>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
             <Route path="/admin/majors" element={<MajorsPage />} />
             <Route path="/admin/courses" element={<CoursesPage />} />
             <Route path="/admin/semesters" element={<SemestersPage />} />

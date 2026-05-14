@@ -15,7 +15,6 @@ class CourseViewSet(HandleProtectedDeleteMixin, viewsets.ModelViewSet):
     ordering_fields = ["code", "name", "credits"]
     object_label_singular = "môn học"
 
-<<<<<<< HEAD
     def get_queryset(self):
         qs = super().get_queryset()
         department = self.request.query_params.get("department")
@@ -29,8 +28,6 @@ class CourseViewSet(HandleProtectedDeleteMixin, viewsets.ModelViewSet):
             qs = qs.filter(curriculum_links__curriculum_id=curriculum)
         return qs.distinct()
 
-=======
->>>>>>> 1f46ee961aae46de3dde0ef63ebc43bccbea96d6
 
 class PrerequisiteViewSet(viewsets.ModelViewSet):
     queryset = Prerequisite.objects.select_related("course", "required_course")
