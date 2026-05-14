@@ -18,7 +18,7 @@ class ClassSectionViewSet(viewsets.ModelViewSet):
     serializer_class = ClassSectionSerializer
     permission_classes = [IsAdminOrReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["code", "course__code", "course__name"]
+    search_fields = ["code", "course__code", "course__name", "schedules__room"]
     ordering_fields = ["code", "enrolled_count", "max_students"]
 
     def get_queryset(self):
@@ -28,7 +28,13 @@ class ClassSectionViewSet(viewsets.ModelViewSet):
             value = params.get(field)
             if value:
                 qs = qs.filter(**{f"{field}{'_id' if field != 'status' else ''}": value})
-        return qs
+        department = params.get("department")
+        if department:
+            qs = qs.filter(course__curriculum_links__curriculum__major__department=department)
+        major = params.get("major")
+        if major:
+            qs = qs.filter(course__curriculum_links__curriculum__major_id=major)
+        return qs.distinct()
 
     @action(
         detail=True,

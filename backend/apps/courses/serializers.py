@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 from .models import Course, Prerequisite
 
 
@@ -13,6 +14,14 @@ class PrerequisiteSerializer(serializers.ModelSerializer):
 
 
 class CourseSerializer(serializers.ModelSerializer):
+    code = serializers.CharField(
+        validators=[
+            UniqueValidator(
+                queryset=Course.objects.all(),
+                message="Mã môn học đã tồn tại",
+            )
+        ]
+    )
     prerequisites_detail = PrerequisiteSerializer(source="prerequisite_links", many=True, read_only=True)
     prerequisite_ids = serializers.PrimaryKeyRelatedField(
         queryset=Course.objects.all(),

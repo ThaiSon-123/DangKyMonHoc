@@ -44,6 +44,7 @@ export type NotificationInput = {
 
 export async function listNotifications(params?: {
   search?: string;
+  unread?: boolean;
   page?: number;
   page_size?: number;
 }): Promise<Paginated<Notification>> {

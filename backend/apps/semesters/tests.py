@@ -65,3 +65,36 @@ def test_admin_can_set_registration_window_before_semester_start(admin_user):
     )
 
     assert res.status_code == 201, res.data
+
+
+def test_semester_duplicate_code_returns_plain_admin_message(admin_user, open_semester):
+    client = APIClient()
+    client.force_authenticate(admin_user)
+
+    res = client.post(
+        "/api/semesters/",
+        {
+            "code": open_semester.code,
+            "name": "Duplicate",
+            "term": Semester.Term.HK1,
+            "academic_year": "2026-2027",
+            "start_date": open_semester.start_date.isoformat(),
+            "end_date": open_semester.end_date.isoformat(),
+        },
+        format="json",
+    )
+
+    assert res.status_code == 400
+    assert res.data["code"] == ["Mã học kỳ đã tồn tại."]
+
+
+def test_summer_term_displays_as_hoc_ky_3(admin_user, open_semester):
+    open_semester.term = Semester.Term.SUMMER
+    open_semester.save(update_fields=["term"])
+    client = APIClient()
+    client.force_authenticate(admin_user)
+
+    res = client.get(f"/api/semesters/{open_semester.id}/")
+
+    assert res.status_code == 200
+    assert res.data["term_display"] == "Học kỳ 3"

@@ -33,6 +33,8 @@ export async function listRegistrations(params?: {
   semester?: number;
   class_section?: number;
   student?: number;
+  department?: string;
+  major?: number;
   status?: RegistrationStatus;
   page?: number;
   page_size?: number;

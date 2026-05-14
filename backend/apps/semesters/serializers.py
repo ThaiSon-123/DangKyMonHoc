@@ -1,8 +1,17 @@
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 from .models import Semester
 
 
 class SemesterSerializer(serializers.ModelSerializer):
+    code = serializers.CharField(
+        validators=[
+            UniqueValidator(
+                queryset=Semester.objects.all(),
+                message="Mã học kỳ đã tồn tại.",
+            )
+        ]
+    )
     term_display = serializers.CharField(source="get_term_display", read_only=True)
 
     class Meta:

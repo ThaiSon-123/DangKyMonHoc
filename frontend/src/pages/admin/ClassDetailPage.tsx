@@ -264,8 +264,10 @@ export default function ClassDetailPage() {
           icon="clock"
         />
         <Stat
-          label="Số buổi / tuần"
-          value={data.schedules.length}
+          label="Phòng học"
+          value={
+            Array.from(new Set(data.schedules.map((schedule) => schedule.room).filter(Boolean))).join(", ") || "—"
+          }
           icon="calendar"
         />
         <Stat label="Số tín chỉ" value={data.course_credits} icon="book" />

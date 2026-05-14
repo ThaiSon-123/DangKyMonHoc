@@ -13,7 +13,7 @@ from .serializers import RegistrationSerializer
 
 class RegistrationViewSet(viewsets.ModelViewSet):
     queryset = Registration.objects.select_related(
-        "student__user", "class_section__course", "semester"
+        "student__user", "student__major", "class_section__course", "semester"
     ).prefetch_related("class_section__schedules")
     serializer_class = RegistrationSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -33,6 +33,12 @@ class RegistrationViewSet(viewsets.ModelViewSet):
             if value:
                 key = f"{field}{'_id' if field != 'status' else ''}"
                 qs = qs.filter(**{key: value})
+        department = params.get("department")
+        if department:
+            qs = qs.filter(student__major__department=department)
+        major = params.get("major")
+        if major:
+            qs = qs.filter(student__major_id=major)
         return qs
 
     # ---------- BR-006: thời hạn hủy đăng ký ----------

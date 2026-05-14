@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Badge, Button, Card, Modal, Pagination, Table, type Column } from "@/components/ui";
 import Icon from "@/components/ui/Icon";
 import {
@@ -27,6 +27,8 @@ export default function MajorsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
+  const [allMajors, setAllMajors] = useState<Major[]>([]);
+  const [filterDepartment, setFilterDepartment] = useState("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +47,7 @@ export default function MajorsPage() {
     try {
       const data = await listMajors({
         search: appliedSearch || undefined,
+        department: filterDepartment || undefined,
         page,
       });
       setItems(data.results);
@@ -54,11 +57,26 @@ export default function MajorsPage() {
     } finally {
       setLoading(false);
     }
-  }, [appliedSearch, page]);
+  }, [appliedSearch, filterDepartment, page]);
+
+  const departments = useMemo(
+    () => Array.from(new Set(allMajors.map((m) => m.department).filter(Boolean))).sort(),
+    [allMajors],
+  );
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    let active = true;
+    listMajors({ page_size: 1000 }).then((data) => {
+      if (active) setAllMajors(data.results);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function applySearch() {
     setPage(1);
@@ -166,10 +184,6 @@ export default function MajorsPage() {
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">
             Ngành đào tạo
           </h1>
-          <p className="mt-1 text-[13.5px] text-ink-muted">
-            Quản lý các ngành đào tạo (CNTT, KTPM, HTTT…) — gắn vào chương trình đào tạo và hồ sơ
-            sinh viên.
-          </p>
         </div>
         <Button variant="primary" icon="plus" onClick={openCreate}>
           Thêm ngành
@@ -177,7 +191,7 @@ export default function MajorsPage() {
       </div>
 
       <Card>
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface border border-line w-72">
             <Icon name="search" size={15} className="text-ink-faint" />
             <input
@@ -190,16 +204,32 @@ export default function MajorsPage() {
               className="flex-1 bg-transparent outline-none text-[13px] min-w-0"
             />
           </div>
+          <select
+            value={filterDepartment}
+            onChange={(e) => {
+              setFilterDepartment(e.target.value);
+              setPage(1);
+            }}
+            className="px-3 py-1.5 rounded-md bg-surface border border-line text-[13px]"
+          >
+            <option value="">Tất cả khoa</option>
+            {departments.map((department) => (
+              <option key={department} value={department}>
+                {department}
+              </option>
+            ))}
+          </select>
           <Button variant="secondary" size="md" onClick={applySearch}>
             Tìm
           </Button>
-          {appliedSearch && (
+          {(appliedSearch || filterDepartment) && (
             <Button
               variant="ghost"
               size="md"
               onClick={() => {
                 setSearch("");
                 setAppliedSearch("");
+                setFilterDepartment("");
                 setPage(1);
               }}
             >

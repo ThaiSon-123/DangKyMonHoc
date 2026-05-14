@@ -28,6 +28,8 @@ export async function listUsers(params?: {
   search?: string;
   role?: Role;
   is_locked?: boolean;
+  department?: string;
+  major?: number;
   page?: number;
   page_size?: number;
 }): Promise<Paginated<User>> {
@@ -36,6 +38,8 @@ export async function listUsers(params?: {
   if (params?.search) queryParams.search = params.search;
   if (params?.role) queryParams.role = params.role;
   if (params?.is_locked !== undefined) queryParams.is_locked = String(params.is_locked);
+  if (params?.department) queryParams.department = params.department;
+  if (params?.major) queryParams.major = params.major;
   if (params?.page) queryParams.page = params.page;
   if (params?.page_size) queryParams.page_size = params.page_size;
   const res = await api.get<Paginated<User>>("/accounts/users/", { params: queryParams });

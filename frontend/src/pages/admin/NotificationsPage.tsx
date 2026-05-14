@@ -254,10 +254,6 @@ export default function NotificationsPage() {
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">
             Gửi thông báo
           </h1>
-          <p className="mt-1 text-[13.5px] text-ink-muted">
-            Gửi thông báo cho toàn bộ Sinh viên / Giáo viên hoặc danh sách cụ thể. Người nhận xem
-            ở dashboard của họ.
-          </p>
         </div>
         <Button variant="primary" icon="megaphone" onClick={openCreate}>
           Soạn thông báo

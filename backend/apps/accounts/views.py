@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from rest_framework import filters, permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -47,7 +48,16 @@ class UserViewSet(HandleProtectedDeleteMixin, viewsets.ModelViewSet):
         is_locked = self.request.query_params.get("is_locked")
         if is_locked is not None:
             qs = qs.filter(is_locked=is_locked.lower() in ("true", "1"))
-        return qs
+        department = self.request.query_params.get("department")
+        if department:
+            qs = qs.filter(
+                Q(student_profile__major__department=department)
+                | Q(teacher_profile__department=department)
+            )
+        major = self.request.query_params.get("major")
+        if major:
+            qs = qs.filter(student_profile__major_id=major)
+        return qs.distinct()
 
     def perform_update(self, serializer):
         """Chặn đổi role thành ADMIN qua API (FR-ADM-ACC-006)."""

@@ -288,9 +288,6 @@ export default function CoursesPage() {
       <div className="flex items-start gap-4">
         <div className="flex-1">
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">Môn học</h1>
-          <p className="mt-1 text-[13.5px] text-ink-muted">
-            Quản lý môn học, số tín chỉ, tiết lý thuyết / thực hành và môn tiên quyết.
-          </p>
         </div>
         <Button variant="primary" icon="plus" onClick={openCreate}>
           Thêm môn

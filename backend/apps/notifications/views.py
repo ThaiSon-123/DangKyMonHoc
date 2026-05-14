@@ -25,6 +25,13 @@ class NotificationViewSet(viewsets.ModelViewSet):
         user = self.request.user
         role = getattr(user, "role", None)
         if role == "ADMIN":
+            unread = self.request.query_params.get("unread")
+            if unread and unread.lower() in ("true", "1"):
+                read_ids = NotificationRead.objects.filter(user=user).values_list(
+                    "notification_id",
+                    flat=True,
+                )
+                qs = qs.exclude(id__in=read_ids)
             return qs
         # SV/GV thấy noti gửi cho audience phù hợp, đích danh, hoặc do chính mình gửi
         audience_match = Q(audience="ALL")
@@ -32,9 +39,17 @@ class NotificationViewSet(viewsets.ModelViewSet):
             audience_match |= Q(audience="ALL_STUDENTS")
         elif role == "TEACHER":
             audience_match |= Q(audience="ALL_TEACHERS")
-        return qs.filter(
+        qs = qs.filter(
             audience_match | Q(recipients=user) | Q(sender=user)
         ).distinct()
+        unread = self.request.query_params.get("unread")
+        if unread and unread.lower() in ("true", "1"):
+            read_ids = NotificationRead.objects.filter(user=user).values_list(
+                "notification_id",
+                flat=True,
+            )
+            qs = qs.exclude(id__in=read_ids)
+        return qs
 
     def get_serializer_context(self):
         ctx = super().get_serializer_context()

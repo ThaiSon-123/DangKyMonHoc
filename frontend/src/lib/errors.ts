@@ -73,6 +73,9 @@ function formatFieldMessage(key: string, rawMessages: unknown[]): string[] {
     if (key === "registration_end" && lower.startsWith("phải sau")) {
       return `${label} phải sau thời gian bắt đầu đăng ký.`;
     }
+    if (key === "code" && (message === "Mã môn học đã tồn tại" || message === "Mã học kỳ đã tồn tại.")) {
+      return message;
+    }
     if (
       lower.includes(label.toLowerCase())
       || lower.includes("giáo viên")

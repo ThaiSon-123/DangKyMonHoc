@@ -197,9 +197,6 @@ export default function CurriculumsPage() {
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">
             Chương trình đào tạo
           </h1>
-          <p className="mt-1 text-[13.5px] text-ink-muted">
-            Quản lý CTĐT theo ngành và khóa. Click vào tên để vào trang chi tiết quản lý môn học.
-          </p>
         </div>
         <Button variant="primary" icon="plus" onClick={openCreate}>
           Thêm CTĐT

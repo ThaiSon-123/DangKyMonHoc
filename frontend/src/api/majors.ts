@@ -7,6 +7,7 @@ export type MajorInput = Pick<
 
 export async function listMajors(params?: {
   search?: string;
+  department?: string;
   page?: number;
   page_size?: number;
 }): Promise<Paginated<Major>> {

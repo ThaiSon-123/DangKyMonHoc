@@ -5,6 +5,8 @@ from rest_framework.test import APIClient
 
 from apps.accounts.models import Role, User
 from apps.classes.models import ClassSection, Schedule
+from apps.curriculums.models import Curriculum, CurriculumCourse
+from apps.majors.models import Major
 from apps.notifications.models import Notification
 from apps.profiles.models import TeacherProfile
 from apps.registrations.models import Registration
@@ -369,3 +371,47 @@ def test_admin_update_class_with_invalid_primary_schedule_rolls_back_class(
     assert "teacher" in res.data
     target.refresh_from_db()
     assert target.note == "before"
+
+
+def test_admin_can_filter_classes_by_teacher_department_major_and_room(
+    admin_user, open_semester, teacher_profile, course_factory
+):
+    client = _admin_api(admin_user)
+    cntt = Major.objects.create(code="CNTTCLS", name="Cong nghe thong tin", department="Khoa CNTT")
+    kt = Major.objects.create(code="KTCLS", name="Kinh te", department="Khoa Kinh te")
+    cntt_curriculum = Curriculum.objects.create(
+        major=cntt,
+        code="CNTTCLS-2026",
+        name="CTDT CNTT 2026",
+        cohort_year=2026,
+    )
+    kt_curriculum = Curriculum.objects.create(
+        major=kt,
+        code="KTCLS-2026",
+        name="CTDT KT 2026",
+        cohort_year=2026,
+    )
+    cntt_course = course_factory(code="CLS101")
+    kt_course = course_factory(code="CLS102")
+    CurriculumCourse.objects.create(curriculum=cntt_curriculum, course=cntt_course)
+    CurriculumCourse.objects.create(curriculum=kt_curriculum, course=kt_course)
+    kt_teacher_user = User.objects.create_user(username="gv_cls_kt", password="pass", role=Role.TEACHER)
+    kt_teacher = TeacherProfile.objects.create(
+        user=kt_teacher_user,
+        teacher_code="GV-CLS-KT",
+        department="Khoa Kinh te",
+    )
+    cntt_class = _class_section(cntt_course, open_semester, teacher_profile, "CLS101.01")
+    kt_class = _class_section(kt_course, open_semester, kt_teacher, "CLS102.01")
+    Schedule.objects.create(class_section=cntt_class, weekday=0, session=Schedule.Session.MORNING, start_period=1, room="A1.01")
+    Schedule.objects.create(class_section=kt_class, weekday=1, session=Schedule.Session.MORNING, start_period=1, room="B2.02")
+
+    by_teacher = client.get("/api/class-sections/", {"teacher": teacher_profile.id})
+    by_department = client.get("/api/class-sections/", {"department": "Khoa CNTT"})
+    by_major = client.get("/api/class-sections/", {"major": cntt.id})
+    by_room_search = client.get("/api/class-sections/", {"search": "A1.01"})
+
+    assert [c["code"] for c in by_teacher.data["results"]] == ["CLS101.01"]
+    assert [c["code"] for c in by_department.data["results"]] == ["CLS101.01"]
+    assert [c["code"] for c in by_major.data["results"]] == ["CLS101.01"]
+    assert [c["code"] for c in by_room_search.data["results"]] == ["CLS101.01"]

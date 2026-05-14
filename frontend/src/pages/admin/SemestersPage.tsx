@@ -17,7 +17,7 @@ import type { Semester, SemesterTerm } from "@/types/domain";
 const TERM_OPTIONS: { value: SemesterTerm; label: string }[] = [
   { value: 1, label: "Học kỳ 1" },
   { value: 2, label: "Học kỳ 2" },
-  { value: 3, label: "Học kỳ hè" },
+  { value: 3, label: "Học kỳ 3" },
 ];
 
 const EMPTY: SemesterInput = {
@@ -209,9 +209,6 @@ export default function SemestersPage() {
       <div className="flex items-start gap-4">
         <div className="flex-1">
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">Học kỳ</h1>
-          <p className="mt-1 text-[13.5px] text-ink-muted">
-            Tạo học kỳ, cấu hình thời gian đăng ký, mở / đóng đợt đăng ký môn học.
-          </p>
         </div>
         <Button variant="primary" icon="plus" onClick={openCreate}>
           Thêm học kỳ

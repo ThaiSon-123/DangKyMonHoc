@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Button, Card, Modal, Pagination, Stat, Table, type Column } from "@/components/ui";
 import Icon from "@/components/ui/Icon";
 import {
@@ -11,9 +11,10 @@ import {
 } from "@/api/registrations";
 import { listSemesters } from "@/api/semesters";
 import { listClassSections } from "@/api/classes";
+import { listMajors } from "@/api/majors";
 import { extractApiError } from "@/lib/errors";
 import { PAGE_SIZE } from "@/lib/constants";
-import type { ClassSection, Semester } from "@/types/domain";
+import type { ClassSection, Major, Semester } from "@/types/domain";
 
 const STATUS_TONE: Record<RegistrationStatus, "neutral" | "success" | "warn" | "danger"> = {
   PENDING: "warn",
@@ -25,6 +26,7 @@ export default function RegistrationsPage() {
   const [items, setItems] = useState<Registration[]>([]);
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [classes, setClasses] = useState<ClassSection[]>([]);
+  const [majors, setMajors] = useState<Major[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
@@ -32,6 +34,8 @@ export default function RegistrationsPage() {
   const [filterSemester, setFilterSemester] = useState<number | "">("");
   const [filterStatus, setFilterStatus] = useState<RegistrationStatus | "">("");
   const [filterClass, setFilterClass] = useState<number | "">("");
+  const [filterDepartment, setFilterDepartment] = useState("");
+  const [filterMajor, setFilterMajor] = useState<number | "">("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +54,8 @@ export default function RegistrationsPage() {
       if (filterSemester) params.semester = filterSemester;
       if (filterStatus) params.status = filterStatus;
       if (filterClass) params.class_section = filterClass;
+      if (filterDepartment) params.department = filterDepartment;
+      if (filterMajor) params.major = filterMajor;
       const data = await listRegistrations(params);
       setItems(data.results);
       setTotal(data.count);
@@ -58,11 +64,25 @@ export default function RegistrationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [appliedSearch, filterSemester, filterStatus, filterClass, page]);
+  }, [appliedSearch, filterClass, filterDepartment, filterMajor, filterSemester, filterStatus, page]);
+
+  const departments = useMemo(
+    () => Array.from(new Set(majors.map((m) => m.department).filter(Boolean))).sort(),
+    [majors],
+  );
+
+  const filteredMajors = useMemo(
+    () =>
+      filterDepartment
+        ? majors.filter((m) => m.department === filterDepartment)
+        : majors,
+    [filterDepartment, majors],
+  );
 
   useEffect(() => {
     listSemesters({ page_size: 1000 }).then((r) => setSemesters(r.results));
     listClassSections({ page_size: 1000 }).then((r) => setClasses(r.results));
+    listMajors({ page_size: 1000 }).then((r) => setMajors(r.results));
   }, []);
 
   useEffect(() => {
@@ -80,6 +100,8 @@ export default function RegistrationsPage() {
     setFilterSemester("");
     setFilterStatus("");
     setFilterClass("");
+    setFilterDepartment("");
+    setFilterMajor("");
     setPage(1);
   }
 
@@ -194,10 +216,6 @@ export default function RegistrationsPage() {
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">
             Quản lý đăng ký môn học
           </h1>
-          <p className="mt-1 text-[13.5px] text-ink-muted">
-            Theo dõi đăng ký theo học kỳ / lớp / trạng thái. Có thể huỷ thay sinh viên hoặc xoá
-            bản ghi sai (không có ràng buộc nghiệp vụ).
-          </p>
         </div>
       </div>
 
@@ -253,6 +271,37 @@ export default function RegistrationsPage() {
             ))}
           </select>
           <select
+            value={filterDepartment}
+            onChange={(e) => {
+              setFilterDepartment(e.target.value);
+              setFilterMajor("");
+              setPage(1);
+            }}
+            className="px-3 py-1.5 rounded-md bg-surface border border-line text-[13px]"
+          >
+            <option value="">Tất cả khoa</option>
+            {departments.map((department) => (
+              <option key={department} value={department}>
+                {department}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterMajor}
+            onChange={(e) => {
+              setFilterMajor(e.target.value === "" ? "" : Number(e.target.value));
+              setPage(1);
+            }}
+            className="px-3 py-1.5 rounded-md bg-surface border border-line text-[13px] max-w-[220px]"
+          >
+            <option value="">Tất cả ngành</option>
+            {filteredMajors.map((major) => (
+              <option key={major.id} value={major.id}>
+                {major.code} - {major.name}
+              </option>
+            ))}
+          </select>
+          <select
             value={filterStatus}
             onChange={(e) => {
               setFilterStatus(e.target.value as RegistrationStatus | "");
@@ -268,7 +317,12 @@ export default function RegistrationsPage() {
             ))}
           </select>
           <Button onClick={applyFilters}>Tìm</Button>
-          {(appliedSearch || filterSemester || filterClass || filterStatus) && (
+          {(appliedSearch ||
+            filterSemester ||
+            filterClass ||
+            filterDepartment ||
+            filterMajor ||
+            filterStatus) && (
             <Button variant="ghost" onClick={clearFilters}>
               Xoá filter
             </Button>
