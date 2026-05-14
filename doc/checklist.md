@@ -605,17 +605,20 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 | Hạ tầng (mục 0) | 95% | Còn ERD diagram + README root |
 | Backend models (1.1) | 100% | 15 entity đầy đủ, migration OK, đã có seed scripts |
 | Backend Admin API (1.2 – 1.3) | ~90% | Còn Reports + nút export CSV/Excel |
-| Backend SV/GV API (1.4 – 1.5) | ~55% | Cơ bản qua các ViewSet chung; còn TKB algorithm + endpoint aggregate |
+| Backend SV/GV API (1.4 – 1.5) | ~70% | Cơ bản qua các ViewSet + `/curriculums/my/`, `/students/me/`, `/notifications/mark-read/`, etc. |
 | Backend BR (1.6) | 100% | Tất cả 11 BR đã wire + 33 tests pass |
-| Backend testing (1.7) | 50% | Có 33 tests (BR + accounts + courses + majors); còn auth/algorithm tests |
-| Frontend foundation (2.1) | 95% | Còn toast, confirm dialog, skeleton loader |
-| Frontend admin (2.2) | ~85% | **8/10 module** xong (Accounts, Majors, Courses, Semesters, Curriculum, Classes, Registrations, Notifications); còn Reports, Settings |
-| Frontend student (2.3) | ~85% | **5/6** module xong (Chương trình đào tạo, Thông báo, Hồ sơ, **Đăng ký môn**, **TKB**, **Lịch sử**); còn Auto TKB (phức tạp, defer) |
-| Frontend teacher (2.4) | 0% | Chỉ placeholder |
+| Backend testing (1.7) | 50% | 33 tests (BR + accounts + courses + majors); còn auth/algorithm tests |
+| Frontend foundation (2.1) | 95% | Có ScheduleGrid mới. Còn toast, confirm dialog, skeleton loader |
+| Frontend admin (2.2) | ~80% | **8/10 module** xong; còn Reports, Settings |
+| Frontend student (2.3) | ~85% | **5/6 module** xong (Curriculum, Đăng ký, TKB, Lịch sử, Thông báo, Hồ sơ); chỉ thiếu **Auto TKB** (defer) |
+| Frontend teacher (2.4) | 0% | Chỉ placeholder — chưa bắt đầu |
 | Frontend testing (2.5) | 0% | Chưa setup Vitest |
 
-### 8 module Admin UI đã DONE
+**Tổng cộng**: 305 mục đã làm `[x]` / 82 mục chưa làm `[ ]` (387 items)
 
+### Modules UI hoàn thành
+
+**Admin — 8/10 module:**
 1. ✅ Tài khoản (`/admin/accounts`) — CRUD + lock/unlock + role validation
 2. ✅ Ngành đào tạo (`/admin/majors`)
 3. ✅ Chương trình đào tạo (`/admin/curriculum` + detail) — kèm import xlsx
@@ -624,14 +627,33 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 6. ✅ Lớp học phần (`/admin/classes` + detail) — schedule management
 7. ✅ Quản lý đăng ký (`/admin/registrations`) — filter + cancel + delete
 8. ✅ Gửi thông báo (`/admin/notifications`) — soạn + audience SPECIFIC autocomplete
+- ⬜ Báo cáo (`/admin/reports`) — chưa làm
+- ⬜ Cấu hình (`/admin/settings`) — chưa làm
+
+**Sinh viên — 5/6 module:**
+1. ✅ Chương trình đào tạo (`/student/curriculum`) — auto match theo major + cohort
+2. ✅ Đăng ký môn học (`/student/register`) — wire BR-002 → BR-006
+3. ✅ Thời khóa biểu (`/student/schedule`) — grid 7×15 với 8 màu
+4. ✅ Lịch sử đăng ký (`/student/history`) — filter + cancel
+5. ✅ Thông báo (`/student/notifications`) — mark-read + autocomplete
+6. ✅ Hồ sơ cá nhân (`/student/profile`)
+- ⏸ Tạo TKB tự động (`/student/auto`) — defer
+
+**Giáo viên — 0/5 module:**
+- ⬜ Lịch dạy (`/teacher/schedule`)
+- ⬜ Lớp phụ trách (`/teacher/classes`)
+- ⬜ Nhập điểm (`/teacher/grades`)
+- ⬜ Thông báo (`/teacher/notifications`)
+- ⬜ Hồ sơ (`/teacher/profile`)
 
 ### Bước tiếp theo khuyến nghị
 
-1. **Sinh viên: Đăng ký môn học** (`/student/register`) — wire toàn bộ flow BR-002 → BR-006
-2. **Giáo viên: Nhập điểm** (`/teacher/grades`) — flow nhập điểm + auto-compute hiển thị ngay
-3. **TKB grid view** — UI 7 ngày × 15 tiết cho cả SV và GV
-4. **Reports** (`/admin/reports`) — thống kê SV theo môn / ngành / lớp đầy
-5. **TKB algorithm** — module phức tạp nhất, để sau khi UI cơ bản đã chạy
+1. **Giáo viên: Lớp phụ trách** (`/teacher/classes`) — list lớp + DS sinh viên trong lớp
+2. **Giáo viên: TKB cá nhân** (`/teacher/schedule`) — dùng lại `ScheduleGrid` component
+3. **Giáo viên: Nhập điểm** (`/teacher/grades`) — flow nhập điểm + auto-compute hiển thị `total_score`, `grade_letter`, `gpa_4`
+4. **Giáo viên: Thông báo + Hồ sơ** — pattern giống Student
+5. **Admin: Reports** (`/admin/reports`) — thống kê SV theo môn / ngành / lớp đầy
+6. **Auto TKB** (`/student/auto`) — module phức tạp với thuật toán search tổ hợp, để sau cùng
 
 ---
 
@@ -667,3 +689,10 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - Restore 38 file từ commit `02941a3` (chứa AccountsPage + RegistrationsPage + NotificationsPage + LockedAware auth)
 - Resolve 15 file có git merge conflict markers
 - 33/33 tests pass, push thành công
+
+### Phase 7 — Student UI modules (mục 2.3)
+
+- 5/6 module DONE: Chương trình đào tạo, Thông báo, Hồ sơ, Đăng ký môn học, Thời khóa biểu, Lịch sử đăng ký
+- Backend mới: `GET /curriculums/my/`, `GET /students/me/`, `GET /teachers/me/`, `POST /notifications/{id}/mark-read/`, `POST /notifications/mark-all-read/`, `GET /notifications/unread-count/`
+- Component mới: `ScheduleGrid` (7 ngày × 15 tiết, 8 màu, click event, BR-010 session boundaries)
+- Module **Auto TKB** defer vì cần thuật toán search tổ hợp lớp HP phức tạp
