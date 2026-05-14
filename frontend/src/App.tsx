@@ -17,6 +17,12 @@ import ClassDetailPage from "@/pages/admin/ClassDetailPage";
 import AccountsPage from "@/pages/admin/AccountsPage";
 import RegistrationsPage from "@/pages/admin/RegistrationsPage";
 import NotificationsPage from "@/pages/admin/NotificationsPage";
+import StudentCurriculumPage from "@/pages/student/CurriculumPage";
+import StudentNotificationsPage from "@/pages/student/NotificationsPage";
+import StudentProfilePage from "@/pages/student/ProfilePage";
+import StudentRegisterPage from "@/pages/student/RegisterPage";
+import StudentSchedulePage from "@/pages/student/SchedulePage";
+import StudentHistoryPage from "@/pages/student/HistoryPage";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import { useAuthStore } from "@/stores/auth";
 import type { IconName } from "@/components/ui/Icon";
@@ -43,13 +49,7 @@ const ADMIN_ROUTES: PlaceholderRoute[] = [
 ];
 
 const STUDENT_ROUTES: PlaceholderRoute[] = [
-  { path: "register", title: "Đăng ký môn học", description: "Chọn môn, chọn lớp, chọn giáo viên / ngày học mong muốn.", frId: "FR-STU-REG", icon: "plus" },
   { path: "auto", title: "Tạo TKB tự động", description: "Hệ thống đề xuất nhiều phương án TKB theo ưu tiên của bạn.", frId: "FR-STU-TKB", icon: "sparkle" },
-  { path: "schedule", title: "Thời khóa biểu", description: "Xem TKB theo tuần / học kỳ, xuất file.", frId: "FR-STU-SCH", icon: "calendar" },
-  { path: "curriculum", title: "Chương trình đào tạo", description: "Xem chương trình ngành, tiến độ hoàn thành.", frId: "FR-STU-CUR", icon: "layers" },
-  { path: "history", title: "Lịch sử đăng ký", description: "Các môn đã đăng ký trong các học kỳ trước.", frId: "FR-STU-HIS", icon: "clock" },
-  { path: "notifications", title: "Thông báo", description: "Thông báo mở / đóng đăng ký, đổi lịch, lớp hủy.", frId: "FR-STU-NOT", icon: "bell" },
-  { path: "profile", title: "Hồ sơ cá nhân", description: "Thông tin cá nhân, đổi mật khẩu, liên hệ.", frId: "FR-STU-INF", icon: "user" },
 ];
 
 const TEACHER_ROUTES: PlaceholderRoute[] = [
@@ -119,6 +119,12 @@ export default function App() {
 
           <Route element={<ProtectedRoute allowedRoles={["STUDENT"]} />}>
             <Route path="/student" element={<StudentDashboard />} />
+            <Route path="/student/curriculum" element={<StudentCurriculumPage />} />
+            <Route path="/student/notifications" element={<StudentNotificationsPage />} />
+            <Route path="/student/profile" element={<StudentProfilePage />} />
+            <Route path="/student/register" element={<StudentRegisterPage />} />
+            <Route path="/student/schedule" element={<StudentSchedulePage />} />
+            <Route path="/student/history" element={<StudentHistoryPage />} />
             {STUDENT_ROUTES.map((r) => (
               <Route
                 key={r.path}

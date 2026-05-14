@@ -31,6 +31,7 @@ export interface Notification {
   sender_username: string | null;
   recipients: number[];
   created_at: string;
+  is_read?: boolean;
 }
 
 export type NotificationInput = {
@@ -59,4 +60,18 @@ export async function createNotification(
 
 export async function deleteNotification(id: number): Promise<void> {
   await api.delete(`/notifications/${id}/`);
+}
+
+export async function markNotificationRead(id: number): Promise<void> {
+  await api.post(`/notifications/${id}/mark-read/`);
+}
+
+export async function markAllNotificationsRead(): Promise<{ marked: number }> {
+  const res = await api.post<{ marked: number }>("/notifications/mark-all-read/");
+  return res.data;
+}
+
+export async function getUnreadCount(): Promise<number> {
+  const res = await api.get<{ unread: number }>("/notifications/unread-count/");
+  return res.data.unread;
 }

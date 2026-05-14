@@ -185,10 +185,10 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 ### 1.4.1. Xem thông tin học tập (FR-STU-INF, FR-STU-CUR)
 
 - [x] FR-STU-INF-001 - API thông tin cá nhân SV (`/me` + `StudentProfile`)
-- [ ] FR-STU-CUR-001 - API xem chương trình đào tạo của ngành mình
-- [ ] FR-STU-CUR-002 - API xem danh sách môn theo ngành
-- [ ] FR-STU-CUR-003 - Trả về flag bắt buộc / tự chọn
-- [ ] FR-STU-CUR-004 - API tính tiến độ hoàn thành CTĐT (SHOULD)
+- [x] FR-STU-CUR-001 - `GET /api/curriculums/my/` — auto match CTĐT theo `major` + `enrollment_year` của SV (fallback cohort gần nhất)
+- [x] FR-STU-CUR-002 - API trả danh sách môn trong CTĐT (qua nested `curriculum_courses`)
+- [x] FR-STU-CUR-003 - Trả về flag `is_required` (bắt buộc / tự chọn)
+- [ ] FR-STU-CUR-004 - API tính tiến độ hoàn thành CTĐT — cần aggregate với Registration + Grade (SHOULD)
 
 ### 1.4.2. Xem môn học được đăng ký (FR-STU-CRS)
 
@@ -226,6 +226,12 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [ ] FR-STU-NOT-002 - Sinh notification khi lịch học thay đổi
 - [ ] FR-STU-NOT-003 - Sinh notification khi lớp bị hủy
 - [x] FR-STU-NOT-004 - API list notifications của user (filter theo audience)
+- [x] API `POST /notifications/{id}/mark-read/` — đánh dấu đã đọc
+- [x] API `POST /notifications/mark-all-read/` — đánh dấu đọc tất cả
+- [x] API `GET /notifications/unread-count/` — số chưa đọc cho badge
+- [x] Field `is_read` trong NotificationSerializer (computed per user)
+- [x] API `GET /students/me/` — SV xem hồ sơ cá nhân
+- [x] API `GET /teachers/me/` — GV xem hồ sơ cá nhân
 
 ## 1.5. Teacher domain APIs
 
@@ -298,9 +304,10 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [x] **Routing đầy đủ** — toàn bộ nav trong sidebar đều ấn được
 - [x] **Modal** component (ESC + backdrop click + 3 size)
 - [x] **Table** component (typed `Column<T>`, mono cells, empty state, loading)
-- [x] **Pagination** component (Previous/Next + page numbers + range info, wired vào 6 list page)
+- [x] **Pagination** component (Previous/Next + page numbers + range info, wired vào 8 list page)
+- [x] **ScheduleGrid** component — grid 7 ngày × 15 tiết, 8 màu, click event, session boundaries
 - [x] **`extractApiError`** util — đọc lỗi DRF
-- [x] **API services typed** (`users`, `majors`, `courses`, `semesters`, `curriculums`, `classes`, `teachers`, `registrations`, `notifications`)
+- [x] **API services typed** (`users`, `majors`, `courses`, `semesters`, `curriculums`, `classes`, `teachers`, `registrations`, `notifications`, `students`)
 - [x] **`semesterLabel(suggested, cohortYear)`** util — derive nhãn "HK X - Năm học YYYY-YYYY"
 - [x] **`getInitials(fullName)`** util — chữ cái đầu cho avatar
 - [x] FR-GEN-001 - Trang Login 3-portal (SV navy / GV teal / Admin tím) với 2FA toggle + xử lý error tài khoản khoá
@@ -431,10 +438,20 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 ### 2.3.1. Xem thông tin học tập (FR-STU-INF, FR-STU-CUR)
 
-- [x] Route placeholder `/student/curriculum`, `/student/profile`
-- [ ] Trang chương trình đào tạo của ngành
-- [ ] Hiển thị danh sách môn + flag bắt buộc / tự chọn
-- [ ] Hiển thị tiến độ hoàn thành (SHOULD)
+- [x] **Route `/student/profile`** — trang hồ sơ cá nhân SV
+  - Avatar gradient navy + tên + MSSV
+  - Card "Thông tin học vụ": ngành, khóa (K2026), GPA, TC đã hoàn thành
+  - Card "Thông tin liên hệ": username, email, phone, trạng thái bảo mật
+  - 4 KPI: GPA / TC tích luỹ / Số năm đào tạo / Trạng thái
+- [x] **Route `/student/curriculum`** — trang thật, gọi `GET /api/curriculums/my/`
+- [x] Trang chương trình đào tạo của ngành (header + 4 KPI stats)
+- [x] Tỷ lệ hoàn thành CTĐT (progress bar TC vs yêu cầu)
+- [x] Grid phân bố 5 khối kiến thức (Đại cương/Cơ sở ngành/Chuyên ngành/Tự chọn/Tốt nghiệp)
+- [x] Hiển thị danh sách môn nhóm theo học kỳ với nhãn "HK X - Năm học YYYY-YYYY"
+- [x] Mỗi môn: code / tên / TC / khối kiến thức (badge) / bắt buộc-tự chọn (badge)
+- [x] Empty state khi SV không có CTĐT match
+- [ ] Hiển thị tiến độ hoàn thành môn (đã học / đang học / chưa học) — cần Grade data
+- [ ] Filter / sort theo khối kiến thức
 
 ### 2.3.2. Xem môn học được đăng ký (FR-STU-CRS)
 
@@ -443,33 +460,55 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [ ] Filter theo ngành
 - [ ] Modal chi tiết môn (tín chỉ, tiên quyết, các lớp mở)
 
-### 2.3.3. Đăng ký môn học thủ công (FR-STU-REG)
+### 2.3.3. Đăng ký môn học thủ công (FR-STU-REG) ✅ DONE
 
-- [x] Route placeholder `/student/register`
-- [ ] UI chọn môn → chọn lớp học phần
-- [ ] UI lọc theo GV / ngày / ca học mong muốn
-- [ ] Hiển thị warning trùng lịch / thiếu tiên quyết
-- [ ] Confirm modal xác nhận đăng ký
-- [ ] Action hủy đăng ký
+- [x] **Route `/student/register`** — trang thật
+- [x] Dropdown chọn học kỳ (default = học kỳ đang mở)
+- [x] List lớp HP `status=OPEN` của học kỳ + search theo mã/tên
+- [x] Hiển thị: mã lớp / môn / TC / GV / lịch học / sĩ số (đỏ khi đầy)
+- [x] Badge "Đã đăng ký" cho lớp SV đã đăng ký
+- [x] Nút **Đăng ký** disabled khi: lớp đầy / học kỳ chưa mở
+- [x] Modal **Xác nhận** hiển thị chi tiết lớp + lịch học + thông báo các BR sẽ check
+- [x] Hiển thị error backend friendly (BR-002 → 006)
+- [x] Success banner sau khi đăng ký thành công (auto-hide 4s)
+- [x] Card "Lớp đã đăng ký" hiển thị toàn bộ reg trong kỳ + nút Huỷ
+- [x] Modal huỷ đăng ký với lý do
+- [x] Warning banner khi học kỳ chưa mở
+- [x] Stats: lớp đã đăng ký / tổng TC / lớp mở của kỳ
 
 ### 2.3.4. Tự động tạo TKB (FR-STU-TKB)
 
 - [x] Route placeholder `/student/auto`
 - [ ] Toàn bộ UI TKB algorithm chưa làm
 
-### 2.3.5. Xem TKB & lịch sử (FR-STU-SCH, FR-STU-HIS)
+### 2.3.5. Xem TKB & lịch sử (FR-STU-SCH, FR-STU-HIS) ✅ DONE
 
-- [x] Route placeholder `/student/schedule`, `/student/history`
-- [ ] TKB view theo tuần (grid 7 ngày × 15 tiết)
-- [ ] TKB view theo học kỳ
+- [x] **Route `/student/schedule`** — TKB view theo tuần (grid 7 ngày × 15 tiết)
+- [x] Component `ScheduleGrid` reusable với 8 màu phân biệt môn
+- [x] Phân chia rõ Sáng (1-5) / Chiều (6-10) / Tối (11-15) với border-t đậm
+- [x] Click ô buổi học → modal chi tiết (thứ / tiết / phòng / GV)
+- [x] Card "Danh sách môn đăng ký" dưới grid (mỗi môn 1 thẻ với badge TC)
+- [x] 4 KPI stats: môn / buổi/tuần / TC / số đăng ký
+- [x] Empty state khi chưa đăng ký môn nào
+- [ ] TKB view theo học kỳ (currently 1 view duy nhất)
 - [ ] Nút xuất TKB (SHOULD)
-- [ ] Trang lịch sử đăng ký
+- [x] **Route `/student/history`** — Trang lịch sử đăng ký
+- [x] Filter theo học kỳ + trạng thái
+- [x] Table với cột: HK / môn / lớp / TC / trạng thái (badge) / thời gian / lý do hủy
+- [x] Nút Huỷ trên dòng `status != CANCELLED` + warning banner BR-006
+- [x] 4 KPI stats: tổng / confirmed / cancelled / TC đang học
 
-### 2.3.6. Nhận thông báo (FR-STU-NOT)
+### 2.3.6. Nhận thông báo (FR-STU-NOT) ✅ DONE
 
-- [x] Route placeholder `/student/notifications`
-- [ ] Trang danh sách thông báo
-- [ ] Badge số notification chưa đọc trên layout
+- [x] **Route `/student/notifications`** — trang thật
+- [x] Trang danh sách thông báo (card list, không phải table) + pagination
+- [x] Hiển thị `is_read` status với badge "chưa đọc" + ring viền navy
+- [x] Click 1 noti → mở modal chi tiết + auto mark-read
+- [x] Nút "Đánh dấu đã đọc tất cả" + counter unread
+- [x] Icon + tone theo category (megaphone/calendar/clipboard/settings/bell)
+- [x] Relative time ("5 phút trước", "2 ngày trước"...)
+- [x] Empty state đẹp khi không có noti
+- [ ] Badge số notification chưa đọc trên layout TopBar
 
 ## 2.4. Teacher UI
 
@@ -571,7 +610,7 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 | Backend testing (1.7) | 50% | Có 33 tests (BR + accounts + courses + majors); còn auth/algorithm tests |
 | Frontend foundation (2.1) | 95% | Còn toast, confirm dialog, skeleton loader |
 | Frontend admin (2.2) | ~85% | **8/10 module** xong (Accounts, Majors, Courses, Semesters, Curriculum, Classes, Registrations, Notifications); còn Reports, Settings |
-| Frontend student (2.3) | 0% | Chỉ placeholder |
+| Frontend student (2.3) | ~85% | **5/6** module xong (Chương trình đào tạo, Thông báo, Hồ sơ, **Đăng ký môn**, **TKB**, **Lịch sử**); còn Auto TKB (phức tạp, defer) |
 | Frontend teacher (2.4) | 0% | Chỉ placeholder |
 | Frontend testing (2.5) | 0% | Chưa setup Vitest |
 
