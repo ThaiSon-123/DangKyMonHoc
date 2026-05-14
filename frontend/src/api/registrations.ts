@@ -13,6 +13,7 @@ export interface Registration {
   id: number;
   student: number;
   student_code: string;
+  student_name: string;
   class_section: number;
   class_section_code: string;
   course_code: string;

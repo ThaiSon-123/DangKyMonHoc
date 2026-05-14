@@ -179,6 +179,10 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [x] FR-ADM-NOT-001 - API gửi thông báo cho SV (audience=ALL_STUDENTS / SPECIFIC)
 - [x] FR-ADM-NOT-002 - API gửi thông báo cho GV (audience=ALL_TEACHERS)
 - [x] Filter theo role: SV/GV chỉ thấy noti phù hợp + đích danh; Admin thấy tất cả
+- [x] **FR-TEA-CLS-005**: `POST /api/class-sections/{id}/notify/` — GV gửi noti cho SV của lớp phụ trách
+  - Validate GV phụ trách lớp (403 nếu không); Admin gửi được mọi lớp
+  - Auto audience=SPECIFIC, recipients = SV CONFIRMED của lớp
+  - 6 pytest cases pass (positive / 403 other GV / Admin bypass / SV reject / missing title / empty class)
 
 ## 1.4. Student domain APIs
 
@@ -284,7 +288,8 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [x] API test accounts (locked user / CRUD / role validation) — 6 cases
 - [x] API test courses (CRUD + prerequisites + filter) — 6 cases
 - [x] API test majors (CRUD) — 3 cases
-- [x] **Tổng: 33/33 tests pass**
+- [x] API test classes/notify_class (FR-TEA-CLS-005) — 6 cases
+- [x] **Tổng: 39/39 tests pass**
 - [ ] Unit test cho models (validators, custom methods, `Schedule.clean()`)
 - [ ] API test cho auth flow (login / refresh / 401 → refresh)
 - [ ] API test cho TKB algorithm
@@ -514,27 +519,36 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 > Tất cả 5 route teacher (`/teacher/schedule` → `/teacher/profile`) đã có **placeholder** kèm FR-ID tham chiếu.
 
-### 2.4.1. Xem thông tin & lớp học phần (FR-TEA-INF, FR-TEA-CLS, FR-TEA-SCH)
+### 2.4.1. Xem thông tin & lớp học phần (FR-TEA-INF, FR-TEA-CLS, FR-TEA-SCH) ✅ DONE
 
-- [x] Route placeholder `/teacher/schedule`, `/teacher/classes`, `/teacher/profile`
-- [ ] Trang danh sách lớp được phân công
-- [ ] Trang TKB cá nhân GV
-- [ ] Trang chi tiết lớp (danh sách SV, sĩ số, lịch, phòng)
-- [ ] UI gửi thông báo cho lớp (MAY)
+- [x] **Route `/teacher/profile`** — hồ sơ GV (avatar emerald + thông tin công tác + liên hệ)
+- [x] **Route `/teacher/classes`** — list lớp phụ trách + 3 KPI + filter học kỳ
+- [x] **Route `/teacher/classes/:id`** — chi tiết lớp + 4 KPI + lịch học + danh sách SV
+- [x] **Route `/teacher/schedule`** — TKB cá nhân GV (dùng lại ScheduleGrid với màu emerald palette)
+- [x] Link nhanh từ class list → nhập điểm + xem SV
+- [x] **UI gửi thông báo cho lớp** (FR-TEA-CLS-005) — modal trong ClassDetailPage với title / body / category + count SV nhận
 
-### 2.4.2. Nhập điểm (FR-TEA-GRD)
+### 2.4.2. Nhập điểm (FR-TEA-GRD) ✅ DONE
 
-- [x] Route placeholder `/teacher/grades`
-- [ ] Trang nhập điểm dạng bảng (quá trình / giữa kỳ / cuối kỳ)
-- [ ] Hiển thị auto-compute `total_score` + `grade_letter` + `gpa_4`
+- [x] **Route `/teacher/grades`** với dropdown chọn lớp
+- [x] Trang nhập điểm dạng bảng (QT/GK/CK) inline editable
+- [x] **Auto-preview** total_score + grade_letter ngay khi gõ (client-side calc theo BR-009)
+- [x] Sau khi save: cập nhật chính xác từ backend response (total_score, grade_letter, gpa_4)
+- [x] **Nút Lưu** chỉ enable khi dirty + nút "Lưu tất cả" batch save
+- [x] Hiển thị error per-row khi save fail (vd. BR-008 quá hạn)
+- [x] Badge "Đã lưu" / "Đang nhập" cho mỗi dòng
+- [x] 4 KPI stats: Sĩ số / Đã nhập / Đạt ≥4 / GPA TB lớp
+- [x] Preselect class qua query param `?class=<id>` (link từ ClassesPage)
+- [x] Backend filter `?class_section=` cho grades
 - [ ] Nút xuất bảng điểm Excel
 
-### 2.4.3. Khác (FR-TEA-REQ, FR-TEA-EXP, FR-TEA-NOT)
+### 2.4.3. Khác (FR-TEA-REQ, FR-TEA-EXP, FR-TEA-NOT) — Notifications DONE
 
-- [x] Route placeholder `/teacher/notifications`
+- [x] **Route `/teacher/notifications`** — copy pattern từ student, filter theo audience GV
+- [x] Auto mark-read khi click + "Đánh dấu đã đọc tất cả"
+- [x] **Compose noti cho lớp** từ `ClassDetailPage` → SV nhận ngay (FR-TEA-CLS-005)
 - [ ] UI đề xuất thay đổi lịch dạy (MAY)
 - [ ] Nút xuất danh sách SV
-- [ ] Trang danh sách thông báo từ Admin
 
 ## 2.5. Frontend testing
 
@@ -606,12 +620,12 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 | Backend models (1.1) | 100% | 15 entity đầy đủ, migration OK, đã có seed scripts |
 | Backend Admin API (1.2 – 1.3) | ~90% | Còn Reports + nút export CSV/Excel |
 | Backend SV/GV API (1.4 – 1.5) | ~70% | Cơ bản qua các ViewSet + `/curriculums/my/`, `/students/me/`, `/notifications/mark-read/`, etc. |
-| Backend BR (1.6) | 100% | Tất cả 11 BR đã wire + 33 tests pass |
-| Backend testing (1.7) | 50% | 33 tests (BR + accounts + courses + majors); còn auth/algorithm tests |
+| Backend BR (1.6) | 100% | Tất cả 11 BR đã wire + 39 tests pass |
+| Backend testing (1.7) | 55% | 39 tests (BR + accounts + courses + majors + notify_class); còn auth/algorithm tests |
 | Frontend foundation (2.1) | 95% | Có ScheduleGrid mới. Còn toast, confirm dialog, skeleton loader |
 | Frontend admin (2.2) | ~80% | **8/10 module** xong; còn Reports, Settings |
 | Frontend student (2.3) | ~85% | **5/6 module** xong (Curriculum, Đăng ký, TKB, Lịch sử, Thông báo, Hồ sơ); chỉ thiếu **Auto TKB** (defer) |
-| Frontend teacher (2.4) | 0% | Chỉ placeholder — chưa bắt đầu |
+| Frontend teacher (2.4) | ~95% | **5/5 module** xong + tính năng **gửi noti cho lớp**; chỉ thiếu export Excel + đề xuất đổi lịch (MAY) |
 | Frontend testing (2.5) | 0% | Chưa setup Vitest |
 
 **Tổng cộng**: 305 mục đã làm `[x]` / 82 mục chưa làm `[ ]` (387 items)
@@ -639,21 +653,20 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 6. ✅ Hồ sơ cá nhân (`/student/profile`)
 - ⏸ Tạo TKB tự động (`/student/auto`) — defer
 
-**Giáo viên — 0/5 module:**
-- ⬜ Lịch dạy (`/teacher/schedule`)
-- ⬜ Lớp phụ trách (`/teacher/classes`)
-- ⬜ Nhập điểm (`/teacher/grades`)
-- ⬜ Thông báo (`/teacher/notifications`)
-- ⬜ Hồ sơ (`/teacher/profile`)
+**Giáo viên — 5/5 module:**
+1. ✅ Lịch dạy (`/teacher/schedule`) — TKB grid, color theo môn
+2. ✅ Lớp phụ trách (`/teacher/classes` + `/teacher/classes/:id`) — list + chi tiết SV
+3. ✅ Nhập điểm (`/teacher/grades`) — inline edit + auto-compute BR-009
+4. ✅ Thông báo (`/teacher/notifications`) — mark-read flow
+5. ✅ Hồ sơ (`/teacher/profile`) — avatar emerald, thông tin công tác
 
 ### Bước tiếp theo khuyến nghị
 
-1. **Giáo viên: Lớp phụ trách** (`/teacher/classes`) — list lớp + DS sinh viên trong lớp
-2. **Giáo viên: TKB cá nhân** (`/teacher/schedule`) — dùng lại `ScheduleGrid` component
-3. **Giáo viên: Nhập điểm** (`/teacher/grades`) — flow nhập điểm + auto-compute hiển thị `total_score`, `grade_letter`, `gpa_4`
-4. **Giáo viên: Thông báo + Hồ sơ** — pattern giống Student
-5. **Admin: Reports** (`/admin/reports`) — thống kê SV theo môn / ngành / lớp đầy
-6. **Auto TKB** (`/student/auto`) — module phức tạp với thuật toán search tổ hợp, để sau cùng
+1. **Admin: Reports** (`/admin/reports`) — thống kê SV theo môn / ngành / lớp đầy (4 biểu đồ)
+2. **Admin: Settings** (`/admin/settings`) — cấu hình BR-006/008 grace days
+3. **Sinh viên: Auto TKB** (`/student/auto`) — module phức tạp với thuật toán search tổ hợp
+4. **Backend testing** — auth flow + admin CRUD + algorithm tests
+5. **Frontend testing** — Vitest + Testing Library cho store, interceptor, form
 
 ---
 
@@ -696,3 +709,10 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - Backend mới: `GET /curriculums/my/`, `GET /students/me/`, `GET /teachers/me/`, `POST /notifications/{id}/mark-read/`, `POST /notifications/mark-all-read/`, `GET /notifications/unread-count/`
 - Component mới: `ScheduleGrid` (7 ngày × 15 tiết, 8 màu, click event, BR-010 session boundaries)
 - Module **Auto TKB** defer vì cần thuật toán search tổ hợp lớp HP phức tạp
+
+### Phase 8 — Teacher UI modules (mục 2.4)
+
+- **5/5 module DONE**: Profile, Notifications, Schedule, Classes (+ detail), Grades
+- Backend mới: `?class_section=` filter cho `/grades/`, `student_name` field trong Registration + Grade serializer
+- API service mới: `api/grades.ts` (create/update + auto-compute readonly fields)
+- Highlight: **GradesPage** với inline-edit + auto-preview total/letter ngay khi gõ + batch save

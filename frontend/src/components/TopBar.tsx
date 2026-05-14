@@ -43,6 +43,8 @@ export default function TopBar() {
       breadcrumbs = ["Quản trị", "Đào tạo", "Chương trình", "Chi tiết"];
     } else if (location.pathname.startsWith("/admin/classes/")) {
       breadcrumbs = ["Quản trị", "Đào tạo", "Lớp học phần", "Chi tiết"];
+    } else if (location.pathname.startsWith("/teacher/classes/")) {
+      breadcrumbs = ["Giáo viên", "Giảng dạy", "Lớp phụ trách", "Chi tiết"];
     }
   }
   const initials = user ? getInitials(user.full_name || user.username) : "?";

@@ -84,3 +84,35 @@ export async function updateSchedule(
 export async function deleteSchedule(id: number): Promise<void> {
   await api.delete(`/schedules/${id}/`);
 }
+
+// ---------- Notify class ----------
+
+export type NotifyClassInput = {
+  title: string;
+  body: string;
+  category?: "REGISTRATION" | "SCHEDULE" | "CLASS" | "SYSTEM" | "OTHER";
+};
+
+export interface NotifyClassResult {
+  notification: {
+    id: number;
+    title: string;
+    body: string;
+    category: string;
+    audience: string;
+    created_at: string;
+  };
+  recipient_count: number;
+  class_code: string;
+}
+
+export async function notifyClass(
+  classSectionId: number,
+  payload: NotifyClassInput,
+): Promise<NotifyClassResult> {
+  const res = await api.post<NotifyClassResult>(
+    `/class-sections/${classSectionId}/notify/`,
+    payload,
+  );
+  return res.data;
+}

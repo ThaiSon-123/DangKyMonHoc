@@ -23,6 +23,12 @@ import StudentProfilePage from "@/pages/student/ProfilePage";
 import StudentRegisterPage from "@/pages/student/RegisterPage";
 import StudentSchedulePage from "@/pages/student/SchedulePage";
 import StudentHistoryPage from "@/pages/student/HistoryPage";
+import TeacherProfilePage from "@/pages/teacher/ProfilePage";
+import TeacherNotificationsPage from "@/pages/teacher/NotificationsPage";
+import TeacherSchedulePage from "@/pages/teacher/SchedulePage";
+import TeacherClassesPage from "@/pages/teacher/ClassesPage";
+import TeacherClassDetailPage from "@/pages/teacher/ClassDetailPage";
+import TeacherGradesPage from "@/pages/teacher/GradesPage";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import { useAuthStore } from "@/stores/auth";
 import type { IconName } from "@/components/ui/Icon";
@@ -52,13 +58,7 @@ const STUDENT_ROUTES: PlaceholderRoute[] = [
   { path: "auto", title: "Tạo TKB tự động", description: "Hệ thống đề xuất nhiều phương án TKB theo ưu tiên của bạn.", frId: "FR-STU-TKB", icon: "sparkle" },
 ];
 
-const TEACHER_ROUTES: PlaceholderRoute[] = [
-  { path: "schedule", title: "Lịch dạy cá nhân", description: "TKB giảng dạy theo tuần / học kỳ.", frId: "FR-TEA-SCH", icon: "calendar" },
-  { path: "classes", title: "Lớp phụ trách", description: "Danh sách lớp được phân công, sĩ số, danh sách sinh viên.", frId: "FR-TEA-CLS", icon: "clipboard" },
-  { path: "grades", title: "Nhập điểm", description: "Nhập điểm quá trình / giữa kỳ / cuối kỳ cho lớp phụ trách.", frId: "FR-TEA-GRD", icon: "edit" },
-  { path: "notifications", title: "Thông báo", description: "Thông báo từ Admin, gửi thông báo cho lớp.", frId: "FR-TEA-NOT", icon: "bell" },
-  { path: "profile", title: "Hồ sơ cá nhân", description: "Thông tin giảng viên, đổi mật khẩu, liên hệ.", frId: "FR-TEA-INF", icon: "user" },
-];
+const TEACHER_ROUTES: PlaceholderRoute[] = [];
 
 export default function App() {
   const { accessToken, user, setUser, logout } = useAuthStore();
@@ -136,6 +136,12 @@ export default function App() {
 
           <Route element={<ProtectedRoute allowedRoles={["TEACHER"]} />}>
             <Route path="/teacher" element={<TeacherDashboard />} />
+            <Route path="/teacher/schedule" element={<TeacherSchedulePage />} />
+            <Route path="/teacher/classes" element={<TeacherClassesPage />} />
+            <Route path="/teacher/classes/:id" element={<TeacherClassDetailPage />} />
+            <Route path="/teacher/grades" element={<TeacherGradesPage />} />
+            <Route path="/teacher/notifications" element={<TeacherNotificationsPage />} />
+            <Route path="/teacher/profile" element={<TeacherProfilePage />} />
             {TEACHER_ROUTES.map((r) => (
               <Route
                 key={r.path}

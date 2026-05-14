@@ -26,13 +26,15 @@ class NotificationViewSet(viewsets.ModelViewSet):
         role = getattr(user, "role", None)
         if role == "ADMIN":
             return qs
-        # SV/GV: chỉ thấy noti gửi cho audience phù hợp hoặc đích danh
+        # SV/GV thấy noti gửi cho audience phù hợp, đích danh, hoặc do chính mình gửi
         audience_match = Q(audience="ALL")
         if role == "STUDENT":
             audience_match |= Q(audience="ALL_STUDENTS")
         elif role == "TEACHER":
             audience_match |= Q(audience="ALL_TEACHERS")
-        return qs.filter(audience_match | Q(recipients=user)).distinct()
+        return qs.filter(
+            audience_match | Q(recipients=user) | Q(sender=user)
+        ).distinct()
 
     def get_serializer_context(self):
         ctx = super().get_serializer_context()

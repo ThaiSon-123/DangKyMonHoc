@@ -9,3 +9,8 @@ export async function listTeachers(params?: {
   const res = await api.get<Paginated<TeacherProfile>>("/teachers/", { params });
   return res.data;
 }
+
+export async function getMyTeacherProfile(): Promise<TeacherProfile> {
+  const res = await api.get<TeacherProfile>("/teachers/me/");
+  return res.data;
+}

@@ -26,9 +26,17 @@ class GradeViewSet(viewsets.ModelViewSet):
         user = self.request.user
         role = getattr(user, "role", None)
         if role == "STUDENT":
-            return qs.filter(registration__student__user=user)
-        if role == "TEACHER":
-            return qs.filter(registration__class_section__teacher__user=user)
+            qs = qs.filter(registration__student__user=user)
+        elif role == "TEACHER":
+            qs = qs.filter(registration__class_section__teacher__user=user)
+        # Filter qua query params
+        params = self.request.query_params
+        if params.get("class_section"):
+            qs = qs.filter(registration__class_section_id=params["class_section"])
+        if params.get("registration"):
+            qs = qs.filter(registration_id=params["registration"])
+        if params.get("semester"):
+            qs = qs.filter(registration__semester_id=params["semester"])
         return qs
 
     # ---------- BR-007 + thời hạn cập nhật điểm ----------
