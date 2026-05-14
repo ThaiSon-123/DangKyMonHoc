@@ -547,6 +547,9 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [x] **Route `/teacher/notifications`** — copy pattern từ student, filter theo audience GV
 - [x] Auto mark-read khi click + "Đánh dấu đã đọc tất cả"
 - [x] **Compose noti cho lớp** từ `ClassDetailPage` → SV nhận ngay (FR-TEA-CLS-005)
+- [x] **Compose noti cho lớp ngay tại `/teacher/notifications`** — nút "Soạn thông báo" + modal chọn lớp (dropdown) + title/category/body
+- [x] GV thấy noti mình đã gửi trong danh sách (backend filter `Q(sender=user)`)
+- [x] Hiển thị `recipients.length` ("N người nhận") cho noti SPECIFIC trong list + detail modal
 - [ ] UI đề xuất thay đổi lịch dạy (MAY)
 - [ ] Nút xuất danh sách SV
 
