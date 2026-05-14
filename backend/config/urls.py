@@ -5,14 +5,15 @@ from drf_spectacular.views import (
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+from apps.accounts.views import LockedAwareTokenObtainPairView, LockedAwareTokenRefreshView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
 
     # Auth
-    path("api/auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("api/auth/login/", LockedAwareTokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/auth/refresh/", LockedAwareTokenRefreshView.as_view(), name="token_refresh"),
 
     # Domain APIs
     path("api/accounts/", include("apps.accounts.urls")),

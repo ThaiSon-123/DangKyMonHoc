@@ -4,10 +4,13 @@ import { Badge, Button, Card, Modal, Pagination, Table, type Column } from "@/co
 import Icon from "@/components/ui/Icon";
 import {
   createClassSection,
+  createSchedule,
   deleteClassSection,
   listClassSections,
   updateClassSection,
+  updateSchedule,
   type ClassSectionInput,
+  type ScheduleInput,
 } from "@/api/classes";
 import { listCourses } from "@/api/courses";
 import { listSemesters } from "@/api/semesters";
@@ -16,11 +19,17 @@ import { extractApiError } from "@/lib/errors";
 import { PAGE_SIZE } from "@/lib/constants";
 import {
   CLASS_STATUS_LABELS,
+  SESSION_LABELS,
+  SESSION_PERIODS,
+  WEEKDAY_LABELS,
   type ClassSection,
   type ClassStatus,
   type Course,
+  type Schedule,
   type Semester,
+  type SessionType,
   type TeacherProfile,
+  type Weekday,
 } from "@/types/domain";
 
 const EMPTY: ClassSectionInput = {
@@ -30,8 +39,17 @@ const EMPTY: ClassSectionInput = {
   teacher: null,
   periods_per_session: 3,
   max_students: 50,
-  status: "DRAFT",
+  status: "CLOSED",
   note: "",
+};
+
+const EMPTY_SCHEDULE: Omit<ScheduleInput, "class_section"> = {
+  weekday: 0,
+  session: "MORNING",
+  start_period: 1,
+  room: "",
+  start_date: null,
+  end_date: null,
 };
 
 const STATUS_TONE: Record<ClassStatus, "neutral" | "success" | "warn" | "danger"> = {
@@ -40,6 +58,8 @@ const STATUS_TONE: Record<ClassStatus, "neutral" | "success" | "warn" | "danger"
   CLOSED: "warn",
   CANCELLED: "danger",
 };
+
+const EDITABLE_CLASS_STATUSES: ClassStatus[] = ["OPEN", "CLOSED", "CANCELLED"];
 
 export default function ClassesPage() {
   const [items, setItems] = useState<ClassSection[]>([]);
@@ -59,6 +79,9 @@ export default function ClassesPage() {
   const [editing, setEditing] = useState<ClassSection | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<ClassSectionInput>(EMPTY);
+  const [scheduleForm, setScheduleForm] =
+    useState<Omit<ScheduleInput, "class_section">>(EMPTY_SCHEDULE);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -102,6 +125,8 @@ export default function ClassesPage() {
     setEditing(null);
     const defaultSemester = semesters.find((s) => s.is_open)?.id ?? semesters[0]?.id ?? 0;
     setForm({ ...EMPTY, semester: defaultSemester, course: courses[0]?.id ?? 0 });
+    setScheduleForm(EMPTY_SCHEDULE);
+    setEditingSchedule(null);
     setFormError(null);
     setShowForm(true);
   }
@@ -118,6 +143,23 @@ export default function ClassesPage() {
       status: cs.status,
       note: cs.note,
     });
+    if (cs.status === "DRAFT") {
+      setForm((current) => ({ ...current, status: "CLOSED" }));
+    }
+    const firstSchedule = cs.schedules[0] ?? null;
+    setEditingSchedule(firstSchedule);
+    setScheduleForm(
+      firstSchedule
+        ? {
+            weekday: firstSchedule.weekday,
+            session: firstSchedule.session,
+            start_period: firstSchedule.start_period,
+            room: firstSchedule.room,
+            start_date: firstSchedule.start_date,
+            end_date: firstSchedule.end_date,
+          }
+        : EMPTY_SCHEDULE,
+    );
     setFormError(null);
     setShowForm(true);
   }
@@ -127,8 +169,20 @@ export default function ClassesPage() {
     setSubmitting(true);
     setFormError(null);
     try {
-      if (editing) await updateClassSection(editing.id, form);
-      else await createClassSection(form);
+      const savedClass = editing
+        ? await updateClassSection(editing.id, form)
+        : await createClassSection(form);
+      const schedulePayload: ScheduleInput = {
+        class_section: savedClass.id,
+        weekday: scheduleForm.weekday,
+        session: scheduleForm.session,
+        start_period: scheduleForm.start_period,
+        room: scheduleForm.room,
+        start_date: scheduleForm.start_date || null,
+        end_date: scheduleForm.end_date || null,
+      };
+      if (editingSchedule) await updateSchedule(editingSchedule.id, schedulePayload);
+      else await createSchedule(schedulePayload);
       setShowForm(false);
       await refresh();
     } catch (err) {
@@ -149,6 +203,16 @@ export default function ClassesPage() {
       setDeleteTarget(null);
     }
   }
+
+  const [sessionStart, sessionEnd] = SESSION_PERIODS[scheduleForm.session];
+  const maxStartPeriod = Math.min(
+    sessionEnd,
+    sessionEnd - form.periods_per_session + 1,
+  );
+  const validStartPeriods = Array.from(
+    { length: Math.max(0, maxStartPeriod - sessionStart + 1) },
+    (_, i) => sessionStart + i,
+  );
 
   const columns: Column<ClassSection>[] = [
     {
@@ -199,6 +263,27 @@ export default function ClassesPage() {
           {cs.enrolled_count}/{cs.max_students}
         </span>
       ),
+    },
+    {
+      key: "primary_schedule",
+      label: "Lịch chính",
+      width: "220px",
+      render: (cs) => {
+        const firstSchedule = cs.schedules[0];
+        if (!firstSchedule) return <Badge tone="warn">Chưa có</Badge>;
+        return (
+          <div className="space-y-1">
+            <div className="text-[13px] text-ink">
+              {WEEKDAY_LABELS[firstSchedule.weekday]} ·{" "}
+              {SESSION_LABELS[firstSchedule.session].split(" (")[0]} · tiết{" "}
+              {firstSchedule.start_period}-{firstSchedule.end_period}
+            </div>
+            <div className="font-mono text-[11.5px] text-ink-faint">
+              {firstSchedule.start_date || "?"} → {firstSchedule.end_date || "?"}
+            </div>
+          </div>
+        );
+      },
     },
     {
       key: "schedules",
@@ -295,9 +380,9 @@ export default function ClassesPage() {
             className="px-3 py-1.5 rounded-md bg-surface border border-line text-[13px]"
           >
             <option value="">Tất cả trạng thái</option>
-            {Object.entries(CLASS_STATUS_LABELS).map(([k, label]) => (
-              <option key={k} value={k}>
-                {label}
+            {EDITABLE_CLASS_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {CLASS_STATUS_LABELS[status]}
               </option>
             ))}
           </select>
@@ -452,19 +537,118 @@ export default function ClassesPage() {
               onChange={(e) => setForm({ ...form, status: e.target.value as ClassStatus })}
               className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
             >
-              {Object.entries(CLASS_STATUS_LABELS).map(([k, label]) => (
-                <option key={k} value={k}>
-                  {label}
+              {EDITABLE_CLASS_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {CLASS_STATUS_LABELS[status]}
                 </option>
               ))}
             </select>
           </div>
+          <div className="col-span-2 rounded-md border border-line bg-surface p-3">
+            <div className="text-[12.5px] font-semibold text-ink mb-2">Lịch học chính</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Học thứ mấy *</Label>
+                <select
+                  required
+                  value={scheduleForm.weekday}
+                  onChange={(e) =>
+                    setScheduleForm({
+                      ...scheduleForm,
+                      weekday: Number(e.target.value) as Weekday,
+                    })
+                  }
+                  className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
+                >
+                  {Object.entries(WEEKDAY_LABELS).map(([k, label]) => (
+                    <option key={k} value={k}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Buổi học *</Label>
+                <select
+                  required
+                  value={scheduleForm.session}
+                  onChange={(e) => {
+                    const newSession = e.target.value as SessionType;
+                    const [start] = SESSION_PERIODS[newSession];
+                    setScheduleForm({
+                      ...scheduleForm,
+                      session: newSession,
+                      start_period: start,
+                    });
+                  }}
+                  className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
+                >
+                  {Object.entries(SESSION_LABELS).map(([k, label]) => (
+                    <option key={k} value={k}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Tiết bắt đầu *</Label>
+                <select
+                  required
+                  value={scheduleForm.start_period}
+                  onChange={(e) =>
+                    setScheduleForm({ ...scheduleForm, start_period: Number(e.target.value) })
+                  }
+                  className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
+                >
+                  {validStartPeriods.map((p) => (
+                    <option key={p} value={p}>
+                      Tiết {p} (đến tiết {p + form.periods_per_session - 1})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Phòng học</Label>
+                <input
+                  value={scheduleForm.room}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, room: e.target.value })}
+                  placeholder="B4.12"
+                  className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
+                />
+              </div>
+              <div>
+                <Label>Ngày bắt đầu học *</Label>
+                <input
+                  required
+                  type="date"
+                  value={scheduleForm.start_date ?? ""}
+                  onChange={(e) =>
+                    setScheduleForm({ ...scheduleForm, start_date: e.target.value || null })
+                  }
+                  className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
+                />
+              </div>
+              <div>
+                <Label>Ngày kết thúc học *</Label>
+                <input
+                  required
+                  type="date"
+                  value={scheduleForm.end_date ?? ""}
+                  onChange={(e) =>
+                    setScheduleForm({ ...scheduleForm, end_date: e.target.value || null })
+                  }
+                  className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
+                />
+              </div>
+            </div>
+          </div>
           <div className="col-span-2">
-            <Label>Ghi chú</Label>
+            <Label>Ghi chú (không bắt buộc)</Label>
             <textarea
               value={form.note}
               onChange={(e) => setForm({ ...form, note: e.target.value })}
               rows={2}
+              placeholder="Ghi chú thêm về lớp học phần..."
               className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none resize-y"
             />
           </div>

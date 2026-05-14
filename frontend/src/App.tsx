@@ -14,6 +14,9 @@ import CurriculumsPage from "@/pages/admin/CurriculumsPage";
 import CurriculumDetailPage from "@/pages/admin/CurriculumDetailPage";
 import ClassesPage from "@/pages/admin/ClassesPage";
 import ClassDetailPage from "@/pages/admin/ClassDetailPage";
+import AccountsPage from "@/pages/admin/AccountsPage";
+import RegistrationsPage from "@/pages/admin/RegistrationsPage";
+import NotificationsPage from "@/pages/admin/NotificationsPage";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import { useAuthStore } from "@/stores/auth";
 import type { IconName } from "@/components/ui/Icon";
@@ -35,10 +38,7 @@ interface PlaceholderRoute {
 }
 
 const ADMIN_ROUTES: PlaceholderRoute[] = [
-  { path: "accounts", title: "Quản lý tài khoản", description: "Tạo / cập nhật / khoá tài khoản Sinh viên và Giáo viên.", frId: "FR-ADM-ACC", icon: "users" },
-  { path: "registrations", title: "Quản lý đăng ký", description: "Mở / đóng đợt đăng ký, theo dõi sĩ số, phê duyệt yêu cầu.", frId: "FR-ADM-REG", icon: "doc" },
   { path: "reports", title: "Báo cáo & thống kê", description: "Thống kê đăng ký theo môn, theo ngành, lớp đầy / còn chỗ.", frId: "FR-ADM-RPT", icon: "chart" },
-  { path: "notifications", title: "Gửi thông báo", description: "Gửi thông báo cho Sinh viên và Giáo viên.", frId: "FR-ADM-NOT", icon: "megaphone" },
   { path: "settings", title: "Cấu hình hệ thống", description: "Giới hạn tín chỉ, thời hạn hủy đăng ký, quy tắc nghiệp vụ.", icon: "settings" },
 ];
 
@@ -98,6 +98,9 @@ export default function App() {
 
           <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/accounts" element={<AccountsPage />} />
+            <Route path="/admin/registrations" element={<RegistrationsPage />} />
+            <Route path="/admin/notifications" element={<NotificationsPage />} />
             <Route path="/admin/majors" element={<MajorsPage />} />
             <Route path="/admin/courses" element={<CoursesPage />} />
             <Route path="/admin/semesters" element={<SemestersPage />} />

@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/auth";
+import { getInitials } from "@/lib/names";
 import Icon from "./ui/Icon";
 
 const BREADCRUMB_MAP: Record<string, string[]> = {
@@ -44,9 +45,7 @@ export default function TopBar() {
       breadcrumbs = ["Quản trị", "Đào tạo", "Lớp học phần", "Chi tiết"];
     }
   }
-  const initials = user
-    ? `${user.last_name?.[0] ?? user.username[0]}${user.first_name?.[0] ?? ""}`.toUpperCase()
-    : "?";
+  const initials = user ? getInitials(user.full_name || user.username) : "?";
 
   function handleLogout() {
     logout();

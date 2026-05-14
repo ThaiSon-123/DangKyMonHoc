@@ -4,6 +4,7 @@ import { fetchCurrentUser, login } from "@/api/auth";
 import { useAuthStore } from "@/stores/auth";
 import Icon, { type IconName } from "@/components/ui/Icon";
 import Button from "@/components/ui/Button";
+import { extractApiError } from "@/lib/errors";
 
 type Portal = "student" | "teacher" | "admin";
 
@@ -112,8 +113,8 @@ export default function Login() {
       const dest =
         me.role === "ADMIN" ? "/admin" : me.role === "TEACHER" ? "/teacher" : "/student";
       navigate(dest, { replace: true });
-    } catch {
-      setError("Tên đăng nhập hoặc mật khẩu không đúng.");
+    } catch (err) {
+      setError(extractApiError(err, "Tên đăng nhập hoặc mật khẩu không đúng."));
     } finally {
       setLoading(false);
     }
