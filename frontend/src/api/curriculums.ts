@@ -30,6 +30,11 @@ export async function listCurriculums(params?: {
   return res.data;
 }
 
+export async function getMyCurriculum(): Promise<Curriculum> {
+  const res = await api.get<Curriculum>("/curriculums/my/");
+  return res.data;
+}
+
 export async function getCurriculum(id: number): Promise<Curriculum> {
   const res = await api.get<Curriculum>(`/curriculums/${id}/`);
   return res.data;
