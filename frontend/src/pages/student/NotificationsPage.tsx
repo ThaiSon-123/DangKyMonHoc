@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Button, Card, Modal, Pagination } from "@/components/ui";
 import Icon from "@/components/ui/Icon";
 import {
   AUDIENCE_LABELS,
   CATEGORY_LABELS,
+  createNotification,
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
@@ -11,6 +12,7 @@ import {
   type NotiCategory,
   type Notification,
 } from "@/api/notifications";
+import { listRegistrations, type Registration } from "@/api/registrations";
 import { extractApiError } from "@/lib/errors";
 import { PAGE_SIZE } from "@/lib/constants";
 
@@ -54,8 +56,27 @@ export default function StudentNotificationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [viewing, setViewing] = useState<Notification | null>(null);
   const [markingAll, setMarkingAll] = useState(false);
+  const [teacherRegistrations, setTeacherRegistrations] = useState<Registration[]>([]);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [teacherUserId, setTeacherUserId] = useState<number | "">("");
+  const [composeTitle, setComposeTitle] = useState("");
+  const [composeBody, setComposeBody] = useState("");
+  const [sending, setSending] = useState(false);
 
   const unreadCount = items.filter((n) => !n.is_read).length;
+  const classTeachers = useMemo(() => {
+    const map = new Map<number, { userId: number; name: string; code: string | null }>();
+    for (const registration of teacherRegistrations) {
+      if (!registration.teacher_user_id) continue;
+      if (map.has(registration.teacher_user_id)) continue;
+      map.set(registration.teacher_user_id, {
+        userId: registration.teacher_user_id,
+        name: registration.teacher_name || registration.teacher_code || "Giáo viên",
+        code: registration.teacher_code,
+      });
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [teacherRegistrations]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -74,6 +95,12 @@ export default function StudentNotificationsPage() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    listRegistrations({ status: "CONFIRMED", page_size: 1000 })
+      .then((data) => setTeacherRegistrations(data.results))
+      .catch(() => setTeacherRegistrations([]));
+  }, []);
 
   async function handleView(n: Notification) {
     setViewing(n);
@@ -99,6 +126,29 @@ export default function StudentNotificationsPage() {
     }
   }
 
+  async function handleSendTeacher() {
+    setSending(true);
+    setError(null);
+    try {
+      await createNotification({
+        title: composeTitle.trim(),
+        body: composeBody.trim(),
+        category: "OTHER",
+        audience: "SPECIFIC",
+        recipients: teacherUserId ? [teacherUserId] : [],
+      });
+      setComposeOpen(false);
+      setTeacherUserId("");
+      setComposeTitle("");
+      setComposeBody("");
+      await refresh();
+    } catch (err) {
+      setError(extractApiError(err, "Không gửi được thông báo."));
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex items-start gap-4">
@@ -116,11 +166,16 @@ export default function StudentNotificationsPage() {
             )}
           </p>
         </div>
-        {unreadCount > 0 && (
-          <Button icon="check" onClick={handleMarkAllRead} disabled={markingAll}>
-            {markingAll ? "Đang xử lý..." : "Đánh dấu đã đọc tất cả"}
+        <div className="flex items-center gap-2">
+          <Button icon="megaphone" onClick={() => setComposeOpen(true)}>
+            Gửi giáo viên
           </Button>
-        )}
+          {unreadCount > 0 && (
+            <Button icon="check" onClick={handleMarkAllRead} disabled={markingAll}>
+              {markingAll ? "Đang xử lý..." : "Đánh dấu đã đọc tất cả"}
+            </Button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -235,6 +290,70 @@ export default function StudentNotificationsPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        open={composeOpen}
+        title="Gửi thông báo cho giáo viên"
+        subtitle="Ví dụ: xin nghỉ học, trao đổi lịch học"
+        onClose={() => setComposeOpen(false)}
+        size="md"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setComposeOpen(false)}>
+              Đóng
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSendTeacher}
+              disabled={sending || !teacherUserId || !composeTitle.trim() || !composeBody.trim()}
+            >
+              {sending ? "Đang gửi..." : "Gửi"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <label className="block">
+            <div className="text-[12.5px] font-medium text-ink mb-1.5">Giáo viên</div>
+            <select
+              value={teacherUserId}
+              onChange={(e) => setTeacherUserId(e.target.value === "" ? "" : Number(e.target.value))}
+              className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px]"
+            >
+              <option value="">— Chọn giáo viên —</option>
+              {classTeachers.map((teacher) => (
+                <option key={teacher.userId} value={teacher.userId}>
+                  {teacher.name}{teacher.code ? ` (${teacher.code})` : ""}
+                </option>
+              ))}
+            </select>
+            {classTeachers.length === 0 && (
+              <div className="text-[11.5px] text-ink-muted mt-1">
+                Chưa có giáo viên từ lớp đã đăng ký để gửi thông báo.
+              </div>
+            )}
+          </label>
+          <label className="block">
+            <div className="text-[12.5px] font-medium text-ink mb-1.5">Tiêu đề</div>
+            <input
+              value={composeTitle}
+              onChange={(e) => setComposeTitle(e.target.value)}
+              placeholder="Vd: Xin nghỉ học"
+              className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
+            />
+          </label>
+          <label className="block">
+            <div className="text-[12.5px] font-medium text-ink mb-1.5">Nội dung</div>
+            <textarea
+              value={composeBody}
+              onChange={(e) => setComposeBody(e.target.value)}
+              rows={4}
+              placeholder="Nhập nội dung gửi giáo viên..."
+              className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none resize-y"
+            />
+          </label>
+        </div>
       </Modal>
     </div>
   );

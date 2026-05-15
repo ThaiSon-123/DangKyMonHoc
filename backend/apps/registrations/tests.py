@@ -10,6 +10,7 @@ from rest_framework.test import APIClient
 from apps.accounts.models import Role, User
 from apps.classes.models import ClassSection, Schedule
 from apps.courses.models import Prerequisite
+from apps.curriculums.models import Curriculum, CurriculumCourse
 from apps.grades.models import Grade
 from apps.majors.models import Major
 from apps.profiles.models import StudentProfile
@@ -58,6 +59,100 @@ def test_br003_reject_after_registration_end(api, student_profile, open_semester
     res = api.post("/api/registrations/", {"class_section": cs.id}, format="json")
     assert res.status_code == 400
     assert "quá thời gian đăng ký" in str(res.data)
+
+
+def test_reject_course_outside_student_curriculum(
+    api, student_profile, course_factory, class_section_factory
+):
+    in_curriculum = course_factory(code="CUR101")
+    outside = course_factory(code="OUT101")
+    curriculum = Curriculum.objects.create(
+        major=student_profile.major,
+        code="CNTT-2021",
+        name="CNTT 2021",
+        cohort_year=student_profile.enrollment_year,
+        is_active=True,
+    )
+    CurriculumCourse.objects.create(curriculum=curriculum, course=in_curriculum)
+    cs = class_section_factory(outside)
+
+    res = api.post("/api/registrations/", {"class_section": cs.id}, format="json")
+
+    assert res.status_code == 400
+    assert "chương trình đào tạo" in str(res.data)
+
+
+def test_reject_graded_course_without_retake_confirmation(
+    api, student_profile, open_semester, course_factory, class_section_factory
+):
+    course = course_factory(code="RET101")
+    curriculum = Curriculum.objects.create(
+        major=student_profile.major,
+        code="CNTT-2021",
+        name="CNTT 2021",
+        cohort_year=student_profile.enrollment_year,
+        is_active=True,
+    )
+    CurriculumCourse.objects.create(curriculum=curriculum, course=course)
+    old_cs = class_section_factory(
+        course, weekday=2, session=Schedule.Session.AFTERNOON, start_period=6
+    )
+    old_reg = Registration.objects.create(
+        student=student_profile,
+        class_section=old_cs,
+        semester=open_semester,
+        status=Registration.Status.CONFIRMED,
+    )
+    Grade.objects.create(
+        registration=old_reg,
+        process_score=Decimal("6"),
+        midterm_score=Decimal("6"),
+        final_score=Decimal("6"),
+    )
+    new_cs = class_section_factory(course, weekday=3, start_period=1)
+
+    res = api.post("/api/registrations/", {"class_section": new_cs.id}, format="json")
+
+    assert res.status_code == 400
+    assert "Môn đã học rồi" in str(res.data)
+
+
+def test_allow_graded_course_with_retake_confirmation(
+    api, student_profile, open_semester, course_factory, class_section_factory
+):
+    course = course_factory(code="RET102")
+    curriculum = Curriculum.objects.create(
+        major=student_profile.major,
+        code="CNTT-2021-B",
+        name="CNTT 2021",
+        cohort_year=student_profile.enrollment_year,
+        is_active=True,
+    )
+    CurriculumCourse.objects.create(curriculum=curriculum, course=course)
+    old_cs = class_section_factory(
+        course, weekday=2, session=Schedule.Session.AFTERNOON, start_period=6
+    )
+    old_reg = Registration.objects.create(
+        student=student_profile,
+        class_section=old_cs,
+        semester=open_semester,
+        status=Registration.Status.CONFIRMED,
+    )
+    Grade.objects.create(
+        registration=old_reg,
+        process_score=Decimal("6"),
+        midterm_score=Decimal("6"),
+        final_score=Decimal("6"),
+    )
+    new_cs = class_section_factory(course, weekday=3, start_period=1)
+
+    res = api.post(
+        "/api/registrations/",
+        {"class_section": new_cs.id, "retake_confirmed": True},
+        format="json",
+    )
+
+    assert res.status_code == 201, res.data
 
 
 # ---------- BR-005: lớp đầy ----------

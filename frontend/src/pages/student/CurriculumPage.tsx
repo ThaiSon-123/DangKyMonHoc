@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge, Card, Stat, Table, type Column } from "@/components/ui";
 import Icon from "@/components/ui/Icon";
 import { getMyCurriculum } from "@/api/curriculums";
+import { listGrades, type Grade } from "@/api/grades";
 import { extractApiError } from "@/lib/errors";
 import { semesterLabel } from "@/lib/semester";
 import {
@@ -21,6 +22,7 @@ const BLOCK_TONE: Record<KnowledgeBlock, "neutral" | "accent" | "success" | "war
 
 export default function StudentCurriculumPage() {
   const [data, setData] = useState<Curriculum | null>(null);
+  const [grades, setGrades] = useState<Grade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,10 +43,34 @@ export default function StudentCurriculumPage() {
     };
   }, []);
 
+  useEffect(() => {
+    listGrades({ page_size: 1000 })
+      .then((res) => setGrades(res.results))
+      .catch(() => setGrades([]));
+  }, []);
+
+  const gradeByCourse = useMemo(() => {
+    const map = new Map<string, Grade>();
+    for (const grade of grades) {
+      if (grade.total_score === null || grade.total_score === "") continue;
+      const current = map.get(grade.course_code);
+      if (!current || Number(grade.total_score) > Number(current.total_score ?? 0)) {
+        map.set(grade.course_code, grade);
+      }
+    }
+    return map;
+  }, [grades]);
+
   const stats = useMemo(() => {
     if (!data) return null;
     const cs = data.curriculum_courses;
     const totalCredits = cs.reduce((s, cc) => s + cc.course_credits, 0);
+    const learnedCredits = cs
+      .filter((cc) => gradeByCourse.has(cc.course_code))
+      .reduce((s, cc) => s + cc.course_credits, 0);
+    const passedCredits = cs
+      .filter((cc) => Number(gradeByCourse.get(cc.course_code)?.total_score ?? 0) > 5)
+      .reduce((s, cc) => s + cc.course_credits, 0);
     const required = cs.filter((cc) => cc.is_required).length;
     const optional = cs.length - required;
     const requiredCredits = cs
@@ -59,8 +85,18 @@ export default function StudentCurriculumPage() {
       cur.credits += cc.course_credits;
       byBlock.set(cc.knowledge_block, cur);
     }
-    return { count: cs.length, totalCredits, required, optional, requiredCredits, maxSem, byBlock };
-  }, [data]);
+    return {
+      count: cs.length,
+      totalCredits,
+      learnedCredits,
+      passedCredits,
+      required,
+      optional,
+      requiredCredits,
+      maxSem,
+      byBlock,
+    };
+  }, [data, gradeByCourse]);
 
   const grouped = useMemo(() => {
     const map = new Map<number, CurriculumCourse[]>();
@@ -94,7 +130,7 @@ export default function StudentCurriculumPage() {
 
   const completionRatio =
     data.total_credits_required > 0
-      ? Math.min(100, Math.round((stats.totalCredits / data.total_credits_required) * 100))
+      ? Math.min(100, Math.round((stats.passedCredits / data.total_credits_required) * 100))
       : 0;
 
   const courseColumns: Column<CurriculumCourse>[] = [
@@ -125,6 +161,35 @@ export default function StudentCurriculumPage() {
           <Badge tone="success">Bắt buộc</Badge>
         ) : (
           <Badge tone="neutral">Tự chọn</Badge>
+        ),
+    },
+    {
+      key: "learned",
+      label: "Đã học",
+      width: "95px",
+      align: "center",
+      render: (cc) => {
+        const grade = gradeByCourse.get(cc.course_code);
+        return grade ? (
+          <div className="inline-flex items-center gap-1.5">
+            <Badge tone="accent">Đã học</Badge>
+            <span className="font-mono text-[11.5px] text-ink-muted">{grade.total_score}</span>
+          </div>
+        ) : (
+          <span className="text-ink-faint">—</span>
+        );
+      },
+    },
+    {
+      key: "passed",
+      label: "Đã đạt",
+      width: "90px",
+      align: "center",
+      render: (cc) =>
+        Number(gradeByCourse.get(cc.course_code)?.total_score ?? 0) > 5 ? (
+          <Badge tone="success">Đạt</Badge>
+        ) : (
+          <span className="text-ink-faint">—</span>
         ),
     },
   ];
@@ -158,8 +223,8 @@ export default function StudentCurriculumPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat label="Tổng môn" value={stats.count} icon="book" tone="accent" />
         <Stat
-          label="Tổng tín chỉ"
-          value={stats.totalCredits}
+          label="TC đã đạt"
+          value={stats.passedCredits}
           hint={`/ ${data.total_credits_required} yêu cầu`}
           icon="layers"
         />
@@ -173,13 +238,13 @@ export default function StudentCurriculumPage() {
       </div>
 
       {/* Tỷ lệ hoàn thành CTĐT (theo TC) */}
-      <Card title="Tổng quan CTĐT" subtitle={`Khóa ${data.cohort_year} - Ngành ${data.major_code}`}>
+      <Card title="Tiến độ học" subtitle={`Khóa ${data.cohort_year} - Ngành ${data.major_code}`}>
         <div className="space-y-4">
           <div>
             <div className="flex justify-between text-[12.5px] text-ink-muted mb-1.5">
-              <span>Tổng tín chỉ trong CTĐT</span>
+              <span>Tín chỉ đã đạt trong CTĐT</span>
               <span className="font-mono text-ink font-semibold">
-                {stats.totalCredits} / {data.total_credits_required} TC ({completionRatio}%)
+                {stats.passedCredits} / {data.total_credits_required} TC ({completionRatio}%)
               </span>
             </div>
             <div className="h-2 rounded-full bg-surface overflow-hidden">
@@ -190,11 +255,14 @@ export default function StudentCurriculumPage() {
                 style={{ width: `${completionRatio}%` }}
               />
             </div>
-            {stats.totalCredits < data.total_credits_required && (
+            {stats.passedCredits < data.total_credits_required && (
               <div className="text-[11.5px] text-warn mt-1">
-                Thiếu {data.total_credits_required - stats.totalCredits} TC so với yêu cầu
+                Thiếu {data.total_credits_required - stats.passedCredits} TC so với yêu cầu
               </div>
             )}
+            <div className="text-[11.5px] text-ink-muted mt-1">
+              Đã học {stats.learnedCredits} TC có điểm.
+            </div>
           </div>
 
           {/* Phân bố khối kiến thức */}

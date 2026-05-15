@@ -27,6 +27,7 @@ export async function listClassSections(params?: {
   teacher?: number;
   department?: string;
   major?: number;
+  curriculum?: number;
   status?: ClassStatus;
   page?: number;
   page_size?: number;
