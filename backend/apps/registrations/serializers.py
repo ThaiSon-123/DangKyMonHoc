@@ -2,6 +2,8 @@ from django.conf import settings
 from django.utils import timezone
 from rest_framework import serializers
 
+from apps.classes.serializers import ScheduleSerializer
+from apps.curriculums.models import Curriculum
 from apps.profiles.models import StudentProfile
 from apps.semesters.models import Semester
 from .models import Registration
@@ -22,6 +24,13 @@ class RegistrationSerializer(serializers.ModelSerializer):
     course_credits = serializers.IntegerField(source="class_section.course.credits", read_only=True)
     semester_code = serializers.CharField(source="semester.code", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    teacher_name = serializers.SerializerMethodField()
+    teacher_code = serializers.CharField(source="class_section.teacher.teacher_code", read_only=True, default=None)
+    teacher_user_id = serializers.IntegerField(source="class_section.teacher.user_id", read_only=True, default=None)
+    schedules = ScheduleSerializer(source="class_section.schedules", many=True, read_only=True)
+    enrolled_count = serializers.IntegerField(source="class_section.enrolled_count", read_only=True)
+    max_students = serializers.IntegerField(source="class_section.max_students", read_only=True)
+    retake_confirmed = serializers.BooleanField(write_only=True, required=False, default=False)
 
     class Meta:
         model = Registration
@@ -30,6 +39,8 @@ class RegistrationSerializer(serializers.ModelSerializer):
             "class_section", "class_section_code", "course_code", "course_name", "course_credits",
             "semester", "semester_code",
             "status", "status_display", "registered_at", "cancelled_at", "cancel_reason",
+            "teacher_name", "teacher_code", "teacher_user_id",
+            "schedules", "enrolled_count", "max_students", "retake_confirmed",
         )
         read_only_fields = ("id", "registered_at", "cancelled_at")
         # Disable auto UniqueTogetherValidator vì nó bắt student field phải có sẵn
@@ -38,6 +49,12 @@ class RegistrationSerializer(serializers.ModelSerializer):
     def get_student_name(self, obj) -> str:
         u = obj.student.user
         return u.get_full_name() or u.username
+
+    def get_teacher_name(self, obj) -> str | None:
+        teacher = obj.class_section.teacher
+        if not teacher:
+            return None
+        return teacher.user.get_full_name() or teacher.user.username
 
     # ---------- Validation helpers ----------
 
@@ -97,6 +114,44 @@ class RegistrationSerializer(serializers.ModelSerializer):
         if missing:
             raise serializers.ValidationError(
                 {"class_section": f"Thiếu môn tiên quyết: {', '.join(missing)}"}
+            )
+
+    def _get_student_curriculum(self, student):
+        cur = Curriculum.objects.filter(
+            major=student.major,
+            cohort_year=student.enrollment_year,
+            is_active=True,
+        ).first()
+        if cur:
+            return cur
+        return (
+            Curriculum.objects.filter(
+                major=student.major,
+                cohort_year__lte=student.enrollment_year,
+                is_active=True,
+            )
+            .order_by("-cohort_year")
+            .first()
+        )
+
+    def _check_course_in_curriculum(self, student, class_section):
+        curriculum = self._get_student_curriculum(student)
+        if not curriculum:
+            return
+        if not curriculum.curriculum_courses.filter(course=class_section.course).exists():
+            raise serializers.ValidationError(
+                {"class_section": "Môn không có trong chương trình đào tạo."}
+            )
+
+    def _check_retake_confirmation(self, student, class_section, retake_confirmed):
+        has_grade = Registration.objects.filter(
+            student=student,
+            class_section__course=class_section.course,
+            grade__total_score__isnull=False,
+        ).exists()
+        if has_grade and not retake_confirmed:
+            raise serializers.ValidationError(
+                {"class_section": "Môn đã học rồi. Bạn có muốn học lại không?"}
             )
 
     @staticmethod
@@ -167,11 +222,18 @@ class RegistrationSerializer(serializers.ModelSerializer):
                 )
 
             self._check_window_open(semester)
+            self._check_course_in_curriculum(student, class_section)
+            self._check_retake_confirmation(
+                student,
+                class_section,
+                attrs.pop("retake_confirmed", False),
+            )
             self._check_class_not_full(class_section)
             self._check_prerequisites(student, class_section)
             instance_pk = self.instance.pk if self.instance else None
             self._check_schedule_conflict(student, semester, class_section, instance_pk)
 
+        attrs.pop("retake_confirmed", None)
         return attrs
 
     def create(self, validated_data):

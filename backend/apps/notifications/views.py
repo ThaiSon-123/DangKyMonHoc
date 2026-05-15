@@ -18,6 +18,8 @@ class NotificationViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ("list", "retrieve", "mark_read", "mark_all_read", "unread_count"):
             return [permissions.IsAuthenticated()]
+        if self.action == "create":
+            return [permissions.IsAuthenticated()]
         return [IsAdminRole()]
 
     def get_queryset(self):

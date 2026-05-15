@@ -4,17 +4,19 @@ import Icon from "@/components/ui/Icon";
 import { listClassSections } from "@/api/classes";
 import {
   cancelRegistration,
+  createRegistration,
   listRegistrations,
   type Registration,
 } from "@/api/registrations";
+import { getMyCurriculum } from "@/api/curriculums";
 import { listSemesters } from "@/api/semesters";
-import { api } from "@/api/client";
 import { extractApiError } from "@/lib/errors";
 import { PAGE_SIZE } from "@/lib/constants";
 import {
   SESSION_LABELS,
   WEEKDAY_LABELS,
   type ClassSection,
+  type Curriculum,
   type Schedule,
   type Semester,
 } from "@/types/domain";
@@ -22,6 +24,9 @@ import {
 export default function StudentRegisterPage() {
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [selectedSemester, setSelectedSemester] = useState<number | "">("");
+  const [curriculum, setCurriculum] = useState<Curriculum | null>(null);
+  const [filterCurriculum, setFilterCurriculum] = useState(true);
+  const [filterOpenSemester, setFilterOpenSemester] = useState(false);
 
   const [classes, setClasses] = useState<ClassSection[]>([]);
   const [classesLoading, setClassesLoading] = useState(false);
@@ -36,6 +41,7 @@ export default function StudentRegisterPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [confirmTarget, setConfirmTarget] = useState<ClassSection | null>(null);
+  const [retakeTarget, setRetakeTarget] = useState<ClassSection | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
@@ -43,18 +49,21 @@ export default function StudentRegisterPage() {
   const [cancelTarget, setCancelTarget] = useState<Registration | null>(null);
   const [cancelReason, setCancelReason] = useState("");
 
-  // Load semesters
   useEffect(() => {
     listSemesters({ page_size: 1000 })
       .then((r) => {
         setSemesters(r.results);
-        const openSem = r.results.find((s) => s.is_open);
-        setSelectedSemester(openSem?.id ?? r.results[0]?.id ?? "");
+        setSelectedSemester(r.results[0]?.id ?? "");
       })
       .catch((err) => setError(extractApiError(err, "Không tải được học kỳ.")));
   }, []);
 
-  // Load registrations của SV trong học kỳ
+  useEffect(() => {
+    getMyCurriculum()
+      .then(setCurriculum)
+      .catch(() => setCurriculum(null));
+  }, []);
+
   const refreshRegs = useCallback(async () => {
     if (!selectedSemester) {
       setRegistrations([]);
@@ -74,9 +83,13 @@ export default function StudentRegisterPage() {
     }
   }, [selectedSemester]);
 
-  // Load class sections
   const refreshClasses = useCallback(async () => {
     if (!selectedSemester) {
+      setClasses([]);
+      setClassesTotal(0);
+      return;
+    }
+    if (filterOpenSemester && !semesters.find((s) => s.id === selectedSemester)?.is_open) {
       setClasses([]);
       setClassesTotal(0);
       return;
@@ -88,6 +101,7 @@ export default function StudentRegisterPage() {
         semester: selectedSemester,
         status: "OPEN",
         search: appliedSearch || undefined,
+        curriculum: filterCurriculum ? curriculum?.id : undefined,
         page,
       });
       setClasses(data.results);
@@ -97,7 +111,7 @@ export default function StudentRegisterPage() {
     } finally {
       setClassesLoading(false);
     }
-  }, [selectedSemester, appliedSearch, page]);
+  }, [selectedSemester, appliedSearch, filterCurriculum, filterOpenSemester, semesters, curriculum?.id, page]);
 
   useEffect(() => {
     refreshRegs();
@@ -112,7 +126,6 @@ export default function StudentRegisterPage() {
     setAppliedSearch(search);
   }
 
-  // Set IDs of class section đã đăng ký (kể cả PENDING / CONFIRMED)
   const registeredClassIds = useMemo(
     () =>
       new Set(
@@ -123,20 +136,27 @@ export default function StudentRegisterPage() {
     [registrations],
   );
 
-  async function handleConfirmRegister() {
-    if (!confirmTarget) return;
+  async function submitRegistration(target: ClassSection, retakeConfirmed = false) {
     setSubmitting(true);
     setRegisterError(null);
     try {
-      await api.post("/registrations/", { class_section: confirmTarget.id });
-      setRegisterSuccess(`Đăng ký thành công ${confirmTarget.code}!`);
+      await createRegistration({
+        class_section: target.id,
+        retake_confirmed: retakeConfirmed,
+      });
+      setRegisterSuccess(`Đăng ký thành công ${target.code}!`);
       setConfirmTarget(null);
-      // Refresh both lists
+      setRetakeTarget(null);
       await Promise.all([refreshRegs(), refreshClasses()]);
-      // Auto-hide success
       setTimeout(() => setRegisterSuccess(null), 4000);
     } catch (err) {
-      setRegisterError(extractApiError(err));
+      const message = extractApiError(err);
+      if (message.includes("Môn đã học rồi") && !retakeConfirmed) {
+        setConfirmTarget(null);
+        setRetakeTarget(target);
+      } else {
+        setRegisterError(message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -167,11 +187,11 @@ export default function StudentRegisterPage() {
       .join(" / ");
   }
 
-  // Stats
-  const totalRegistered = registrations.filter(
+  const activeRegistrations = registrations.filter((r) => r.status !== "CANCELLED");
+  const totalRegistered = activeRegistrations.filter(
     (r) => r.status === "CONFIRMED" || r.status === "PENDING",
   ).length;
-  const totalCredits = registrations
+  const totalCredits = activeRegistrations
     .filter((r) => r.status === "CONFIRMED" || r.status === "PENDING")
     .reduce((s, r) => s + r.course_credits, 0);
 
@@ -222,11 +242,7 @@ export default function StudentRegisterPage() {
       width: "100px",
       render: (c) => (
         <div>
-          <span
-            className={`font-mono text-[12.5px] ${
-              c.is_full ? "text-danger font-semibold" : "text-ink"
-            }`}
-          >
+          <span className={`font-mono text-[12.5px] ${c.is_full ? "text-danger font-semibold" : "text-ink"}`}>
             {c.enrolled_count}/{c.max_students}
           </span>
           {c.is_full && <Badge tone="danger">Đầy</Badge>}
@@ -249,13 +265,18 @@ export default function StudentRegisterPage() {
             variant="primary"
             icon="plus"
             onClick={() => {
+              if (!isSemesterOpen) {
+                setError("Ngoài thời gian đăng ký.");
+                return;
+              }
               setConfirmTarget(c);
               setRegisterError(null);
             }}
-            disabled={c.is_full || !isSemesterOpen}
+            disabled={c.is_full}
+            className={!isSemesterOpen ? "opacity-60" : ""}
             title={
               !isSemesterOpen
-                ? "Học kỳ chưa mở đăng ký"
+                ? "Ngoài thời gian đăng ký"
                 : c.is_full
                 ? "Lớp đã đầy"
                 : ""
@@ -268,6 +289,79 @@ export default function StudentRegisterPage() {
     },
   ];
 
+  const registeredColumns: Column<Registration>[] = [
+    { key: "class_section_code", label: "Mã lớp", mono: true, width: "120px" },
+    {
+      key: "course",
+      label: "Môn học",
+      render: (r) => (
+        <div>
+          <div className="font-mono text-[12px] text-ink-muted">{r.course_code}</div>
+          <div className="text-[13px]">{r.course_name}</div>
+        </div>
+      ),
+    },
+    {
+      key: "course_credits",
+      label: "TC",
+      align: "center",
+      width: "60px",
+      render: (r) => <span className="font-mono">{r.course_credits}</span>,
+    },
+    {
+      key: "teacher_name",
+      label: "Giáo viên",
+      width: "160px",
+      render: (r) => r.teacher_name || <span className="text-ink-faint">—</span>,
+    },
+    {
+      key: "schedules",
+      label: "Lịch học",
+      render: (r) => (
+        <span className="text-[12px] text-ink-muted">{formatSchedules(r.schedules ?? [])}</span>
+      ),
+    },
+    {
+      key: "enrollment",
+      label: "Sĩ số",
+      align: "center",
+      width: "100px",
+      render: (r) => (
+        <span className="font-mono text-[12.5px]">
+          {r.enrolled_count}/{r.max_students}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      label: "Trạng thái",
+      width: "120px",
+      render: (r) => (
+        <Badge tone={r.status === "CONFIRMED" ? "success" : "warn"}>{r.status_display}</Badge>
+      ),
+    },
+    {
+      key: "actions",
+      label: "",
+      width: "90px",
+      align: "right",
+      render: (r) => (
+        <Button
+          size="sm"
+          variant="ghost"
+          icon="x"
+          onClick={() => {
+            setCancelTarget(r);
+            setCancelReason("");
+          }}
+          disabled={!isSemesterOpen}
+        >
+          Huỷ
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-5">
       <div className="flex items-start gap-4">
@@ -275,36 +369,23 @@ export default function StudentRegisterPage() {
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">
             Đăng ký môn học
           </h1>
-          <p className="mt-1 text-[13.5px] text-ink-muted">
-            Chọn lớp học phần phù hợp với chương trình đào tạo. Hệ thống tự kiểm tra trùng lịch,
-            môn tiên quyết và sĩ số trước khi xác nhận.
-          </p>
         </div>
-        <select
-          value={selectedSemester}
-          onChange={(e) => {
-            setSelectedSemester(e.target.value === "" ? "" : Number(e.target.value));
-            setPage(1);
-          }}
-          className="px-3 py-2 rounded-md bg-card border border-line text-[13px] min-w-[280px]"
-        >
-          <option value="">— Chọn học kỳ —</option>
-          {semesters.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.code} - {s.name}
-              {s.is_open ? " (đang mở)" : " (đã đóng)"}
-            </option>
-          ))}
-        </select>
+        <div className="px-3 py-2 rounded-md bg-card border border-line text-[13px] min-w-[280px]">
+          {semesterObj ? (
+            <span>
+              {semesterObj.code} - {semesterObj.name}
+              {semesterObj.is_open ? " (đang mở)" : " (chưa mở)"}
+            </span>
+          ) : (
+            <span className="text-ink-faint">Chưa có học kỳ</span>
+          )}
+        </div>
       </div>
 
       {!isSemesterOpen && selectedSemester && (
         <div className="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 text-[13px] text-warn flex items-start gap-2">
           <Icon name="bell" size={16} className="mt-0.5 flex-shrink-0" />
-          <div>
-            Học kỳ này <strong>chưa mở đăng ký</strong>. Bạn chỉ có thể xem danh sách lớp, không
-            thể đăng ký mới (BR-003).
-          </div>
+          <div>Ngoài thời gian đăng ký. Bạn có thể xem danh sách lớp nhưng chưa thể đăng ký mới.</div>
         </div>
       )}
 
@@ -318,61 +399,10 @@ export default function StudentRegisterPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Stat label="Lớp đã đăng ký" value={totalRegistered} icon="check" tone="accent" />
         <Stat label="Tổng tín chỉ" value={totalCredits} icon="book" />
-        <Stat label="Lớp mở (kỳ này)" value={classesTotal} icon="clipboard" />
+        <Stat label="Lớp mở kỳ mới nhất" value={classesTotal} icon="clipboard" />
       </div>
 
-      {/* Danh sách lớp đã đăng ký */}
-      {registrations.length > 0 && (
-        <Card
-          title="Lớp đã đăng ký"
-          subtitle={`${totalRegistered} lớp · ${totalCredits} tín chỉ`}
-        >
-          {regsLoading ? (
-            <div className="text-ink-muted">Đang tải...</div>
-          ) : (
-            <div className="space-y-2">
-              {registrations
-                .filter((r) => r.status !== "CANCELLED")
-                .map((r) => (
-                  <div
-                    key={r.id}
-                    className="flex items-center gap-3 p-3 rounded-md border border-line hover:bg-surface"
-                  >
-                    <div className="font-mono text-[12.5px] text-ink-muted w-24">
-                      {r.class_section_code}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[13px] font-medium text-ink truncate">
-                        {r.course_name}
-                      </div>
-                      <div className="text-[11.5px] text-ink-muted font-mono">
-                        {r.course_code} · {r.course_credits} TC
-                      </div>
-                    </div>
-                    <Badge tone={r.status === "CONFIRMED" ? "success" : "warn"}>
-                      {r.status_display}
-                    </Badge>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      icon="x"
-                      onClick={() => {
-                        setCancelTarget(r);
-                        setCancelReason("");
-                      }}
-                      disabled={!isSemesterOpen}
-                    >
-                      Huỷ
-                    </Button>
-                  </div>
-                ))}
-            </div>
-          )}
-        </Card>
-      )}
-
-      {/* Danh sách lớp có thể đăng ký */}
-      <Card title="Lớp học phần mở" subtitle="Chọn lớp để đăng ký">
+      <Card title="Lớp học phần mở" subtitle="Chỉ hiển thị lớp thuộc học kỳ mới nhất">
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface border border-line w-80">
             <Icon name="search" size={15} className="text-ink-faint" />
@@ -387,12 +417,36 @@ export default function StudentRegisterPage() {
             />
           </div>
           <Button onClick={applySearch}>Tìm</Button>
-          {appliedSearch && (
+          <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface border border-line text-[13px]">
+            <input
+              type="checkbox"
+              checked={filterCurriculum}
+              onChange={(e) => {
+                setFilterCurriculum(e.target.checked);
+                setPage(1);
+              }}
+            />
+            Theo CTĐT
+          </label>
+          <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface border border-line text-[13px]">
+            <input
+              type="checkbox"
+              checked={filterOpenSemester}
+              onChange={(e) => {
+                setFilterOpenSemester(e.target.checked);
+                setPage(1);
+              }}
+            />
+            Kỳ đang mở
+          </label>
+          {(appliedSearch || !filterCurriculum || filterOpenSemester) && (
             <Button
               variant="ghost"
               onClick={() => {
                 setSearch("");
                 setAppliedSearch("");
+                setFilterCurriculum(true);
+                setFilterOpenSemester(false);
                 setPage(1);
               }}
             >
@@ -412,25 +466,25 @@ export default function StudentRegisterPage() {
           rows={classes}
           rowKey={(c) => c.id}
           loading={classesLoading}
-          emptyText="Không có lớp học phần nào mở trong học kỳ này."
+          emptyText="Không có lớp học phần nào mở trong học kỳ mới nhất."
         />
-        <Pagination
-          page={page}
-          pageSize={PAGE_SIZE}
-          total={classesTotal}
-          onChange={setPage}
+        <Pagination page={page} pageSize={PAGE_SIZE} total={classesTotal} onChange={setPage} />
+      </Card>
+
+      <Card title="Lớp đã đăng ký" subtitle={`${totalRegistered} lớp · ${totalCredits} tín chỉ`}>
+        <Table
+          columns={registeredColumns}
+          rows={activeRegistrations}
+          rowKey={(r) => r.id}
+          loading={regsLoading}
+          emptyText="Chưa có lớp học phần đã đăng ký."
         />
       </Card>
 
-      {/* Confirm register modal */}
       <Modal
         open={confirmTarget !== null}
         title="Xác nhận đăng ký môn"
-        subtitle={
-          confirmTarget
-            ? `${confirmTarget.course_code} - ${confirmTarget.course_name}`
-            : ""
-        }
+        subtitle={confirmTarget ? `${confirmTarget.course_code} - ${confirmTarget.course_name}` : ""}
         onClose={() => setConfirmTarget(null)}
         size="md"
         footer={
@@ -440,7 +494,7 @@ export default function StudentRegisterPage() {
             </Button>
             <Button
               variant="primary"
-              onClick={handleConfirmRegister}
+              onClick={() => confirmTarget && submitRegistration(confirmTarget)}
               disabled={submitting}
               icon="check"
             >
@@ -454,15 +508,8 @@ export default function StudentRegisterPage() {
             <div className="grid grid-cols-2 gap-3">
               <InfoItem label="Mã lớp" value={confirmTarget.code} mono />
               <InfoItem label="Tín chỉ" value={`${confirmTarget.course_credits}`} mono />
-              <InfoItem
-                label="Giáo viên"
-                value={confirmTarget.teacher_name || "Chưa gán"}
-              />
-              <InfoItem
-                label="Sĩ số"
-                value={`${confirmTarget.enrolled_count}/${confirmTarget.max_students}`}
-                mono
-              />
+              <InfoItem label="Giáo viên" value={confirmTarget.teacher_name || "Chưa gán"} />
+              <InfoItem label="Sĩ số" value={`${confirmTarget.enrolled_count}/${confirmTarget.max_students}`} mono />
             </div>
             {confirmTarget.schedules.length > 0 && (
               <div className="bg-surface rounded-md px-3 py-2">
@@ -471,19 +518,12 @@ export default function StudentRegisterPage() {
                 </div>
                 {confirmTarget.schedules.map((s) => (
                   <div key={s.id} className="text-[12.5px] text-ink">
-                    {WEEKDAY_LABELS[s.weekday]} ·{" "}
-                    {SESSION_LABELS[s.session].split(" (")[0]} tiết {s.start_period}-
-                    {s.end_period}
+                    {WEEKDAY_LABELS[s.weekday]} · {SESSION_LABELS[s.session].split(" (")[0]} tiết {s.start_period}-{s.end_period}
                     {s.room && ` · Phòng ${s.room}`}
                   </div>
                 ))}
               </div>
             )}
-            <div className="bg-navy-50 border border-navy-100 rounded-md px-3 py-2 text-[12.5px] text-navy-900">
-              <Icon name="bell" size={13} className="inline mr-1" />
-              Hệ thống sẽ tự kiểm tra: trùng lịch (BR-004), môn tiên quyết (BR-002), sĩ số
-              (BR-005), thời gian đăng ký (BR-003). Nếu fail, sẽ báo lỗi rõ ràng.
-            </div>
             {registerError && (
               <div className="text-sm text-danger bg-red-50 border border-red-200 rounded-md px-3 py-2">
                 {registerError}
@@ -493,15 +533,36 @@ export default function StudentRegisterPage() {
         )}
       </Modal>
 
-      {/* Cancel modal */}
+      <Modal
+        open={retakeTarget !== null}
+        title="Môn đã học rồi"
+        subtitle={retakeTarget ? `${retakeTarget.course_code} - ${retakeTarget.course_name}` : ""}
+        onClose={() => setRetakeTarget(null)}
+        size="md"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setRetakeTarget(null)}>
+              Không
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => retakeTarget && submitRegistration(retakeTarget, true)}
+              disabled={submitting}
+            >
+              Có, học lại
+            </Button>
+          </>
+        }
+      >
+        <p className="text-[13px] text-ink">
+          Môn này đã có điểm trong bảng điểm. Bạn có muốn học lại không?
+        </p>
+      </Modal>
+
       <Modal
         open={cancelTarget !== null}
         title="Huỷ đăng ký môn"
-        subtitle={
-          cancelTarget
-            ? `${cancelTarget.course_code} · ${cancelTarget.class_section_code}`
-            : ""
-        }
+        subtitle={cancelTarget ? `${cancelTarget.course_code} · ${cancelTarget.class_section_code}` : ""}
         onClose={() => setCancelTarget(null)}
         size="md"
         footer={
@@ -517,8 +578,7 @@ export default function StudentRegisterPage() {
       >
         <div className="space-y-3">
           <p className="text-[13px] text-ink">
-            Huỷ đăng ký môn này? Bạn chỉ được huỷ khi học kỳ còn trong thời gian đăng ký
-            (BR-006).
+            Huỷ đăng ký môn này? Bạn chỉ được huỷ khi học kỳ còn trong thời gian đăng ký.
           </p>
           <label className="block">
             <div className="text-[12.5px] font-medium text-ink mb-1.5">Lý do (tuỳ chọn)</div>

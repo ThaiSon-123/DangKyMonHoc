@@ -34,6 +34,9 @@ class ClassSectionViewSet(viewsets.ModelViewSet):
         major = params.get("major")
         if major:
             qs = qs.filter(course__curriculum_links__curriculum__major_id=major)
+        curriculum = params.get("curriculum")
+        if curriculum:
+            qs = qs.filter(course__curriculum_links__curriculum_id=curriculum)
         return qs.distinct()
 
     @action(

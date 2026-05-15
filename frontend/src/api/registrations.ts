@@ -1,5 +1,5 @@
 import { api } from "./client";
-import type { Paginated } from "@/types/domain";
+import type { Paginated, Schedule } from "@/types/domain";
 
 export type RegistrationStatus = "PENDING" | "CONFIRMED" | "CANCELLED";
 
@@ -26,6 +26,12 @@ export interface Registration {
   registered_at: string;
   cancelled_at: string | null;
   cancel_reason: string;
+  teacher_name: string | null;
+  teacher_code: string | null;
+  teacher_user_id: number | null;
+  schedules: Schedule[];
+  enrolled_count: number;
+  max_students: number;
 }
 
 export async function listRegistrations(params?: {
@@ -40,6 +46,14 @@ export async function listRegistrations(params?: {
   page_size?: number;
 }): Promise<Paginated<Registration>> {
   const res = await api.get<Paginated<Registration>>("/registrations/", { params });
+  return res.data;
+}
+
+export async function createRegistration(payload: {
+  class_section: number;
+  retake_confirmed?: boolean;
+}): Promise<Registration> {
+  const res = await api.post<Registration>("/registrations/", payload);
   return res.data;
 }
 

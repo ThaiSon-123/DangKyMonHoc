@@ -239,6 +239,7 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [x] API `POST /notifications/mark-all-read/` — đánh dấu đọc tất cả
 - [x] API `GET /notifications/unread-count/` — số chưa đọc cho badge
 - [x] Field `is_read` trong NotificationSerializer (computed per user)
+- [x] API `POST /notifications/` — SV chỉ gửi thông báo đích danh cho GV của lớp mình học (`Registration.CONFIRMED`)
 - [x] API `GET /students/me/` — SV xem hồ sơ cá nhân
 - [x] API `GET /teachers/me/` — GV xem hồ sơ cá nhân
 
@@ -538,6 +539,7 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [x] Icon + tone theo category (megaphone/calendar/clipboard/settings/bell)
 - [x] Relative time ("5 phút trước", "2 ngày trước"...)
 - [x] Empty state đẹp khi không có noti
+- [x] Nút "Gửi giáo viên" — dropdown chỉ hiện GV của các lớp SV đã đăng ký/xác nhận học
 - [ ] Badge số notification chưa đọc trên layout TopBar
 
 ## 2.4. Teacher UI
@@ -617,6 +619,7 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [ ] TEST-011 - Xem TKB giáo viên (chưa implement)
 - [x] TEST-012 - Nhập điểm + BR-007/BR-008/BR-009 (pytest cases + auto-compute)
 - [x] TEST-013 - Gửi thông báo từ Admin (UI + API)
+- [x] TEST-013a - SV gửi thông báo cho GV của lớp mình học; chặn GV ngoài lớp / user không phải GV
 - [ ] TEST-014 - Báo cáo và thống kê (chưa implement)
 
 ---
