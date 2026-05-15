@@ -9,11 +9,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.profiles.models import StudentProfile
-from .auto_schedule import AutoScheduleError, suggest_schedules
+from apps.semesters.models import Semester
+from .auto_schedule import AutoScheduleError, build_available_courses, suggest_schedules
 from .models import Registration
 from .serializers import (
     AutoScheduleCandidateSerializer,
     AutoScheduleRequestSerializer,
+    AvailableCourseSerializer,
     RegistrationSerializer,
 )
 
@@ -91,6 +93,45 @@ class RegistrationViewSet(viewsets.ModelViewSet):
         registration.cancel_reason = request.data.get("cancel_reason", "Hủy bởi người dùng")
         registration.save(update_fields=["status", "cancelled_at", "cancel_reason"])
         return Response(RegistrationSerializer(registration).data)
+
+
+class AvailableCoursesView(APIView):
+    """GET /api/auto-schedule/available-courses/?semester=<id>&search=&unlearned_only=
+
+    Trả list môn có lớp HP OPEN còn slot, thuộc CTĐT của SV.
+    Group theo course → teacher → class_sections.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if getattr(request.user, "role", None) != "STUDENT":
+            raise PermissionDenied("Chỉ sinh viên được dùng chức năng này.")
+        try:
+            student = request.user.student_profile
+        except StudentProfile.DoesNotExist:
+            raise PermissionDenied("Tài khoản chưa có StudentProfile. Liên hệ Admin.")
+
+        semester_id = request.query_params.get("semester")
+        if not semester_id:
+            return Response({"detail": "Thiếu query param `semester`."}, status=400)
+        try:
+            semester = Semester.objects.get(pk=int(semester_id))
+        except (Semester.DoesNotExist, ValueError):
+            return Response({"detail": "Học kỳ không tồn tại."}, status=400)
+
+        search = request.query_params.get("search", "") or ""
+        unlearned_only = request.query_params.get("unlearned_only", "").lower() in (
+            "true", "1", "yes",
+        )
+
+        data = build_available_courses(
+            student=student,
+            semester=semester,
+            search=search,
+            unlearned_only=unlearned_only,
+        )
+        serializer = AvailableCourseSerializer(data, many=True)
+        return Response({"count": len(data), "results": serializer.data})
 
 
 class AutoScheduleSuggestView(APIView):

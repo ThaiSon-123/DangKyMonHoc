@@ -2,6 +2,7 @@ from django.conf import settings
 from django.utils import timezone
 from rest_framework import serializers
 
+from apps.classes.models import ClassSection
 from apps.classes.serializers import ClassSectionSerializer, ScheduleSerializer
 from apps.curriculums.models import Curriculum
 from apps.profiles.models import StudentProfile
@@ -264,13 +265,11 @@ class AutoScheduleRequestSerializer(serializers.Serializer):
     preferred_teacher_ids = serializers.ListField(
         child=serializers.IntegerField(), required=False, default=list
     )
-    minimize_gaps = serializers.BooleanField(default=True)
     preset = serializers.ChoiceField(
         choices=[p.value for p in PriorityPreset],
         default=PriorityPreset.BALANCED.value,
     )
     # Hard filter per-course: { "<course_id>": <teacher_id> }
-    # Keys là string (JSON object) sẽ convert sang int trong to_preferences.
     course_teacher_constraints = serializers.DictField(
         child=serializers.IntegerField(),
         required=False,
@@ -286,7 +285,6 @@ class AutoScheduleRequestSerializer(serializers.Serializer):
             avoid_weekdays=frozenset(v.get("avoid_weekdays", [])),
             preferred_sessions=frozenset(v.get("preferred_sessions", [])),
             preferred_teacher_ids=frozenset(v.get("preferred_teacher_ids", [])),
-            minimize_gaps=v.get("minimize_gaps", True),
             preset=PriorityPreset(v.get("preset", PriorityPreset.BALANCED.value)),
             course_teacher_constraints=constraints,
         )
@@ -297,3 +295,35 @@ class AutoScheduleCandidateSerializer(serializers.Serializer):
     class_sections = ClassSectionSerializer(many=True, read_only=True)
     score = serializers.FloatField()
     breakdown = serializers.DictField(child=serializers.FloatField())
+    stats = serializers.DictField(child=serializers.IntegerField())
+
+
+# ───────────────────────── Available courses (GET endpoint) ─────────────────────────
+
+
+class AvailableTeacherClassSectionSerializer(serializers.ModelSerializer):
+    """Mini class-section trong nhóm teachers của available courses."""
+    schedules = ScheduleSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ClassSection
+        fields = ("id", "code", "enrolled_count", "max_students", "schedules")
+
+
+class AvailableTeacherSerializer(serializers.Serializer):
+    teacher_id = serializers.IntegerField(allow_null=True)
+    teacher_name = serializers.CharField(allow_null=True)
+    class_sections = AvailableTeacherClassSectionSerializer(many=True, read_only=True)
+
+
+class AvailableCourseSerializer(serializers.Serializer):
+    """1 môn để hiển thị ở UI chọn TKB (đã group teachers + status flags)."""
+    course_id = serializers.IntegerField()
+    course_code = serializers.CharField()
+    course_name = serializers.CharField()
+    credits = serializers.IntegerField()
+    has_grade = serializers.BooleanField()
+    passed = serializers.BooleanField()
+    missing_prerequisites = serializers.ListField(child=serializers.CharField())
+    registered = serializers.BooleanField()
+    teachers = AvailableTeacherSerializer(many=True, read_only=True)
