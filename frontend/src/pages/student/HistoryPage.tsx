@@ -164,10 +164,6 @@ export default function StudentHistoryPage() {
         <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">
           Lịch sử đăng ký
         </h1>
-        <p className="mt-1 text-[13.5px] text-ink-muted">
-          Toàn bộ đăng ký môn học của bạn qua các học kỳ. Có thể huỷ đăng ký
-          trong thời gian đợt đăng ký còn mở (BR-006).
-        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

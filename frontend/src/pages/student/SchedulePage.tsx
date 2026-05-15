@@ -20,6 +20,34 @@ interface EnrichedSchedule extends Schedule {
   registration_id: number;
 }
 
+function parseDate(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatDate(value: Date): string {
+  return value.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+}
+
+function addDays(value: Date, days: number): Date {
+  const next = new Date(value);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function startOfWeek(value: Date): Date {
+  const next = new Date(value);
+  const day = next.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  next.setDate(next.getDate() + diff);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function sameDateOrBefore(left: Date, right: Date): boolean {
+  return left.getTime() <= right.getTime();
+}
+
 export default function StudentSchedulePage() {
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [selectedSemester, setSelectedSemester] = useState<number | "">("");
@@ -29,6 +57,7 @@ export default function StudentSchedulePage() {
   const [error, setError] = useState<string | null>(null);
 
   const [selectedEvent, setSelectedEvent] = useState<EnrichedSchedule | null>(null);
+  const [weekStart, setWeekStart] = useState<Date | null>(null);
 
   // 1. Load semesters
   useEffect(() => {
@@ -37,7 +66,9 @@ export default function StudentSchedulePage() {
         setSemesters(r.results);
         // Default: học kỳ đang mở, hoặc mới nhất
         const openSem = r.results.find((s) => s.is_open);
-        setSelectedSemester(openSem?.id ?? r.results[0]?.id ?? "");
+        const initial = openSem ?? r.results[0];
+        setSelectedSemester(initial?.id ?? "");
+        if (initial) setWeekStart(startOfWeek(parseDate(initial.start_date)));
       })
       .catch((err) => setError(extractApiError(err, "Không tải được học kỳ.")));
   }, []);
@@ -87,18 +118,32 @@ export default function StudentSchedulePage() {
     loadSchedule();
   }, [loadSchedule]);
 
+  const semesterObj = semesters.find((s) => s.id === selectedSemester);
+  const semesterStart = semesterObj ? parseDate(semesterObj.start_date) : null;
+  const semesterEnd = semesterObj ? parseDate(semesterObj.end_date) : null;
+  const weekEnd = weekStart ? addDays(weekStart, 6) : null;
+
+  const visibleSchedules = useMemo(() => {
+    if (!semesterObj || !weekStart || !weekEnd) return schedules;
+    return schedules.filter((s) => {
+      const scheduleStart = s.start_date ? parseDate(s.start_date) : parseDate(semesterObj.start_date);
+      const scheduleEnd = s.end_date ? parseDate(s.end_date) : parseDate(semesterObj.end_date);
+      return sameDateOrBefore(scheduleStart, weekEnd) && sameDateOrBefore(weekStart, scheduleEnd);
+    });
+  }, [schedules, semesterObj, weekStart, weekEnd]);
+
   // Convert schedules → ScheduleEvent với colorIndex theo course
   const events: ScheduleEvent[] = useMemo(() => {
     // Map course_code → color index (stable)
     const courseColorMap = new Map<string, number>();
     let nextIdx = 0;
-    for (const s of schedules) {
+    for (const s of visibleSchedules) {
       if (!courseColorMap.has(s.course_code)) {
         courseColorMap.set(s.course_code, nextIdx++);
       }
     }
 
-    return schedules.map((s) => ({
+    return visibleSchedules.map((s) => ({
       id: s.id,
       weekday: s.weekday,
       start_period: s.start_period,
@@ -108,16 +153,34 @@ export default function StudentSchedulePage() {
       meta: s.room ? `Phòng ${s.room}` : "",
       colorIndex: courseColorMap.get(s.course_code) ?? 0,
     }));
-  }, [schedules]);
+  }, [visibleSchedules]);
 
   const totalCredits = registrations.reduce((s, r) => s + r.course_credits, 0);
   const totalSessions = schedules.length;
   const uniqueCourses = new Set(schedules.map((s) => s.course_code)).size;
 
   function handleEventClick(event: ScheduleEvent) {
-    const sch = schedules.find((s) => s.id === event.id);
+    const sch = visibleSchedules.find((s) => s.id === event.id);
     if (sch) setSelectedEvent(sch);
   }
+
+  function handleSemesterChange(value: number | "") {
+    setSelectedSemester(value);
+    const semester = semesters.find((s) => s.id === value);
+    setWeekStart(semester ? startOfWeek(parseDate(semester.start_date)) : null);
+  }
+
+  function moveWeek(delta: number) {
+    if (!weekStart || !semesterStart || !semesterEnd) return;
+    const next = addDays(weekStart, delta * 7);
+    const minWeek = startOfWeek(semesterStart);
+    const maxWeek = startOfWeek(semesterEnd);
+    if (next < minWeek || next > maxWeek) return;
+    setWeekStart(next);
+  }
+
+  const canGoPrev = !!weekStart && !!semesterStart && weekStart > startOfWeek(semesterStart);
+  const canGoNext = !!weekStart && !!semesterEnd && weekStart < startOfWeek(semesterEnd);
 
   return (
     <div className="space-y-5">
@@ -126,16 +189,10 @@ export default function StudentSchedulePage() {
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">
             Thời khóa biểu
           </h1>
-          <p className="mt-1 text-[13.5px] text-ink-muted">
-            Lịch học của các môn đã đăng ký trong học kỳ. 15 tiết/ngày: sáng 1-5 · chiều 6-10 ·
-            tối 11-15 (BR-010).
-          </p>
         </div>
         <select
           value={selectedSemester}
-          onChange={(e) =>
-            setSelectedSemester(e.target.value === "" ? "" : Number(e.target.value))
-          }
+          onChange={(e) => handleSemesterChange(e.target.value === "" ? "" : Number(e.target.value))}
           className="px-3 py-2 rounded-md bg-card border border-line text-[13px] min-w-[250px]"
         >
           <option value="">— Chọn học kỳ —</option>
@@ -161,7 +218,22 @@ export default function StudentSchedulePage() {
         </div>
       )}
 
-      <Card title="Lịch học theo tuần" subtitle="Click vào buổi học để xem chi tiết">
+      <Card
+        title="Lịch học theo tuần"
+        subtitle={
+          weekStart && weekEnd
+            ? `Tuần ${formatDate(weekStart)} - ${formatDate(weekEnd)}`
+            : "Click vào buổi học để xem chi tiết"
+        }
+      >
+        <div className="flex items-center justify-end gap-2 mb-3">
+          <Button variant="ghost" icon="chevronLeft" onClick={() => moveWeek(-1)} disabled={!canGoPrev}>
+            Tuần trước
+          </Button>
+          <Button variant="ghost" iconRight="chevronRight" onClick={() => moveWeek(1)} disabled={!canGoNext}>
+            Tuần sau
+          </Button>
+        </div>
         {loading ? (
           <div className="py-10 text-center text-ink-muted">Đang tải TKB...</div>
         ) : !selectedSemester ? (

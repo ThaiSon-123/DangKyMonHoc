@@ -204,11 +204,6 @@ export default function StudentGradesPage() {
     <div className="space-y-5">
       <div>
         <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">Bảng điểm</h1>
-        <p className="mt-1 text-[13.5px] text-ink-muted">
-          Kết quả học tập qua các học kỳ. Công thức tổng kết:{" "}
-          <strong>QT × 10% + GK × 40% + CK × 50%</strong> (BR-009). GPA học kỳ tính theo trung
-          bình có trọng số tín chỉ.
-        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
