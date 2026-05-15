@@ -174,11 +174,7 @@ export default function StudentHistoryPage() {
         <Stat label="Tổng đăng ký" value={total} icon="doc" tone="accent" />
         <Stat label="Đã xác nhận" value={confirmedCount} icon="check" />
         <Stat label="Đã hủy" value={cancelledCount} icon="x" />
-        <Stat
-          label="TC đang học (trang này)"
-          value={totalCredits}
-          icon="book"
-        />
+        <Stat label="TC đang học" value={totalCredits} icon="book" />
       </div>
 
       <Card>
