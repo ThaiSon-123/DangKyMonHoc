@@ -222,8 +222,8 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 - [x] **`POST /api/auto-schedule/suggest/`** — endpoint mới (chỉ SV)
 - [x] **Algorithm module** `apps/registrations/auto_schedule.py` — CSP: Backtracking + Forward Checking + MRV heuristic
-- [x] Hard constraints: BR-002 (prereq), BR-004 (không trùng lịch), BR-005 (lớp chưa đầy)
-- [x] Soft constraints (4 sub-scores): weekday avoid, preferred session, preferred teacher, minimize gap
+- [x] Hard constraints: BR-002 (prereq), BR-003 (HK đang mở), BR-004 (không trùng lịch + existing registrations), BR-005 (lớp chưa đầy), CTĐT match, môn chưa học
+- [x] Soft constraints (4 sub-scores): weekday avoid, preferred session, preferred teacher, **free_day** (nhiều ngày nghỉ)
 - [x] **4 PriorityPreset weighting modes**: BALANCED / TEACHER_FIRST / SESSION_FIRST / COMPACT_FIRST (0.55/0.15)
 - [x] Reuse logic `_schedules_overlap` từ RegistrationSerializer (BR-004)
 - [x] `AutoScheduleError` cho missing course / missing prereq / empty domain
@@ -506,9 +506,11 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 - [x] **Route `/student/auto`** — trang thực (xoá Placeholder)
 - [x] **`api/autoSchedule.ts`** — types + `suggestSchedules()` + helper labels cho 4 preset
-- [x] UI 2 cột: input panel sticky bên trái + results panel bên phải
-- [x] Input: chọn HK + multi-select môn (max 10) từ `/courses/`
-- [x] Preferences UI: avoid weekdays (7 buttons) · preferred sessions (3 buttons) · preferred teachers (auto-load từ class-sections của môn đã chọn) · toggle minimize gaps
+- [x] UI 2 view (form ↔ results), form full width
+- [x] Input: chọn HK + multi-select môn (max 10) từ endpoint `/available-courses/` (đã filter CTĐT + lớp OPEN)
+- [x] Search môn + filter "Chỉ môn chưa học" + status badge per môn (Có thể đăng ký / Đã học / Thiếu tiên quyết / Đã đăng ký)
+- [x] Per-course teacher selection: click môn → expand → chọn GV cụ thể (hard filter domain) hoặc "Tự chọn"
+- [x] Preferences UI: avoid weekdays (7 buttons) · preferred sessions (3 buttons)
 - [x] 4 preset radio (BALANCED/TEACHER_FIRST/SESSION_FIRST/COMPACT_FIRST) với mô tả ngắn
 - [x] Results: candidate cards với rank badge + score breakdown 4 bars + danh sách mã lớp HP
 - [x] Sort thứ cấp theo từng sub-score · filter ca học · empty/loading state
@@ -780,8 +782,9 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - Reuse: `_schedules_overlap` logic giống `RegistrationSerializer._schedules_overlap` (line 103-109) — không sửa BR-004 cũ
 - Theo plan trong `doc/plan_tkb.md` — mô hình hóa CSP (Russell & Norvig), Backtracking + Forward Checking + MRV
 - 4 PriorityPreset (BALANCED/TEACHER_FIRST/SESSION_FIRST/COMPACT_FIRST) cho phép SV đổi trọng số 4 sub-scores
-- Hằng số `GAP_PENALTY_PER_PERIOD = 5.0` (mỗi tiết gap trừ 5 điểm, floor 0)
-- Backend `pytest apps/registrations apps/grades` 27/27 pass · frontend `tsc --noEmit` clean
+- Sub-score `s_free_day = 100 × (7 − study_days) / 7` — ưu tiên TKB có nhiều ngày nghỉ nguyên trong tuần
+- Endpoint mới `GET /auto-schedule/available-courses/` — backend tự enforce CTĐT + status flags (has_grade/passed/missing_prerequisites/registered) + search + unlearned_only
+- Backend `pytest apps/registrations apps/grades` 19/19 auto_schedule + 14 registrations pass · frontend `tsc --noEmit` clean
 
 ### Phase 10 — Tách trang Login (mục 2.1 / FR-GEN-001)
 

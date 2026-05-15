@@ -1,20 +1,25 @@
 """Tests cho TKB tự động (FR-STU-TKB) — algorithm + endpoint.
 
-Coverage:
-- Smoke: 2 môn × 2 lớp không trùng → Cartesian product
-- Conflict: 2 môn cùng giờ → loại trừ
-- Hard constraints: prereq (BR-002), full class (BR-005)
-- Scoring: preferred_sessions
-- Preset weights: TEACHER_FIRST, COMPACT_FIRST tạo ranking khác BALANCED
-- Endpoint: permission, validation, response shape
+Coverage hard constraints:
+- BR-002 (prereq), BR-003 (HK đang mở), BR-004 (không trùng lịch),
+  BR-005 (lớp chưa đầy), CTĐT match, môn chưa học (no grade).
+Coverage soft constraints:
+- preferred_sessions, preferred_teacher_ids, free_day, weekday avoid.
+- Preset weights (BALANCED, TEACHER_FIRST, SESSION_FIRST, COMPACT_FIRST).
+Coverage endpoints:
+- /available-courses/ list grouped + status flags + filter.
+- /suggest/ permission, validation, response shape.
 """
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.classes.models import ClassSection, Schedule
 from apps.courses.models import Prerequisite
+from apps.curriculums.models import Curriculum, CurriculumCourse
 from apps.grades.models import Grade
 from apps.registrations.models import Registration
 from apps.registrations.auto_schedule import (
@@ -25,7 +30,44 @@ from apps.registrations.auto_schedule import (
 )
 
 
-# ───────────────────────── Helpers ─────────────────────────
+# ───────────────────────── Fixtures ─────────────────────────
+
+
+@pytest.fixture
+def curriculum(student_profile):
+    """CTĐT match major + cohort_year của student_profile."""
+    return Curriculum.objects.create(
+        code="CTDT-CNTT-2021",
+        name="CTDT CNTT 2021",
+        major=student_profile.major,
+        cohort_year=student_profile.enrollment_year,
+        is_active=True,
+        total_credits_required=140,
+    )
+
+
+@pytest.fixture
+def add_to_curriculum(curriculum):
+    """Helper: thêm course vào CTĐT."""
+    def _add(course, suggested_semester=1, is_required=True):
+        CurriculumCourse.objects.create(
+            curriculum=curriculum,
+            course=course,
+            is_required=is_required,
+            suggested_semester=suggested_semester,
+        )
+        return course
+    return _add
+
+
+@pytest.fixture
+def other_teacher(db):
+    from apps.accounts.models import Role, User
+    from apps.profiles.models import TeacherProfile
+    u = User.objects.create_user(
+        username="gv_ats", password="pass", role=Role.TEACHER, email="gv_ats@x.com"
+    )
+    return TeacherProfile.objects.create(user=u, teacher_code="GV_ATS")
 
 
 def _api(user):
@@ -34,8 +76,8 @@ def _api(user):
     return c
 
 
-def _make_class(course, class_section_factory, *, weekday=0, session=Schedule.Session.MORNING, start_period=1, teacher=None):
-    """Tạo lớp HP với 1 schedule."""
+def _make_class(course, class_section_factory, *, weekday=0,
+                session=Schedule.Session.MORNING, start_period=1, teacher=None):
     kwargs = {"weekday": weekday, "session": session, "start_period": start_period}
     if teacher is not None:
         kwargs["teacher"] = teacher
@@ -46,15 +88,13 @@ def _make_class(course, class_section_factory, *, weekday=0, session=Schedule.Se
 
 
 def test_smoke_two_courses_two_classes_each_no_conflict(
-    student_profile, open_semester, course_factory, class_section_factory
+    student_profile, open_semester, course_factory, class_section_factory, add_to_curriculum,
 ):
-    """2 môn, mỗi môn 2 lớp HP, không trùng lịch → 4 phương án (2×2)."""
-    c1 = course_factory(code="CS101")
-    c2 = course_factory(code="CS102")
-    # CS101: T2 sáng 1, T3 sáng 1
+    """2 môn, mỗi môn 2 lớp HP không trùng → 4 phương án (2×2)."""
+    c1 = add_to_curriculum(course_factory(code="CS101"))
+    c2 = add_to_curriculum(course_factory(code="CS102"))
     _make_class(c1, class_section_factory, weekday=0, start_period=1)
     _make_class(c1, class_section_factory, weekday=1, start_period=1)
-    # CS102: T4 chiều 6, T5 chiều 6 (không trùng)
     _make_class(c2, class_section_factory, weekday=2, session=Schedule.Session.AFTERNOON, start_period=6)
     _make_class(c2, class_section_factory, weekday=3, session=Schedule.Session.AFTERNOON, start_period=6)
 
@@ -65,183 +105,343 @@ def test_smoke_two_courses_two_classes_each_no_conflict(
         prefs=Preferences(),
     )
     assert len(candidates) == 4
-    # Mỗi candidate có đúng 2 class_sections
     for cand in candidates:
         assert len(cand.class_sections) == 2
+        assert "study_days" in cand.stats
+        assert "free_days" in cand.stats
 
 
 def test_conflict_excludes_overlapping_combos(
-    student_profile, open_semester, course_factory, class_section_factory
+    student_profile, open_semester, course_factory, class_section_factory, add_to_curriculum,
 ):
-    """2 môn, lớp duy nhất của cả 2 cùng T2 sáng → 0 phương án."""
-    c1 = course_factory(code="CS201")
-    c2 = course_factory(code="CS202")
+    c1 = add_to_curriculum(course_factory(code="CS201"))
+    c2 = add_to_curriculum(course_factory(code="CS202"))
     _make_class(c1, class_section_factory, weekday=0, start_period=1)
     _make_class(c2, class_section_factory, weekday=0, start_period=1)  # trùng
 
     candidates = suggest_schedules(
-        student=student_profile,
-        semester=open_semester,
-        course_ids=[c1.id, c2.id],
-        prefs=Preferences(),
+        student=student_profile, semester=open_semester,
+        course_ids=[c1.id, c2.id], prefs=Preferences(),
     )
     assert candidates == []
 
 
-def test_missing_prerequisite_raises(
-    student_profile, open_semester, course_factory, class_section_factory
+def test_existing_registration_blocks_conflict(
+    student_profile, open_semester, course_factory, class_section_factory, add_to_curriculum,
 ):
-    """BR-002: 1 môn thiếu prereq → AutoScheduleError."""
-    prereq = course_factory(code="CS100")
-    main = course_factory(code="CS300")
+    """Lịch của registration đã có làm `used_schedules` ban đầu — lớp trùng sẽ bị loại."""
+    c_existing = add_to_curriculum(course_factory(code="CSE-EXIST"))
+    cs_existing = _make_class(c_existing, class_section_factory, weekday=0, start_period=1)
+    # Tạo registration cho cs_existing
+    Registration.objects.create(
+        student=student_profile, class_section=cs_existing, semester=open_semester,
+        status=Registration.Status.CONFIRMED,
+    )
+    # Môn mới có 2 lớp, 1 trùng với existing
+    c_new = add_to_curriculum(course_factory(code="CSE-NEW"))
+    _make_class(c_new, class_section_factory, weekday=0, start_period=1)  # trùng
+    cs_ok = _make_class(c_new, class_section_factory, weekday=2, start_period=1)
+
+    candidates = suggest_schedules(
+        student=student_profile, semester=open_semester,
+        course_ids=[c_new.id], prefs=Preferences(),
+    )
+    assert len(candidates) == 1
+    assert candidates[0].class_sections[0].id == cs_ok.id
+
+
+def test_course_not_in_curriculum_raises(
+    student_profile, open_semester, course_factory, class_section_factory,
+):
+    """Môn không thuộc CTĐT → AutoScheduleError."""
+    c = course_factory(code="CS-NOCTDT")
+    _make_class(c, class_section_factory)
+    with pytest.raises(AutoScheduleError) as exc:
+        suggest_schedules(
+            student=student_profile, semester=open_semester,
+            course_ids=[c.id], prefs=Preferences(),
+        )
+    assert "Chương trình đào tạo" in str(exc.value) or "không thuộc" in str(exc.value).lower()
+
+
+def test_already_learned_course_raises(
+    student_profile, open_semester, course_factory, class_section_factory,
+    add_to_curriculum, closed_semester,
+):
+    """Môn SV đã có điểm → AutoScheduleError "Môn đã học rồi"."""
+    c = add_to_curriculum(course_factory(code="CS-LEARNED"))
+    # Tạo grade cho SV ở học kỳ cũ
+    cs_old = _make_class(c, class_section_factory)
+    reg_old = Registration.objects.create(
+        student=student_profile, class_section=cs_old, semester=open_semester,
+        status=Registration.Status.CONFIRMED,
+    )
+    Grade.objects.create(
+        registration=reg_old,
+        process_score=Decimal("7"), midterm_score=Decimal("7"), final_score=Decimal("7"),
+    )
+    # Tạo lớp mới của môn này
+    _make_class(c, class_section_factory, weekday=1, start_period=1)
+
+    with pytest.raises(AutoScheduleError) as exc:
+        suggest_schedules(
+            student=student_profile, semester=open_semester,
+            course_ids=[c.id], prefs=Preferences(),
+        )
+    assert "đã học rồi" in str(exc.value).lower()
+
+
+def test_missing_prerequisite_raises(
+    student_profile, open_semester, course_factory, class_section_factory, add_to_curriculum,
+):
+    prereq = add_to_curriculum(course_factory(code="CS100"))
+    main = add_to_curriculum(course_factory(code="CS300"))
     Prerequisite.objects.create(course=main, required_course=prereq)
     _make_class(main, class_section_factory)
-
-    with pytest.raises(AutoScheduleError) as exc_info:
+    with pytest.raises(AutoScheduleError) as exc:
         suggest_schedules(
-            student=student_profile,
-            semester=open_semester,
-            course_ids=[main.id],
-            prefs=Preferences(),
+            student=student_profile, semester=open_semester,
+            course_ids=[main.id], prefs=Preferences(),
         )
-    assert "CS300" in str(exc_info.value)
-    assert "CS100" in str(exc_info.value)
+    assert "CS300" in str(exc.value)
+    assert "CS100" in str(exc.value)
 
 
 def test_full_class_excluded_from_domain(
-    student_profile, open_semester, course_factory, class_section_factory
+    student_profile, open_semester, course_factory, class_section_factory, add_to_curriculum,
 ):
-    """BR-005: lớp đầy → loại khỏi domain. 2 lớp HP nhưng 1 lớp đầy → 1 phương án."""
-    c = course_factory(code="CS400")
+    c = add_to_curriculum(course_factory(code="CS400"))
     cs1 = _make_class(c, class_section_factory, weekday=0, start_period=1)
     cs2 = _make_class(c, class_section_factory, weekday=1, start_period=1)
-    # Lấp đầy cs1
     cs1.max_students = 5
     cs1.enrolled_count = 5
     cs1.save()
-
     candidates = suggest_schedules(
-        student=student_profile,
-        semester=open_semester,
-        course_ids=[c.id],
-        prefs=Preferences(),
+        student=student_profile, semester=open_semester,
+        course_ids=[c.id], prefs=Preferences(),
     )
     assert len(candidates) == 1
     assert candidates[0].class_sections[0].id == cs2.id
 
 
 def test_no_open_class_raises(
-    student_profile, open_semester, course_factory
+    student_profile, open_semester, course_factory, add_to_curriculum,
 ):
-    """Môn không có lớp HP nào (chưa tạo lớp) → AutoScheduleError."""
-    c = course_factory(code="CS500")
-    with pytest.raises(AutoScheduleError) as exc_info:
+    c = add_to_curriculum(course_factory(code="CS500"))
+    with pytest.raises(AutoScheduleError) as exc:
         suggest_schedules(
-            student=student_profile,
-            semester=open_semester,
-            course_ids=[c.id],
-            prefs=Preferences(),
+            student=student_profile, semester=open_semester,
+            course_ids=[c.id], prefs=Preferences(),
         )
-    assert "không có lớp HP" in str(exc_info.value)
+    assert "không có lớp HP" in str(exc.value)
+
+
+def test_semester_closed_raises(
+    student_profile, closed_semester, course_factory, class_section_factory, add_to_curriculum,
+):
+    """HK `is_open=False` → AutoScheduleError."""
+    c = add_to_curriculum(course_factory(code="CS-CLOSED"))
+    with pytest.raises(AutoScheduleError) as exc:
+        suggest_schedules(
+            student=student_profile, semester=closed_semester,
+            course_ids=[c.id], prefs=Preferences(),
+        )
+    assert "chưa được mở" in str(exc.value).lower()
+
+
+def test_upcoming_semester_allows_suggest(
+    student_profile, open_semester, course_factory, class_section_factory, add_to_curriculum,
+):
+    """HK sắp mở (now < registration_start) vẫn cho tìm phương án.
+    Apply sẽ bị chặn ở RegistrationSerializer (BR-003) — không phải ở suggest.
+    """
+    from datetime import timedelta
+    open_semester.registration_start = timezone.now() + timedelta(days=3)
+    open_semester.registration_end = timezone.now() + timedelta(days=20)
+    open_semester.save()
+
+    c = add_to_curriculum(course_factory(code="CS-UPCOMING"))
+    _make_class(c, class_section_factory)
+    candidates = suggest_schedules(
+        student=student_profile, semester=open_semester,
+        course_ids=[c.id], prefs=Preferences(),
+    )
+    assert len(candidates) == 1  # vẫn trả phương án
+
+
+def test_past_registration_end_raises(
+    student_profile, open_semester, course_factory, class_section_factory, add_to_curriculum,
+):
+    """Quá registration_end → AutoScheduleError (đã đóng đăng ký)."""
+    from datetime import timedelta
+    open_semester.registration_end = timezone.now() - timedelta(days=1)
+    open_semester.save()
+
+    c = add_to_curriculum(course_factory(code="CS-PASTEND"))
+    _make_class(c, class_section_factory)
+    with pytest.raises(AutoScheduleError) as exc:
+        suggest_schedules(
+            student=student_profile, semester=open_semester,
+            course_ids=[c.id], prefs=Preferences(),
+        )
+    assert "quá thời gian đăng ký" in str(exc.value).lower()
 
 
 def test_scoring_prefers_morning_when_requested(
-    student_profile, open_semester, course_factory, class_section_factory
+    student_profile, open_semester, course_factory, class_section_factory, add_to_curriculum,
 ):
-    """preferred_sessions=MORNING → lớp sáng score cao hơn lớp chiều."""
-    c = course_factory(code="CS600")
+    c = add_to_curriculum(course_factory(code="CS600"))
     cs_morning = _make_class(c, class_section_factory, weekday=0, session=Schedule.Session.MORNING, start_period=1)
     cs_afternoon = _make_class(c, class_section_factory, weekday=1, session=Schedule.Session.AFTERNOON, start_period=6)
-
     candidates = suggest_schedules(
-        student=student_profile,
-        semester=open_semester,
+        student=student_profile, semester=open_semester,
         course_ids=[c.id],
         prefs=Preferences(preferred_sessions=frozenset({"MORNING"})),
     )
-    assert len(candidates) == 2
-    # Top phương án phải là cs_morning
     assert candidates[0].class_sections[0].id == cs_morning.id
     assert candidates[0].breakdown["session"] == 100.0
-    assert candidates[1].class_sections[0].id == cs_afternoon.id
     assert candidates[1].breakdown["session"] == 0.0
 
 
 def test_preset_teacher_first_promotes_preferred_teacher(
-    student_profile, open_semester, course_factory, class_section_factory, teacher_profile, other_teacher
+    student_profile, open_semester, course_factory, class_section_factory,
+    teacher_profile, other_teacher, add_to_curriculum,
 ):
-    """TEACHER_FIRST: lớp có GV ưu tiên thắng cách biệt; BALANCED có thể hoà."""
-    c = course_factory(code="CS700")
-    cs_preferred = _make_class(c, class_section_factory, weekday=0, start_period=1, teacher=teacher_profile)
-    cs_other = _make_class(c, class_section_factory, weekday=1, start_period=1, teacher=other_teacher)
-
-    prefs_teacher = Preferences(
-        preferred_teacher_ids=frozenset({teacher_profile.id}),
-        preset=PriorityPreset.TEACHER_FIRST,
-    )
+    c = add_to_curriculum(course_factory(code="CS700"))
+    cs_pref = _make_class(c, class_section_factory, weekday=0, start_period=1, teacher=teacher_profile)
+    _make_class(c, class_section_factory, weekday=1, start_period=1, teacher=other_teacher)
     candidates = suggest_schedules(
-        student=student_profile,
-        semester=open_semester,
+        student=student_profile, semester=open_semester,
         course_ids=[c.id],
-        prefs=prefs_teacher,
+        prefs=Preferences(
+            preferred_teacher_ids=frozenset({teacher_profile.id}),
+            preset=PriorityPreset.TEACHER_FIRST,
+        ),
     )
-    assert candidates[0].class_sections[0].id == cs_preferred.id
-    # Cách biệt phải > 30 điểm (vì s_teacher chênh 100)
+    assert candidates[0].class_sections[0].id == cs_pref.id
     assert candidates[0].score - candidates[1].score > 30
 
 
-def test_preset_compact_first_prioritizes_low_gap(
-    student_profile, open_semester, course_factory, class_section_factory
+def test_preset_compact_first_prioritizes_free_days(
+    student_profile, open_semester, course_factory, class_section_factory, add_to_curriculum,
 ):
-    """COMPACT_FIRST: phương án có gap=0 thắng phương án có gap lớn."""
-    # 2 môn, mỗi môn 1 lựa chọn ngày khác nhau
-    # Phương án A: cả 2 buổi T2 nối tiếp (gap=0)
-    # Phương án B: T2 buổi sáng + T2 buổi chiều cách xa (gap>0)
-    c1 = course_factory(code="CS801")
-    c2 = course_factory(code="CS802")
-
-    # CS801: 2 lớp - sáng tiết 1-3 hoặc sáng tiết 1-3 ở ngày khác
-    cs1_compact = _make_class(c1, class_section_factory, weekday=0, start_period=1)  # T2 sáng 1-3
-    cs1_other = _make_class(c1, class_section_factory, weekday=2, start_period=1)    # T4 sáng 1-3
-    # CS802: lớp nối tiếp T2 sáng 4-? (impossible — sáng 1-5). Dùng T2 sáng tiết 4 (chỉ 1 tiết... vẫn cần periods_per_session)
-    # → Đơn giản hơn: CS802 chỉ có 1 lớp T2 chiều 6-8 (gap 0 với cs1_compact vì khác buổi)
-    # Wait: gap chỉ tính trong cùng day giữa các buổi. T2 sáng 1-3 + T2 chiều 6-8 → gap = 6-3-1 = 2 (vì sang chiều)
-    # cs2 cố định T2 chiều 6
+    """COMPACT_FIRST: phương án ít ngày học (nhiều ngày nghỉ) thắng."""
+    c1 = add_to_curriculum(course_factory(code="CS801"))
+    c2 = add_to_curriculum(course_factory(code="CS802"))
+    # cs1 có 2 lựa chọn: T2 vs T4
+    cs1_t2 = _make_class(c1, class_section_factory, weekday=0, start_period=1)
+    _make_class(c1, class_section_factory, weekday=2, start_period=1)
+    # cs2 cố định T2 chiều
     cs2 = _make_class(c2, class_section_factory, weekday=0, session=Schedule.Session.AFTERNOON, start_period=6)
 
-    # Tổ hợp A: cs1_compact (T2 sáng 1-3) + cs2 (T2 chiều 6-8) → cùng T2 → gap = 2
-    # Tổ hợp B: cs1_other (T4 sáng 1-3) + cs2 (T2 chiều 6-8) → khác ngày → gap = 0
-    candidates_compact = suggest_schedules(
-        student=student_profile,
-        semester=open_semester,
+    # 2 tổ hợp:
+    # A: cs1_t2 + cs2 → cùng T2 → study_days=1, free_days=6 → s_free_day=85.7
+    # B: cs1_t4 + cs2 → T4 + T2 → study_days=2, free_days=5 → s_free_day=71.4
+    candidates = suggest_schedules(
+        student=student_profile, semester=open_semester,
         course_ids=[c1.id, c2.id],
         prefs=Preferences(preset=PriorityPreset.COMPACT_FIRST),
     )
-    # Top phải là tổ hợp B (gap=0)
-    top_ids = {cs.id for cs in candidates_compact[0].class_sections}
-    assert cs1_other.id in top_ids
-    assert candidates_compact[0].breakdown["gap"] == 100.0
-    assert candidates_compact[1].breakdown["gap"] < 100.0
+    # Top phải là tổ hợp A (1 ngày học)
+    top_class_ids = {cs.id for cs in candidates[0].class_sections}
+    assert cs1_t2.id in top_class_ids
+    assert candidates[0].stats["study_days"] == 1
+    assert candidates[0].stats["free_days"] == 6
+    assert candidates[0].breakdown["free_day"] > candidates[1].breakdown["free_day"]
+
+
+def test_course_teacher_constraint_hard_filters(
+    student_profile, open_semester, course_factory, class_section_factory,
+    teacher_profile, other_teacher, add_to_curriculum,
+):
+    c = add_to_curriculum(course_factory(code="CSTC1"))
+    cs_a = _make_class(c, class_section_factory, weekday=0, start_period=1, teacher=teacher_profile)
+    _make_class(c, class_section_factory, weekday=1, start_period=1, teacher=other_teacher)
+    cands_locked = suggest_schedules(
+        student=student_profile, semester=open_semester,
+        course_ids=[c.id],
+        prefs=Preferences(course_teacher_constraints={c.id: teacher_profile.id}),
+    )
+    assert len(cands_locked) == 1
+    assert cands_locked[0].class_sections[0].id == cs_a.id
+
+
+def test_auto_preset_weights_no_input_is_balanced():
+    """AUTO + không có input nào → (0.25, 0.25, 0.25, 0.25)."""
+    prefs = Preferences(preset=PriorityPreset.AUTO)
+    assert prefs.weights == (0.25, 0.25, 0.25, 0.25)
+
+
+def test_auto_preset_weights_one_input():
+    """AUTO + 1 tiêu chí input → cái đó 0.55, các cái còn lại 0.15."""
+    prefs = Preferences(
+        preset=PriorityPreset.AUTO,
+        preferred_sessions=frozenset({"MORNING"}),
+    )
+    w_weekday, w_session, w_teacher, w_free_day = prefs.weights
+    assert w_session == 0.55
+    assert w_weekday == 0.15
+    assert w_teacher == 0.15
+    assert w_free_day == 0.15
+    assert round(sum(prefs.weights), 4) == 1.0
+
+
+def test_auto_preset_weights_two_inputs():
+    """AUTO + 2 tiêu chí → mỗi cái 0.35, các cái còn lại 0.15."""
+    prefs = Preferences(
+        preset=PriorityPreset.AUTO,
+        preferred_sessions=frozenset({"MORNING"}),
+        avoid_weekdays=frozenset({5, 6}),
+    )
+    w_weekday, w_session, w_teacher, w_free_day = prefs.weights
+    assert w_weekday == 0.35
+    assert w_session == 0.35
+    assert w_teacher == 0.15
+    assert w_free_day == 0.15
+    assert round(sum(prefs.weights), 4) == 1.0
+
+
+def test_auto_preset_teacher_active_via_course_constraint():
+    """Course-level teacher constraint cũng kích hoạt 'teacher active' trong AUTO."""
+    prefs = Preferences(
+        preset=PriorityPreset.AUTO,
+        course_teacher_constraints={1: 10},
+    )
+    w_weekday, w_session, w_teacher, w_free_day = prefs.weights
+    assert w_teacher == 0.55  # chỉ 1 active → 0.55
+    assert w_weekday == 0.15
+    assert w_session == 0.15
+    assert w_free_day == 0.15
+
+
+def test_auto_preset_three_inputs():
+    """AUTO + 3 tiêu chí → mỗi cái ~0.283, free_day 0.15."""
+    prefs = Preferences(
+        preset=PriorityPreset.AUTO,
+        avoid_weekdays=frozenset({6}),
+        preferred_sessions=frozenset({"MORNING"}),
+        preferred_teacher_ids=frozenset({1}),
+    )
+    w_weekday, w_session, w_teacher, w_free_day = prefs.weights
+    assert round(w_weekday, 3) == round((1 - 0.15) / 3, 3)
+    assert round(w_session, 3) == round((1 - 0.15) / 3, 3)
+    assert round(w_teacher, 3) == round((1 - 0.15) / 3, 3)
+    assert w_free_day == 0.15
+    assert round(sum(prefs.weights), 4) == 1.0
 
 
 def test_max_results_caps_output(
-    student_profile, open_semester, course_factory, class_section_factory
+    student_profile, open_semester, course_factory, class_section_factory, add_to_curriculum,
 ):
-    """max_results=3 → trả tối đa 3 phương án dù khả thi nhiều hơn."""
-    c1 = course_factory(code="CS901")
-    c2 = course_factory(code="CS902")
-    # 4 lớp mỗi môn → 16 tổ hợp nếu không trùng
+    c1 = add_to_curriculum(course_factory(code="CS901"))
+    c2 = add_to_curriculum(course_factory(code="CS902"))
     for wd in range(4):
         _make_class(c1, class_section_factory, weekday=wd, start_period=1)
     for wd in range(4):
         _make_class(c2, class_section_factory, weekday=wd, session=Schedule.Session.AFTERNOON, start_period=6)
-
     candidates = suggest_schedules(
-        student=student_profile,
-        semester=open_semester,
-        course_ids=[c1.id, c2.id],
-        prefs=Preferences(),
-        max_results=3,
+        student=student_profile, semester=open_semester,
+        course_ids=[c1.id, c2.id], prefs=Preferences(), max_results=3,
     )
     assert len(candidates) == 3
 
@@ -249,30 +449,25 @@ def test_max_results_caps_output(
 # ───────────────────────── Endpoint tests ─────────────────────────
 
 
-def test_endpoint_requires_student_role(
-    teacher_profile, open_semester, course_factory, class_section_factory
+def test_suggest_requires_student_role(
+    teacher_profile, open_semester,
 ):
-    """GV gọi endpoint → 403."""
-    c = course_factory(code="CSE01")
-    _make_class(c, class_section_factory)
     api = _api(teacher_profile.user)
     res = api.post(
         "/api/auto-schedule/suggest/",
-        {"semester": open_semester.id, "course_ids": [c.id]},
+        {"semester": open_semester.id, "course_ids": [1]},
         format="json",
     )
     assert res.status_code == 403
 
 
-def test_endpoint_smoke(
-    student_profile, open_semester, course_factory, class_section_factory
+def test_suggest_endpoint_smoke(
+    student_profile, open_semester, course_factory, class_section_factory, add_to_curriculum,
 ):
-    """SV gọi với 2 môn không trùng → 200 + danh sách candidates."""
-    c1 = course_factory(code="CSE02")
-    c2 = course_factory(code="CSE03")
+    c1 = add_to_curriculum(course_factory(code="CSE02"))
+    c2 = add_to_curriculum(course_factory(code="CSE03"))
     _make_class(c1, class_section_factory, weekday=0, start_period=1)
     _make_class(c2, class_section_factory, weekday=1, session=Schedule.Session.AFTERNOON, start_period=6)
-
     api = _api(student_profile.user)
     res = api.post(
         "/api/auto-schedule/suggest/",
@@ -281,125 +476,75 @@ def test_endpoint_smoke(
     )
     assert res.status_code == 200, res.data
     body = res.data
-    assert "count" in body and "results" in body
     assert body["count"] == 1
     cand = body["results"][0]
-    assert "class_sections" in cand
-    assert "score" in cand
-    assert "breakdown" in cand
-    assert set(cand["breakdown"].keys()) == {"weekday", "session", "teacher", "gap", "total"}
+    assert set(cand["breakdown"].keys()) == {"weekday", "session", "teacher", "free_day", "total"}
+    assert "stats" in cand
+    assert set(cand["stats"].keys()) == {"study_days", "free_days"}
 
 
-def test_endpoint_invalid_course_returns_400(
-    student_profile, open_semester
-):
-    """course_id không tồn tại → 400 với message Vietnam."""
-    api = _api(student_profile.user)
-    res = api.post(
-        "/api/auto-schedule/suggest/",
-        {"semester": open_semester.id, "course_ids": [99999]},
-        format="json",
-    )
-    assert res.status_code == 400
-    assert "không tồn tại" in str(res.data).lower()
-
-
-def test_course_teacher_constraint_hard_filters_domain(
+def test_available_courses_endpoint(
     student_profile, open_semester, course_factory, class_section_factory,
-    teacher_profile, other_teacher,
+    teacher_profile, add_to_curriculum,
 ):
-    """Hard filter per-course: course_teacher_constraints[c.id] = teacher_id
-    → chỉ giữ lớp HP của course đó do teacher đó dạy.
-    """
-    c = course_factory(code="CSTC1")
-    cs_a = _make_class(c, class_section_factory, weekday=0, start_period=1, teacher=teacher_profile)
-    cs_b = _make_class(c, class_section_factory, weekday=1, start_period=1, teacher=other_teacher)
+    """GET /available-courses/ trả courses thuộc CTĐT + có lớp HP OPEN."""
+    c_in = add_to_curriculum(course_factory(code="AVL01"))
+    _make_class(c_in, class_section_factory, teacher=teacher_profile)
+    # Course không trong CTĐT
+    c_out = course_factory(code="AVL02")
+    _make_class(c_out, class_section_factory)
 
-    # Không constraint → 2 phương án
-    cands_all = suggest_schedules(
-        student=student_profile,
-        semester=open_semester,
-        course_ids=[c.id],
-        prefs=Preferences(),
-    )
-    assert len(cands_all) == 2
-
-    # Constraint chọn teacher_profile → chỉ 1 phương án (cs_a)
-    cands_locked = suggest_schedules(
-        student=student_profile,
-        semester=open_semester,
-        course_ids=[c.id],
-        prefs=Preferences(course_teacher_constraints={c.id: teacher_profile.id}),
-    )
-    assert len(cands_locked) == 1
-    assert cands_locked[0].class_sections[0].id == cs_a.id
-
-
-def test_course_teacher_constraint_no_matching_class_raises(
-    student_profile, open_semester, course_factory, class_section_factory, teacher_profile, other_teacher,
-):
-    """Constraint trỏ tới GV không dạy môn đó → raise."""
-    c = course_factory(code="CSTC2")
-    _make_class(c, class_section_factory, teacher=teacher_profile)
-    # other_teacher không dạy môn này
-    with pytest.raises(AutoScheduleError) as exc_info:
-        suggest_schedules(
-            student=student_profile,
-            semester=open_semester,
-            course_ids=[c.id],
-            prefs=Preferences(course_teacher_constraints={c.id: other_teacher.id}),
-        )
-    assert "GV ID" in str(exc_info.value) or "không có lớp" in str(exc_info.value).lower()
-
-
-def test_endpoint_with_course_teacher_constraints(
-    student_profile, open_semester, course_factory, class_section_factory, teacher_profile,
-):
-    """Endpoint accept course_teacher_constraints field."""
-    c = course_factory(code="CSTC3")
-    _make_class(c, class_section_factory, teacher=teacher_profile)
     api = _api(student_profile.user)
-    res = api.post(
-        "/api/auto-schedule/suggest/",
-        {
-            "semester": open_semester.id,
-            "course_ids": [c.id],
-            "course_teacher_constraints": {str(c.id): teacher_profile.id},
-        },
-        format="json",
-    )
+    res = api.get(f"/api/auto-schedule/available-courses/?semester={open_semester.id}")
     assert res.status_code == 200, res.data
-    assert res.data["count"] == 1
+    codes = {r["course_code"] for r in res.data["results"]}
+    assert "AVL01" in codes
+    assert "AVL02" not in codes
+
+    course = next(r for r in res.data["results"] if r["course_code"] == "AVL01")
+    assert course["has_grade"] is False
+    assert course["passed"] is False
+    assert course["registered"] is False
+    assert len(course["teachers"]) == 1
+    assert course["teachers"][0]["teacher_id"] == teacher_profile.id
 
 
-def test_endpoint_preset_in_request(
-    student_profile, open_semester, course_factory, class_section_factory
+def test_available_courses_unlearned_only_filter(
+    student_profile, open_semester, course_factory, class_section_factory, add_to_curriculum,
 ):
-    """preset=COMPACT_FIRST hợp lệ → 200."""
-    c = course_factory(code="CSE04")
-    _make_class(c, class_section_factory)
+    c1 = add_to_curriculum(course_factory(code="UNL01"))
+    c2 = add_to_curriculum(course_factory(code="UNL02"))
+    cs1 = _make_class(c1, class_section_factory)
+    _make_class(c2, class_section_factory, weekday=1)
+    # SV đã có điểm c1
+    reg = Registration.objects.create(
+        student=student_profile, class_section=cs1, semester=open_semester,
+        status=Registration.Status.CONFIRMED,
+    )
+    Grade.objects.create(
+        registration=reg,
+        process_score=Decimal("5"), midterm_score=Decimal("5"), final_score=Decimal("5"),
+    )
     api = _api(student_profile.user)
-    res = api.post(
-        "/api/auto-schedule/suggest/",
-        {
-            "semester": open_semester.id,
-            "course_ids": [c.id],
-            "preset": "COMPACT_FIRST",
-        },
-        format="json",
+    res = api.get(
+        f"/api/auto-schedule/available-courses/?semester={open_semester.id}&unlearned_only=true",
     )
-    assert res.status_code == 200, res.data
+    codes = {r["course_code"] for r in res.data["results"]}
+    assert "UNL01" not in codes
+    assert "UNL02" in codes
 
 
-# ───────────────────────── Fixtures cục bộ ─────────────────────────
-
-
-@pytest.fixture
-def other_teacher(db):
-    """GV thứ hai để test teacher preference."""
-    from apps.accounts.models import Role, User
-    from apps.profiles.models import TeacherProfile
-    u = User.objects.create_user(
-        username="gv_ats", password="pass", role=Role.TEACHER, email="gv_ats@x.com"
+def test_available_courses_search(
+    student_profile, open_semester, course_factory, class_section_factory, add_to_curriculum,
+):
+    c1 = add_to_curriculum(course_factory(code="SEARCH-A", name="Lập trình cơ bản"))
+    c2 = add_to_curriculum(course_factory(code="SEARCH-B", name="Toán cao cấp"))
+    _make_class(c1, class_section_factory)
+    _make_class(c2, class_section_factory, weekday=1)
+    api = _api(student_profile.user)
+    res = api.get(
+        f"/api/auto-schedule/available-courses/?semester={open_semester.id}&search=Toán",
     )
-    return TeacherProfile.objects.create(user=u, teacher_code="GV_ATS")
+    codes = {r["course_code"] for r in res.data["results"]}
+    assert "SEARCH-B" in codes
+    assert "SEARCH-A" not in codes

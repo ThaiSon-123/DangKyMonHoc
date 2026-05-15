@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Badge, Button, Card, Modal, Pagination, Stat, Table, type Column } from "@/components/ui";
+import { Badge, Button, Card, Modal, Stat, Table, type Column } from "@/components/ui";
 import Icon from "@/components/ui/Icon";
 import { listClassSections } from "@/api/classes";
 import {
@@ -9,9 +9,10 @@ import {
   type Registration,
 } from "@/api/registrations";
 import { getMyCurriculum } from "@/api/curriculums";
+import { listGrades } from "@/api/grades";
 import { listSemesters } from "@/api/semesters";
 import { extractApiError } from "@/lib/errors";
-import { PAGE_SIZE } from "@/lib/constants";
+import { formatRegistrationWindow, pickActiveSemester, type SemesterStatus } from "@/lib/semester";
 import {
   SESSION_LABELS,
   WEEKDAY_LABELS,
@@ -22,16 +23,18 @@ import {
 } from "@/types/domain";
 
 export default function StudentRegisterPage() {
-  const [semesters, setSemesters] = useState<Semester[]>([]);
-  const [selectedSemester, setSelectedSemester] = useState<number | "">("");
+  // Auto-pick active hoặc upcoming semester (theo now). Không cho user chọn.
+  const [semester, setSemester] = useState<Semester | null>(null);
+  const [semesterStatus, setSemesterStatus] = useState<SemesterStatus>("none");
+  const selectedSemester = semester?.id ?? "";
   const [curriculum, setCurriculum] = useState<Curriculum | null>(null);
   const [filterCurriculum, setFilterCurriculum] = useState(true);
-  const [filterOpenSemester, setFilterOpenSemester] = useState(false);
+  const [filterUnlearned, setFilterUnlearned] = useState(true);
+  const [learnedCourseIds, setLearnedCourseIds] = useState<Set<number>>(new Set());
 
   const [classes, setClasses] = useState<ClassSection[]>([]);
   const [classesLoading, setClassesLoading] = useState(false);
-  const [classesTotal, setClassesTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [expandedCourses, setExpandedCourses] = useState<Set<number>>(new Set());
 
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [regsLoading, setRegsLoading] = useState(false);
@@ -52,8 +55,9 @@ export default function StudentRegisterPage() {
   useEffect(() => {
     listSemesters({ page_size: 1000 })
       .then((r) => {
-        setSemesters(r.results);
-        setSelectedSemester(r.results[0]?.id ?? "");
+        const result = pickActiveSemester(r.results);
+        setSemester(result.semester);
+        setSemesterStatus(result.status);
       })
       .catch((err) => setError(extractApiError(err, "Không tải được học kỳ.")));
   }, []);
@@ -62,6 +66,23 @@ export default function StudentRegisterPage() {
     getMyCurriculum()
       .then(setCurriculum)
       .catch(() => setCurriculum(null));
+  }, []);
+
+  // Load grades → extract course_id mà SV đã có điểm (bất kể đậu/rớt)
+  useEffect(() => {
+    listGrades({ page_size: 1000 })
+      .then((r) => {
+        const ids = new Set<number>();
+        for (const g of r.results) {
+          if (g.total_score !== null && g.total_score !== "") {
+            ids.add(g.course);
+          }
+        }
+        setLearnedCourseIds(ids);
+      })
+      .catch(() => {
+        // không có grade → bỏ qua
+      });
   }, []);
 
   const refreshRegs = useCallback(async () => {
@@ -86,12 +107,6 @@ export default function StudentRegisterPage() {
   const refreshClasses = useCallback(async () => {
     if (!selectedSemester) {
       setClasses([]);
-      setClassesTotal(0);
-      return;
-    }
-    if (filterOpenSemester && !semesters.find((s) => s.id === selectedSemester)?.is_open) {
-      setClasses([]);
-      setClassesTotal(0);
       return;
     }
     setClassesLoading(true);
@@ -102,16 +117,15 @@ export default function StudentRegisterPage() {
         status: "OPEN",
         search: appliedSearch || undefined,
         curriculum: filterCurriculum ? curriculum?.id : undefined,
-        page,
+        page_size: 1000,
       });
       setClasses(data.results);
-      setClassesTotal(data.count);
     } catch (err) {
       setError(extractApiError(err, "Không tải được lớp học phần."));
     } finally {
       setClassesLoading(false);
     }
-  }, [selectedSemester, appliedSearch, filterCurriculum, filterOpenSemester, semesters, curriculum?.id, page]);
+  }, [selectedSemester, appliedSearch, filterCurriculum, curriculum?.id]);
 
   useEffect(() => {
     refreshRegs();
@@ -122,9 +136,45 @@ export default function StudentRegisterPage() {
   }, [refreshClasses]);
 
   function applySearch() {
-    setPage(1);
     setAppliedSearch(search);
   }
+
+  function toggleCourseExpand(courseId: number) {
+    const next = new Set(expandedCourses);
+    if (next.has(courseId)) next.delete(courseId);
+    else next.add(courseId);
+    setExpandedCourses(next);
+  }
+
+  // Group lớp HP theo môn + apply filter "Chỉ chưa học"
+  const courseGroups = useMemo(() => {
+    interface Group {
+      course_id: number;
+      course_code: string;
+      course_name: string;
+      course_credits: number;
+      sections: ClassSection[];
+    }
+    const map = new Map<number, Group>();
+    for (const cs of classes) {
+      if (filterUnlearned && learnedCourseIds.has(cs.course)) continue;
+      let g = map.get(cs.course);
+      if (!g) {
+        g = {
+          course_id: cs.course,
+          course_code: cs.course_code,
+          course_name: cs.course_name,
+          course_credits: cs.course_credits,
+          sections: [],
+        };
+        map.set(cs.course, g);
+      }
+      g.sections.push(cs);
+    }
+    return Array.from(map.values()).sort((a, b) => a.course_code.localeCompare(b.course_code));
+  }, [classes, filterUnlearned, learnedCourseIds]);
+
+  const totalSectionsAfterFilter = courseGroups.reduce((s, g) => s + g.sections.length, 0);
 
   const registeredClassIds = useMemo(
     () =>
@@ -195,28 +245,11 @@ export default function StudentRegisterPage() {
     .filter((r) => r.status === "CONFIRMED" || r.status === "PENDING")
     .reduce((s, r) => s + r.course_credits, 0);
 
-  const semesterObj = semesters.find((s) => s.id === selectedSemester);
-  const isSemesterOpen = semesterObj?.is_open ?? false;
+  const semesterObj = semester;
+  const isSemesterOpen = semesterStatus === "active";
 
   const classColumns: Column<ClassSection>[] = [
     { key: "code", label: "Mã lớp", mono: true, width: "120px" },
-    {
-      key: "course",
-      label: "Môn học",
-      render: (c) => (
-        <div>
-          <div className="font-mono text-[12px] text-ink-muted">{c.course_code}</div>
-          <div className="text-[13px]">{c.course_name}</div>
-        </div>
-      ),
-    },
-    {
-      key: "course_credits",
-      label: "TC",
-      align: "center",
-      width: "60px",
-      render: (c) => <span className="font-mono">{c.course_credits}</span>,
-    },
     {
       key: "teacher",
       label: "Giáo viên",
@@ -370,22 +403,45 @@ export default function StudentRegisterPage() {
             Đăng ký môn học
           </h1>
         </div>
-        <div className="px-3 py-2 rounded-md bg-card border border-line text-[13px] min-w-[280px]">
+        <div
+          className={`px-3 py-2 rounded-md border text-[13px] min-w-[320px] ${
+            semesterStatus === "active"
+              ? "bg-green-50 border-green-200"
+              : semesterStatus === "upcoming"
+                ? "bg-amber-50 border-amber-200"
+                : "bg-card border-line"
+          }`}
+        >
           {semesterObj ? (
-            <span>
-              {semesterObj.code} - {semesterObj.name}
-              {semesterObj.is_open ? " (đang mở)" : " (chưa mở)"}
-            </span>
+            <div className="flex flex-col">
+              <span className="font-semibold text-ink">
+                {semesterObj.code} — {semesterObj.name}
+              </span>
+              <span className="text-[11.5px] text-ink-muted">
+                {semesterStatus === "active"
+                  ? `Đang mở · ${formatRegistrationWindow(semesterObj)}`
+                  : `Sắp mở · ${formatRegistrationWindow(semesterObj)}`}
+              </span>
+            </div>
           ) : (
-            <span className="text-ink-faint">Chưa có học kỳ</span>
+            <span className="text-ink-faint">Không có học kỳ nào đang/sắp mở đăng ký</span>
           )}
         </div>
       </div>
 
-      {!isSemesterOpen && selectedSemester && (
+      {semesterStatus === "upcoming" && semesterObj && (
+        <div className="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 text-[13px] text-warn flex items-start gap-2">
+          <Icon name="clock" size={16} className="mt-0.5 flex-shrink-0" />
+          <div>
+            Học kỳ <strong>{semesterObj.code}</strong> sắp mở từ{" "}
+            <strong>{formatRegistrationWindow(semesterObj)}</strong>. Bạn có thể xem trước danh sách lớp HP, nhưng chưa thể đăng ký.
+          </div>
+        </div>
+      )}
+      {semesterStatus === "none" && (
         <div className="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 text-[13px] text-warn flex items-start gap-2">
           <Icon name="bell" size={16} className="mt-0.5 flex-shrink-0" />
-          <div>Ngoài thời gian đăng ký. Bạn có thể xem danh sách lớp nhưng chưa thể đăng ký mới.</div>
+          <div>Hiện chưa có học kỳ nào đang mở hoặc sắp mở đăng ký. Vui lòng quay lại sau.</div>
         </div>
       )}
 
@@ -399,10 +455,13 @@ export default function StudentRegisterPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Stat label="Lớp đã đăng ký" value={totalRegistered} icon="check" tone="accent" />
         <Stat label="Tổng tín chỉ" value={totalCredits} icon="book" />
-        <Stat label="Lớp mở kỳ mới nhất" value={classesTotal} icon="clipboard" />
+        <Stat label="Môn khả dụng" value={courseGroups.length} icon="clipboard" />
       </div>
 
-      <Card title="Lớp học phần mở" subtitle="Chỉ hiển thị lớp thuộc học kỳ mới nhất">
+      <Card
+        title="Lớp học phần mở"
+        subtitle={`Nhóm theo môn · ${courseGroups.length} môn · ${totalSectionsAfterFilter} lớp HP`}
+      >
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface border border-line w-80">
             <Icon name="search" size={15} className="text-ink-faint" />
@@ -421,38 +480,47 @@ export default function StudentRegisterPage() {
             <input
               type="checkbox"
               checked={filterCurriculum}
-              onChange={(e) => {
-                setFilterCurriculum(e.target.checked);
-                setPage(1);
-              }}
+              onChange={(e) => setFilterCurriculum(e.target.checked)}
             />
             Theo CTĐT
           </label>
           <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface border border-line text-[13px]">
             <input
               type="checkbox"
-              checked={filterOpenSemester}
-              onChange={(e) => {
-                setFilterOpenSemester(e.target.checked);
-                setPage(1);
-              }}
+              checked={filterUnlearned}
+              onChange={(e) => setFilterUnlearned(e.target.checked)}
             />
-            Kỳ đang mở
+            Chỉ môn chưa học
           </label>
-          {(appliedSearch || !filterCurriculum || filterOpenSemester) && (
+          {(appliedSearch || !filterCurriculum || !filterUnlearned) && (
             <Button
               variant="ghost"
               onClick={() => {
                 setSearch("");
                 setAppliedSearch("");
                 setFilterCurriculum(true);
-                setFilterOpenSemester(false);
-                setPage(1);
+                setFilterUnlearned(true);
               }}
             >
-              Xoá filter
+              Đặt lại filter
             </Button>
           )}
+          <div className="ml-auto flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setExpandedCourses(new Set(courseGroups.map((g) => g.course_id)))}
+            >
+              Mở tất cả
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setExpandedCourses(new Set())}
+            >
+              Thu gọn
+            </Button>
+          </div>
         </div>
 
         {error && (
@@ -461,14 +529,57 @@ export default function StudentRegisterPage() {
           </div>
         )}
 
-        <Table
-          columns={classColumns}
-          rows={classes}
-          rowKey={(c) => c.id}
-          loading={classesLoading}
-          emptyText="Không có lớp học phần nào mở trong học kỳ mới nhất."
-        />
-        <Pagination page={page} pageSize={PAGE_SIZE} total={classesTotal} onChange={setPage} />
+        {classesLoading ? (
+          <div className="text-ink-muted py-6 text-center">Đang tải...</div>
+        ) : courseGroups.length === 0 ? (
+          <div className="text-ink-faint py-12 text-center text-[13px]">
+            {filterUnlearned
+              ? "Không có môn nào chưa học khả dụng trong học kỳ này."
+              : "Không có lớp học phần nào mở."}
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {courseGroups.map((g) => {
+              const isExpanded = expandedCourses.has(g.course_id);
+              return (
+                <div key={g.course_id} className="border border-line rounded-md bg-card overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => toggleCourseExpand(g.course_id)}
+                    className="w-full px-3 py-2.5 flex items-center gap-3 hover:bg-surface text-left"
+                  >
+                    <Icon
+                      name={isExpanded ? "chevronDown" : "chevronRight"}
+                      size={14}
+                      className="text-ink-muted flex-shrink-0"
+                    />
+                    <span className="font-mono text-[12.5px] text-ink-muted w-20 flex-shrink-0">
+                      {g.course_code}
+                    </span>
+                    <span className="flex-1 truncate text-[13px] font-medium text-ink">
+                      {g.course_name}
+                    </span>
+                    <Badge tone="accent">{g.course_credits} TC</Badge>
+                    <span className="text-[11.5px] text-ink-muted w-16 text-right">
+                      {g.sections.length} lớp
+                    </span>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="border-t border-line">
+                      <Table
+                        columns={classColumns}
+                        rows={g.sections}
+                        rowKey={(c) => c.id}
+                        emptyText=""
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Card>
 
       <Card title="Lớp đã đăng ký" subtitle={`${totalRegistered} lớp · ${totalCredits} tín chỉ`}>
