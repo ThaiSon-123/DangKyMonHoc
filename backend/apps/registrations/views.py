@@ -6,9 +6,16 @@ from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
+from apps.profiles.models import StudentProfile
+from .auto_schedule import AutoScheduleError, suggest_schedules
 from .models import Registration
-from .serializers import RegistrationSerializer
+from .serializers import (
+    AutoScheduleCandidateSerializer,
+    AutoScheduleRequestSerializer,
+    RegistrationSerializer,
+)
 
 
 class RegistrationViewSet(viewsets.ModelViewSet):
@@ -84,3 +91,39 @@ class RegistrationViewSet(viewsets.ModelViewSet):
         registration.cancel_reason = request.data.get("cancel_reason", "Hủy bởi người dùng")
         registration.save(update_fields=["status", "cancelled_at", "cancel_reason"])
         return Response(RegistrationSerializer(registration).data)
+
+
+class AutoScheduleSuggestView(APIView):
+    """POST /api/auto-schedule/suggest/ — FR-STU-TKB.
+
+    Trả tất cả phương án TKB không trùng lịch + score theo preferences.
+    Chỉ SV được dùng (cần student_profile).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if getattr(request.user, "role", None) != "STUDENT":
+            raise PermissionDenied("Chỉ sinh viên được dùng chức năng này.")
+        try:
+            student = request.user.student_profile
+        except StudentProfile.DoesNotExist:
+            raise PermissionDenied(
+                "Tài khoản chưa có StudentProfile. Liên hệ Admin."
+            )
+
+        ser = AutoScheduleRequestSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        try:
+            candidates = suggest_schedules(
+                student=student,
+                semester=ser.validated_data["semester"],
+                course_ids=ser.validated_data["course_ids"],
+                prefs=ser.to_preferences(),
+                max_results=ser.validated_data.get("max_results", 50),
+            )
+        except AutoScheduleError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        data = AutoScheduleCandidateSerializer(candidates, many=True).data
+        return Response({"count": len(data), "results": data})

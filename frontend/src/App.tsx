@@ -26,6 +26,7 @@ import StudentRegisterPage from "@/pages/student/RegisterPage";
 import StudentSchedulePage from "@/pages/student/SchedulePage";
 import StudentHistoryPage from "@/pages/student/HistoryPage";
 import StudentGradesPage from "@/pages/student/GradesPage";
+import StudentAutoSchedulePage from "@/pages/student/AutoSchedulePage";
 import TeacherProfilePage from "@/pages/teacher/ProfilePage";
 import TeacherNotificationsPage from "@/pages/teacher/NotificationsPage";
 import TeacherSchedulePage from "@/pages/teacher/SchedulePage";
@@ -58,9 +59,7 @@ const ADMIN_ROUTES: PlaceholderRoute[] = [
   { path: "settings", title: "Cấu hình hệ thống", description: "Giới hạn tín chỉ, thời hạn hủy đăng ký, quy tắc nghiệp vụ.", icon: "settings" },
 ];
 
-const STUDENT_ROUTES: PlaceholderRoute[] = [
-  { path: "auto", title: "Tạo TKB tự động", description: "Hệ thống đề xuất nhiều phương án TKB theo ưu tiên của bạn.", frId: "FR-STU-TKB", icon: "sparkle" },
-];
+const STUDENT_ROUTES: PlaceholderRoute[] = [];
 
 const TEACHER_ROUTES: PlaceholderRoute[] = [];
 
@@ -133,6 +132,7 @@ export default function App() {
             <Route path="/student/schedule" element={<StudentSchedulePage />} />
             <Route path="/student/history" element={<StudentHistoryPage />} />
             <Route path="/student/grades" element={<StudentGradesPage />} />
+            <Route path="/student/auto" element={<StudentAutoSchedulePage />} />
             {STUDENT_ROUTES.map((r) => (
               <Route
                 key={r.path}

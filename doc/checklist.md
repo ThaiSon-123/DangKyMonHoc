@@ -218,9 +218,17 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [x] FR-STU-REG-008 - `POST /api/registrations/` xác nhận
 - [x] FR-STU-REG-009 - `POST /api/registrations/{id}/cancel/` (BR-006)
 
-### 1.4.4. Tự động tạo TKB (FR-STU-TKB)
+### 1.4.4. Tự động tạo TKB (FR-STU-TKB) ✅ DONE
 
-- [ ] FR-STU-TKB-001 → 009 - Toàn bộ TKB algorithm chưa implement
+- [x] **`POST /api/auto-schedule/suggest/`** — endpoint mới (chỉ SV)
+- [x] **Algorithm module** `apps/registrations/auto_schedule.py` — CSP: Backtracking + Forward Checking + MRV heuristic
+- [x] Hard constraints: BR-002 (prereq), BR-004 (không trùng lịch), BR-005 (lớp chưa đầy)
+- [x] Soft constraints (4 sub-scores): weekday avoid, preferred session, preferred teacher, minimize gap
+- [x] **4 PriorityPreset weighting modes**: BALANCED / TEACHER_FIRST / SESSION_FIRST / COMPACT_FIRST (0.55/0.15)
+- [x] Reuse logic `_schedules_overlap` từ RegistrationSerializer (BR-004)
+- [x] `AutoScheduleError` cho missing course / missing prereq / empty domain
+- [x] Cap `max_results` (default 50, max 200) — chặn combinatorial explosion
+- [x] 13 unit tests pass (smoke, conflict, prereq, full, scoring, preset, cap, endpoint)
 
 ### 1.4.5. Xem TKB & lịch sử (FR-STU-SCH, FR-STU-HIS)
 
@@ -493,10 +501,18 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [x] Warning banner khi học kỳ chưa mở
 - [x] Stats: lớp đã đăng ký / tổng TC / lớp mở của kỳ
 
-### 2.3.4. Tự động tạo TKB (FR-STU-TKB)
+### 2.3.4. Tự động tạo TKB (FR-STU-TKB) ✅ DONE
 
-- [x] Route placeholder `/student/auto`
-- [ ] Toàn bộ UI TKB algorithm chưa làm
+- [x] **Route `/student/auto`** — trang thực (xoá Placeholder)
+- [x] **`api/autoSchedule.ts`** — types + `suggestSchedules()` + helper labels cho 4 preset
+- [x] UI 2 cột: input panel sticky bên trái + results panel bên phải
+- [x] Input: chọn HK + multi-select môn (max 10) từ `/courses/`
+- [x] Preferences UI: avoid weekdays (7 buttons) · preferred sessions (3 buttons) · preferred teachers (auto-load từ class-sections của môn đã chọn) · toggle minimize gaps
+- [x] 4 preset radio (BALANCED/TEACHER_FIRST/SESSION_FIRST/COMPACT_FIRST) với mô tả ngắn
+- [x] Results: candidate cards với rank badge + score breakdown 4 bars + danh sách mã lớp HP
+- [x] Sort thứ cấp theo từng sub-score · filter ca học · empty/loading state
+- [x] Detail modal: full ScheduleGrid preview + breakdown bars + danh sách lớp HP + nút "Áp dụng"
+- [x] Apply workflow: loop `POST /registrations/` cho từng lớp → hiển thị {ok, failed} → auto redirect `/student/history` nếu thành công
 
 ### 2.3.5. Xem TKB & lịch sử (FR-STU-SCH, FR-STU-HIS) ✅ DONE
 
@@ -652,7 +668,7 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 | Backend testing (1.7) | 60% | 48 tests (BR + accounts + courses + majors + semesters + schedule conflict + notify_class + atomic class schedule); còn auth/algorithm tests |
 | Frontend foundation (2.1) | 95% | Có ScheduleGrid mới. Còn toast, confirm dialog, skeleton loader |
 | Frontend admin (2.2) | ~80% | **8/10 module** xong; còn Reports, Settings |
-| Frontend student (2.3) | ~88% | **6/7 module** xong (Curriculum, Đăng ký, TKB, Lịch sử, Bảng điểm, Thông báo, Hồ sơ); chỉ thiếu **Auto TKB** (defer) |
+| Frontend student (2.3) | ~100% | **7/7 module** xong (Curriculum, Đăng ký, TKB, Lịch sử, Bảng điểm, Thông báo, Hồ sơ, **Auto TKB**) |
 | Frontend teacher (2.4) | ~95% | **5/5 module** xong + tính năng **gửi noti cho lớp**; chỉ thiếu export Excel + đề xuất đổi lịch (MAY) |
 | Frontend testing (2.5) | 0% | Chưa setup Vitest |
 
@@ -672,7 +688,7 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - ⬜ Báo cáo (`/admin/reports`) — chưa làm
 - ⬜ Cấu hình (`/admin/settings`) — chưa làm
 
-**Sinh viên — 6/7 module:**
+**Sinh viên — 7/7 module:**
 1. ✅ Chương trình đào tạo (`/student/curriculum`) — auto match theo major + cohort
 2. ✅ Đăng ký môn học (`/student/register`) — wire BR-002 → BR-006
 3. ✅ Thời khóa biểu (`/student/schedule`) — grid 7×15 với 8 màu
@@ -680,7 +696,7 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 5. ✅ Bảng điểm (`/student/grades`) — group theo HK, GPA HK + GPA tích lũy weighted by TC
 6. ✅ Thông báo (`/student/notifications`) — mark-read + autocomplete
 7. ✅ Hồ sơ cá nhân (`/student/profile`)
-- ⏸ Tạo TKB tự động (`/student/auto`) — defer
+8. ✅ **Tạo TKB tự động** (`/student/auto`) — CSP backtracking + 4 preset modes + apply workflow
 
 **Giáo viên — 5/5 module:**
 1. ✅ Lịch dạy (`/teacher/schedule`) — TKB grid, color theo môn
@@ -748,6 +764,21 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - Fix bug **GPA không cập nhật khi chỉnh điểm** (TeacherGradesPage `updateRow` chỉ recalc total + letter, bổ sung `calcGpa` mirror backend)
 - Thêm **Compose noti tại `/teacher/notifications`** — GV soạn noti gửi lớp ngay từ trang thông báo (không cần vào ClassDetailPage)
 - Backend `NotificationViewSet.get_queryset` thêm `Q(sender=user)` để GV thấy noti mình đã gửi
+
+### Phase 11 — TKB tự động (FR-STU-TKB) — module SV cuối cùng
+
+- Endpoint `POST /api/auto-schedule/suggest/` (chỉ SV) + 5 file backend mới/sửa:
+  - `apps/registrations/auto_schedule.py` (mới): CSP solver — `PriorityPreset` enum + `Preferences` dataclass + `_backtrack` + 4 sub-scores
+  - `serializers.py`: `AutoScheduleRequestSerializer` + `AutoScheduleCandidateSerializer`
+  - `views.py`: `AutoScheduleSuggestView` + permission check role=STUDENT
+  - `urls.py`: thêm path
+  - `tests_auto_schedule.py` (mới): 13 cases — smoke / conflict / prereq / full / scoring / preset / cap / endpoint
+- Frontend trang `/student/auto` mới (~480 dòng): input panel sticky + results panel với sort/filter + detail modal có ScheduleGrid preview + apply workflow loop `POST /registrations/`
+- Reuse: `_schedules_overlap` logic giống `RegistrationSerializer._schedules_overlap` (line 103-109) — không sửa BR-004 cũ
+- Theo plan trong `doc/plan_tkb.md` — mô hình hóa CSP (Russell & Norvig), Backtracking + Forward Checking + MRV
+- 4 PriorityPreset (BALANCED/TEACHER_FIRST/SESSION_FIRST/COMPACT_FIRST) cho phép SV đổi trọng số 4 sub-scores
+- Hằng số `GAP_PENALTY_PER_PERIOD = 5.0` (mỗi tiết gap trừ 5 điểm, floor 0)
+- Backend `pytest apps/registrations apps/grades` 27/27 pass · frontend `tsc --noEmit` clean
 
 ### Phase 10 — Tách trang Login (mục 2.1 / FR-GEN-001)
 

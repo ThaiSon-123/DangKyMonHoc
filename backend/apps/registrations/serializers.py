@@ -2,8 +2,10 @@ from django.conf import settings
 from django.utils import timezone
 from rest_framework import serializers
 
+from apps.classes.serializers import ClassSectionSerializer
 from apps.profiles.models import StudentProfile
 from apps.semesters.models import Semester
+from .auto_schedule import PriorityPreset, Preferences
 from .models import Registration
 
 
@@ -177,3 +179,60 @@ class RegistrationSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.setdefault("status", Registration.Status.CONFIRMED)
         return super().create(validated_data)
+
+
+# ───────────────────────── Auto Schedule (FR-STU-TKB) ─────────────────────────
+
+
+class AutoScheduleRequestSerializer(serializers.Serializer):
+    """Input cho POST /api/auto-schedule/suggest/."""
+    semester = serializers.PrimaryKeyRelatedField(queryset=Semester.objects.all())
+    course_ids = serializers.ListField(
+        child=serializers.IntegerField(), min_length=1, max_length=10
+    )
+    avoid_weekdays = serializers.ListField(
+        child=serializers.IntegerField(min_value=0, max_value=6),
+        required=False,
+        default=list,
+    )
+    preferred_sessions = serializers.ListField(
+        child=serializers.ChoiceField(choices=["MORNING", "AFTERNOON", "EVENING"]),
+        required=False,
+        default=list,
+    )
+    preferred_teacher_ids = serializers.ListField(
+        child=serializers.IntegerField(), required=False, default=list
+    )
+    minimize_gaps = serializers.BooleanField(default=True)
+    preset = serializers.ChoiceField(
+        choices=[p.value for p in PriorityPreset],
+        default=PriorityPreset.BALANCED.value,
+    )
+    # Hard filter per-course: { "<course_id>": <teacher_id> }
+    # Keys là string (JSON object) sẽ convert sang int trong to_preferences.
+    course_teacher_constraints = serializers.DictField(
+        child=serializers.IntegerField(),
+        required=False,
+        default=dict,
+    )
+    max_results = serializers.IntegerField(default=50, min_value=1, max_value=200)
+
+    def to_preferences(self) -> Preferences:
+        v = self.validated_data
+        raw_constraints = v.get("course_teacher_constraints", {}) or {}
+        constraints = {int(k): int(t) for k, t in raw_constraints.items()}
+        return Preferences(
+            avoid_weekdays=frozenset(v.get("avoid_weekdays", [])),
+            preferred_sessions=frozenset(v.get("preferred_sessions", [])),
+            preferred_teacher_ids=frozenset(v.get("preferred_teacher_ids", [])),
+            minimize_gaps=v.get("minimize_gaps", True),
+            preset=PriorityPreset(v.get("preset", PriorityPreset.BALANCED.value)),
+            course_teacher_constraints=constraints,
+        )
+
+
+class AutoScheduleCandidateSerializer(serializers.Serializer):
+    """1 phương án TKB trả về cho frontend."""
+    class_sections = ClassSectionSerializer(many=True, read_only=True)
+    score = serializers.FloatField()
+    breakdown = serializers.DictField(child=serializers.FloatField())

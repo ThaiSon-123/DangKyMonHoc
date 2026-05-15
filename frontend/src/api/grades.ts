@@ -6,6 +6,7 @@ export interface Grade {
   registration: number;
   student_code: string;
   student_name: string;
+  course: number;
   course_code: string;
   course_name: string;
   course_credits: number;

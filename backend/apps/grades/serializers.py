@@ -5,6 +5,7 @@ from .models import Grade
 class GradeSerializer(serializers.ModelSerializer):
     student_code = serializers.CharField(source="registration.student.student_code", read_only=True)
     student_name = serializers.SerializerMethodField()
+    course = serializers.IntegerField(source="registration.class_section.course_id", read_only=True)
     course_code = serializers.CharField(source="registration.class_section.course.code", read_only=True)
     course_name = serializers.CharField(source="registration.class_section.course.name", read_only=True)
     course_credits = serializers.IntegerField(source="registration.class_section.course.credits", read_only=True)
@@ -17,7 +18,7 @@ class GradeSerializer(serializers.ModelSerializer):
         fields = (
             "id", "registration",
             "student_code", "student_name",
-            "course_code", "course_name", "course_credits",
+            "course", "course_code", "course_name", "course_credits",
             "class_section_code", "semester_code", "semester_name",
             "process_score", "midterm_score", "final_score",
             "total_score", "gpa_4", "grade_letter", "note", "updated_at",
