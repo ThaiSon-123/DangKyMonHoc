@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { fetchCurrentUser } from "@/api/auth";
 import Layout from "@/components/Layout";
 import Login from "@/pages/Login";
+import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 import StudentDashboard from "@/pages/StudentDashboard";
 import TeacherDashboard from "@/pages/TeacherDashboard";
@@ -24,6 +25,7 @@ import StudentProfilePage from "@/pages/student/ProfilePage";
 import StudentRegisterPage from "@/pages/student/RegisterPage";
 import StudentSchedulePage from "@/pages/student/SchedulePage";
 import StudentHistoryPage from "@/pages/student/HistoryPage";
+import StudentGradesPage from "@/pages/student/GradesPage";
 import TeacherProfilePage from "@/pages/teacher/ProfilePage";
 import TeacherNotificationsPage from "@/pages/teacher/NotificationsPage";
 import TeacherSchedulePage from "@/pages/teacher/SchedulePage";
@@ -94,6 +96,7 @@ export default function App() {
     <>
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/admin/login" element={<AdminLogin />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
@@ -129,6 +132,7 @@ export default function App() {
             <Route path="/student/register" element={<StudentRegisterPage />} />
             <Route path="/student/schedule" element={<StudentSchedulePage />} />
             <Route path="/student/history" element={<StudentHistoryPage />} />
+            <Route path="/student/grades" element={<StudentGradesPage />} />
             {STUDENT_ROUTES.map((r) => (
               <Route
                 key={r.path}

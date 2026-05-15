@@ -37,10 +37,26 @@ function calcTotal(p: string, m: string, f: string): number | null {
 function calcLetter(total: number | null): string {
   if (total === null) return "";
   if (total >= 8.5) return "A";
+  if (total >= 8.0) return "B+";
   if (total >= 7.0) return "B";
+  if (total >= 6.5) return "C+";
   if (total >= 5.5) return "C";
+  if (total >= 5.0) return "D+";
   if (total >= 4.0) return "D";
   return "F";
+}
+
+// Mirror backend Grade.compute_gpa_4 (apps/grades/models.py) để preview live khi chỉnh điểm
+function calcGpa(total: number | null): string | null {
+  if (total === null) return null;
+  if (total >= 8.5) return "4.00";
+  if (total >= 8.0) return "3.50";
+  if (total >= 7.0) return "3.00";
+  if (total >= 6.5) return "2.50";
+  if (total >= 5.5) return "2.00";
+  if (total >= 5.0) return "1.50";
+  if (total >= 4.0) return "1.00";
+  return "0.00";
 }
 
 export default function TeacherGradesPage() {
@@ -146,6 +162,7 @@ export default function TeacherGradesPage() {
           );
           updated.total_score = total !== null ? String(total) : null;
           updated.grade_letter = calcLetter(total);
+          updated.gpa_4 = calcGpa(total);
         }
         return updated;
       }),

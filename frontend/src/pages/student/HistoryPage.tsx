@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
-import { Badge, Button, Card, Modal, Pagination, Stat, Table, type Column } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  Modal,
+  Pagination,
+  Stat,
+  Table,
+  type Column,
+} from "@/components/ui";
 import Icon from "@/components/ui/Icon";
 import {
   cancelRegistration,
@@ -88,7 +97,9 @@ export default function StudentHistoryPage() {
       label: "Môn học",
       render: (r) => (
         <div>
-          <div className="font-mono text-[12px] text-ink-muted">{r.course_code}</div>
+          <div className="font-mono text-[12px] text-ink-muted">
+            {r.course_code}
+          </div>
           <div className="text-[13px]">{r.course_name}</div>
         </div>
       ),
@@ -105,7 +116,9 @@ export default function StudentHistoryPage() {
       key: "status",
       label: "Trạng thái",
       width: "130px",
-      render: (r) => <Badge tone={STATUS_TONE[r.status]}>{r.status_display}</Badge>,
+      render: (r) => (
+        <Badge tone={STATUS_TONE[r.status]}>{r.status_display}</Badge>
+      ),
     },
     {
       key: "registered_at",
@@ -152,8 +165,8 @@ export default function StudentHistoryPage() {
           Lịch sử đăng ký
         </h1>
         <p className="mt-1 text-[13.5px] text-ink-muted">
-          Toàn bộ đăng ký môn học của bạn qua các học kỳ. Có thể huỷ đăng ký trong thời gian
-          đợt đăng ký còn mở (BR-006).
+          Toàn bộ đăng ký môn học của bạn qua các học kỳ. Có thể huỷ đăng ký
+          trong thời gian đợt đăng ký còn mở (BR-006).
         </p>
       </div>
 
@@ -161,7 +174,11 @@ export default function StudentHistoryPage() {
         <Stat label="Tổng đăng ký" value={total} icon="doc" tone="accent" />
         <Stat label="Đã xác nhận" value={confirmedCount} icon="check" />
         <Stat label="Đã hủy" value={cancelledCount} icon="x" />
-        <Stat label="TC đang học (trang này)" value={totalCredits} icon="book" />
+        <Stat
+          label="TC đang học (trang này)"
+          value={totalCredits}
+          icon="book"
+        />
       </div>
 
       <Card>
@@ -169,7 +186,9 @@ export default function StudentHistoryPage() {
           <select
             value={filterSemester}
             onChange={(e) => {
-              setFilterSemester(e.target.value === "" ? "" : Number(e.target.value));
+              setFilterSemester(
+                e.target.value === "" ? "" : Number(e.target.value),
+              );
               setPage(1);
             }}
             className="px-3 py-1.5 rounded-md bg-surface border border-line text-[13px]"
@@ -221,9 +240,14 @@ export default function StudentHistoryPage() {
           rows={items}
           rowKey={(r) => r.id}
           loading={loading}
-          emptyText="Chưa có đăng ký nào. Tới /student/register để đăng ký môn học."
+          emptyText="Chưa có đăng ký nào."
         />
-        <Pagination page={page} pageSize={PAGE_SIZE} total={total} onChange={setPage} />
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          onChange={setPage}
+        />
       </Card>
 
       <Modal
@@ -255,12 +279,15 @@ export default function StudentHistoryPage() {
           <div className="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 text-[12.5px] text-warn flex items-start gap-2">
             <Icon name="bell" size={16} className="mt-0.5 flex-shrink-0" />
             <div>
-              Bạn chỉ được hủy đăng ký <strong>trong thời gian đợt đăng ký mở</strong> (BR-006).
-              Sau thời gian này, hệ thống sẽ không cho hủy.
+              Bạn chỉ được hủy đăng ký{" "}
+              <strong>trong thời gian đợt đăng ký mở</strong>. Sau thời gian
+              này, hệ thống sẽ không cho hủy.
             </div>
           </div>
           <label className="block">
-            <div className="text-[12.5px] font-medium text-ink mb-1.5">Lý do huỷ (tuỳ chọn)</div>
+            <div className="text-[12.5px] font-medium text-ink mb-1.5">
+              Lý do huỷ (tuỳ chọn)
+            </div>
             <textarea
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
