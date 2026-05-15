@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/stores/auth";
+import { loginPathForPathname } from "@/lib/routes";
 import type { Role } from "@/types";
 
 interface Props {
@@ -11,7 +12,13 @@ export default function ProtectedRoute({ allowedRoles }: Props) {
   const { accessToken, user } = useAuthStore();
 
   if (!accessToken) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return (
+      <Navigate
+        to={loginPathForPathname(location.pathname)}
+        state={{ from: location }}
+        replace
+      />
+    );
   }
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {

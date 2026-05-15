@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getInitials } from "@/lib/names";
-import { profilePathForRole } from "@/lib/routes";
+import { loginPathForRole, profilePathForRole } from "@/lib/routes";
 import { useAuthStore } from "@/stores/auth";
 import Icon from "./ui/Icon";
 
@@ -41,8 +41,9 @@ export default function AccountMenu({ placement }: Props) {
 
   function handleLogout() {
     setOpen(false);
+    const target = loginPathForRole(user?.role);
     logout();
-    navigate("/login", { replace: true });
+    navigate(target, { replace: true });
   }
 
   return (

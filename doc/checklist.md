@@ -322,6 +322,12 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [x] **`semesterLabel(suggested, cohortYear)`** util — derive nhãn "HK X - Năm học YYYY-YYYY"
 - [x] **`getInitials(fullName)`** util — chữ cái đầu cho avatar
 - [x] FR-GEN-001 - Trang Login 3-portal (SV navy / GV teal / Admin tím) với 2FA toggle + xử lý error tài khoản khoá
+- [x] **Tách Login thành 2 URL riêng** — `/login` (SV+GV, tab switcher 2 role) và `/admin/login` (Admin, purple, không 2FA)
+  - [x] Helper `loginPathForRole` + `loginPathForPathname` trong `lib/routes.ts`
+  - [x] `ProtectedRoute` redirect đúng cổng theo `location.pathname` (`/admin/*` → `/admin/login`)
+  - [x] `AccountMenu.handleLogout` redirect về login path đúng role
+  - [x] Frontend-only role enforcement: login sai cổng → logout + error message (backend `/auth/login/` không đổi)
+  - [x] Footer cross-link: `/login` ↔ `/admin/login`
 - [x] FR-GEN-002 - Nút Logout trong TopBar dropdown
 - [ ] FR-GEN-003 - Form đổi mật khẩu
 - [ ] FR-GEN-004 - Form quên mật khẩu (SHOULD)
@@ -742,6 +748,17 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - Fix bug **GPA không cập nhật khi chỉnh điểm** (TeacherGradesPage `updateRow` chỉ recalc total + letter, bổ sung `calcGpa` mirror backend)
 - Thêm **Compose noti tại `/teacher/notifications`** — GV soạn noti gửi lớp ngay từ trang thông báo (không cần vào ClassDetailPage)
 - Backend `NotificationViewSet.get_queryset` thêm `Q(sender=user)` để GV thấy noti mình đã gửi
+
+### Phase 10 — Tách trang Login (mục 2.1 / FR-GEN-001)
+
+- Trang login chia thành 2 URL riêng để gọn UX + dễ siết bảo mật cho cổng admin sau này
+  - `/login` — Sinh viên + Giáo viên (tab switcher 2 role, branding navy/teal)
+  - `/admin/login` — Quản trị viên (purple gradient, không tab switcher, không 2FA)
+- Helper mới `lib/routes.ts`: `loginPathForRole(role)` + `loginPathForPathname(pathname)`
+- `ProtectedRoute` redirect về cổng đúng dựa `location.pathname.startsWith("/admin")`
+- `AccountMenu.handleLogout` snapshot `loginPathForRole(user?.role)` **trước** khi `logout()` (user null sau đó)
+- Frontend-only enforcement: login sai cổng → `useAuthStore.logout()` + setError có gợi ý URL đúng. Backend `/auth/login/` giữ chung 1 endpoint, không đụng
+- Footer cross-link giữa 2 trang để user dễ chuyển
 
 ### Phase 8 — Teacher UI modules (mục 2.4)
 
