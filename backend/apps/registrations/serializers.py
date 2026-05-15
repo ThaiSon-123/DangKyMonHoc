@@ -2,6 +2,8 @@ from django.conf import settings
 from django.utils import timezone
 from rest_framework import serializers
 
+from apps.classes.serializers import ClassSectionSerializer, ScheduleSerializer
+from apps.curriculums.models import Curriculum
 from apps.profiles.models import StudentProfile
 from apps.semesters.models import Semester
 from .auto_schedule import PriorityPreset, Preferences
