@@ -234,22 +234,6 @@ export default function AdminLogin() {
           >
             {loading ? "Đang đăng nhập..." : CFG.ctaText}
           </Button>
-
-          <div className="flex items-center gap-2.5 text-ink-faint text-[11.5px]">
-            <div className="flex-1 h-px bg-line" />
-            <span>HOẶC</span>
-            <div className="flex-1 h-px bg-line" />
-          </div>
-
-          <Button
-            type="button"
-            variant="secondary"
-            size="lg"
-            icon="building"
-            className="w-full justify-center"
-          >
-            SSO Tài khoản Nhà trường
-          </Button>
         </form>
 
         <div className="text-xs text-ink-faint text-center space-y-1">

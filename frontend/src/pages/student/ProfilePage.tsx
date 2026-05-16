@@ -14,18 +14,29 @@ export default function StudentProfilePage() {
 
   useEffect(() => {
     let active = true;
-    getMyStudentProfile()
-      .then((d) => {
-        if (active) setProfile(d);
-      })
-      .catch((err) => {
-        if (active) setError(extractApiError(err, "Không tải được hồ sơ."));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    const loadProfile = (showLoading = false) => {
+      if (showLoading) setLoading(true);
+      getMyStudentProfile()
+        .then((d) => {
+          if (!active) return;
+          setProfile(d);
+          setError(null);
+        })
+        .catch((err) => {
+          if (active) setError(extractApiError(err, "Không tải được hồ sơ."));
+        })
+        .finally(() => {
+          if (active && showLoading) setLoading(false);
+        });
+    };
+    loadProfile(true);
+    const refreshTimer = window.setInterval(() => loadProfile(), 30_000);
+    const handleFocus = () => loadProfile();
+    window.addEventListener("focus", handleFocus);
     return () => {
       active = false;
+      window.clearInterval(refreshTimer);
+      window.removeEventListener("focus", handleFocus);
     };
   }, []);
 
@@ -48,10 +59,6 @@ export default function StudentProfilePage() {
   }
 
   const initials = getInitials(profile.full_name || profile.username);
-
-  // Tính số năm đào tạo còn lại / đã học (giả sử 4 năm)
-  const currentYear = new Date().getFullYear();
-  const yearsAtSchool = currentYear - profile.enrollment_year;
 
   return (
     <div className="space-y-5">
@@ -95,7 +102,7 @@ export default function StudentProfilePage() {
                 K{profile.enrollment_year}
               </div>
               <div className="text-[12px] text-ink-muted">
-                Đã học {yearsAtSchool} năm
+                Đào tạo {profile.major_duration_years} năm
               </div>
             </InfoRow>
             <InfoRow icon="chart" label="GPA tích luỹ">
@@ -157,7 +164,7 @@ export default function StudentProfilePage() {
         />
         <Stat
           label="Số năm đào tạo"
-          value={yearsAtSchool}
+          value={profile.major_duration_years}
           hint={`khoá ${profile.enrollment_year}`}
           icon="calendar"
         />

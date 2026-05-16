@@ -164,7 +164,10 @@ class AutoScheduleSuggestView(APIView):
                 max_results=ser.validated_data.get("max_results", 50),
             )
         except AutoScheduleError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            payload = {"detail": str(e)}
+            if e.details:
+                payload["details"] = e.details
+            return Response(payload, status=status.HTTP_400_BAD_REQUEST)
 
         data = AutoScheduleCandidateSerializer(candidates, many=True).data
         return Response({"count": len(data), "results": data})

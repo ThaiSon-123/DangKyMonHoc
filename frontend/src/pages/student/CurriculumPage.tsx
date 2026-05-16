@@ -171,10 +171,7 @@ export default function StudentCurriculumPage() {
       render: (cc) => {
         const grade = gradeByCourse.get(cc.course_code);
         return grade ? (
-          <div className="inline-flex items-center gap-1.5">
-            <Badge tone="accent">Đã học</Badge>
-            <span className="font-mono text-[11.5px] text-ink-muted">{grade.total_score}</span>
-          </div>
+          <span className="font-mono text-[12.5px] text-ink">{grade.total_score}</span>
         ) : (
           <span className="text-ink-faint">—</span>
         );
