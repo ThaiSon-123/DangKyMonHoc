@@ -111,7 +111,7 @@ def test_smoke_two_courses_two_classes_each_no_conflict(
         assert "free_days" in cand.stats
 
 
-def test_conflict_excludes_overlapping_combos(
+def test_conflict_without_feasible_schedule_reports_details(
     student_profile, open_semester, course_factory, class_section_factory, add_to_curriculum,
 ):
     c1 = add_to_curriculum(course_factory(code="CS201"))
@@ -119,11 +119,14 @@ def test_conflict_excludes_overlapping_combos(
     _make_class(c1, class_section_factory, weekday=0, start_period=1)
     _make_class(c2, class_section_factory, weekday=0, start_period=1)  # trùng
 
-    candidates = suggest_schedules(
-        student=student_profile, semester=open_semester,
-        course_ids=[c1.id, c2.id], prefs=Preferences(),
-    )
-    assert candidates == []
+    with pytest.raises(AutoScheduleError) as exc:
+        suggest_schedules(
+            student=student_profile, semester=open_semester,
+            course_ids=[c1.id, c2.id], prefs=Preferences(),
+        )
+
+    assert "Không tìm được phương án" in str(exc.value)
+    assert any("CS201" in detail and "CS202" in detail for detail in exc.value.details)
 
 
 def test_existing_registration_blocks_conflict(
@@ -481,6 +484,26 @@ def test_suggest_endpoint_smoke(
     assert set(cand["breakdown"].keys()) == {"weekday", "session", "teacher", "free_day", "total"}
     assert "stats" in cand
     assert set(cand["stats"].keys()) == {"study_days", "free_days"}
+
+
+def test_suggest_endpoint_no_feasible_schedule_returns_conflict_details(
+    student_profile, open_semester, course_factory, class_section_factory, add_to_curriculum,
+):
+    c1 = add_to_curriculum(course_factory(code="CSE-CF1"))
+    c2 = add_to_curriculum(course_factory(code="CSE-CF2"))
+    _make_class(c1, class_section_factory, weekday=0, start_period=1)
+    _make_class(c2, class_section_factory, weekday=0, start_period=1)
+
+    api = _api(student_profile.user)
+    res = api.post(
+        "/api/auto-schedule/suggest/",
+        {"semester": open_semester.id, "course_ids": [c1.id, c2.id]},
+        format="json",
+    )
+
+    assert res.status_code == 400
+    assert "Không tìm được phương án" in res.data["detail"]
+    assert any("CSE-CF1" in detail and "CSE-CF2" in detail for detail in res.data["details"])
 
 
 def test_available_courses_endpoint(

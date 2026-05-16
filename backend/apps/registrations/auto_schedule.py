@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from django.conf import settings
-from django.db.models import F, Q
+from django.db.models import F, Prefetch, Q
 from django.utils import timezone
 
 from apps.classes.models import ClassSection, Schedule
@@ -103,6 +103,10 @@ class Candidate:
 class AutoScheduleError(Exception):
     """Raised khi input không hợp lệ hoặc không có domain."""
 
+    def __init__(self, message: str, details: list[str] | None = None):
+        super().__init__(message)
+        self.details = details or []
+
 
 # ───────────────────────── Curriculum / Grade helpers ─────────────────────────
 
@@ -185,7 +189,12 @@ def get_existing_schedules(student, semester_id: int) -> list[Schedule]:
             student=student, semester_id=semester_id, status__in=active,
         )
         .select_related("class_section")
-        .prefetch_related("class_section__schedules")
+        .prefetch_related(
+            Prefetch(
+                "class_section__schedules",
+                queryset=Schedule.objects.select_related("class_section__course"),
+            )
+        )
     )
     schedules: list[Schedule] = []
     for r in regs:
@@ -226,6 +235,93 @@ def _any_conflict(new_schedules: list[Schedule], used: list[Schedule]) -> bool:
     return False
 
 
+def _first_overlap(
+    left: list[Schedule],
+    right: list[Schedule],
+) -> tuple[Schedule, Schedule] | None:
+    for a in left:
+        for b in right:
+            if schedules_overlap(a, b):
+                return a, b
+    return None
+
+
+def _format_class_section(cs: ClassSection) -> str:
+    course = cs.course
+    return f"{course.code} - {course.name} ({cs.code})"
+
+
+def _format_overlap(a: Schedule, b: Schedule) -> str:
+    return (
+        f"{a.get_weekday_display()} tiết {a.start_period}-{a.end_period} "
+        f"trùng tiết {b.start_period}-{b.end_period}"
+    )
+
+
+def _build_no_solution_details(
+    courses_ordered: list[Course],
+    domains: dict[int, list[ClassSection]],
+    schedules_cache: dict[int, list[Schedule]],
+    existing_schedules: list[Schedule],
+) -> list[str]:
+    details: list[str] = []
+
+    for course in courses_ordered:
+        blocked_by_existing: list[tuple[ClassSection, Schedule, Schedule]] = []
+        for cs in domains[course.id]:
+            overlap = _first_overlap(schedules_cache[cs.id], existing_schedules)
+            if overlap:
+                blocked_by_existing.append((cs, overlap[0], overlap[1]))
+        if blocked_by_existing and len(blocked_by_existing) == len(domains[course.id]):
+            details.append(
+                f"Môn {course.code} - {course.name}: tất cả {len(domains[course.id])} "
+                "lớp mở đều trùng với lịch đã đăng ký."
+            )
+            for cs, new_schedule, existing_schedule in blocked_by_existing[:3]:
+                details.append(
+                    f"{_format_class_section(cs)} trùng lịch đã đăng ký "
+                    f"{_format_class_section(existing_schedule.class_section)}: "
+                    f"{_format_overlap(new_schedule, existing_schedule)}."
+                )
+
+    for idx, left_course in enumerate(courses_ordered):
+        for right_course in courses_ordered[idx + 1:]:
+            examples: list[str] = []
+            has_compatible_pair = False
+            for left_cs in domains[left_course.id]:
+                for right_cs in domains[right_course.id]:
+                    overlap = _first_overlap(
+                        schedules_cache[left_cs.id],
+                        schedules_cache[right_cs.id],
+                    )
+                    if overlap is None:
+                        has_compatible_pair = True
+                        break
+                    if len(examples) < 2:
+                        examples.append(
+                            f"{_format_class_section(left_cs)} trùng "
+                            f"{_format_class_section(right_cs)}: "
+                            f"{_format_overlap(overlap[0], overlap[1])}."
+                        )
+                if has_compatible_pair:
+                    break
+            if not has_compatible_pair:
+                details.append(
+                    f"Môn {left_course.code} - {left_course.name} xung đột với "
+                    f"môn {right_course.code} - {right_course.name}: mọi cặp lớp mở đều trùng lịch."
+                )
+                details.extend(examples)
+
+    if not details:
+        for course in courses_ordered:
+            details.append(
+                f"Môn {course.code} - {course.name}: có {len(domains[course.id])} "
+                "lớp mở, nhưng không ghép được với toàn bộ các môn còn lại/lịch đã đăng ký."
+            )
+
+    return details[:12]
+
+
 # ───────────────────────── Domain builder ─────────────────────────
 
 
@@ -249,7 +345,7 @@ def build_domain(
     )
     if teacher_id is not None:
         qs = qs.filter(teacher_id=teacher_id)
-    return list(qs.prefetch_related("schedules").order_by("code"))
+    return list(qs.select_related("course").prefetch_related("schedules").order_by("code"))
 
 
 # ───────────────────────── Available courses (FE bước 2) ─────────────────────────
@@ -551,6 +647,16 @@ def suggest_schedules(
         feasible=feasible,
         max_results=max_results,
     )
+    if not feasible:
+        raise AutoScheduleError(
+            "Không tìm được phương án TKB khả thi vì các lớp học phần bị xung đột lịch.",
+            details=_build_no_solution_details(
+                courses_ordered=courses_ordered,
+                domains=domains,
+                schedules_cache=schedules_cache,
+                existing_schedules=existing_schedules,
+            ),
+        )
 
     # 10. Score + sort
     candidates: list[Candidate] = []

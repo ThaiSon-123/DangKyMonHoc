@@ -153,6 +153,7 @@ export default function StudentRegisterPage() {
       course_code: string;
       course_name: string;
       course_credits: number;
+      is_learned: boolean;
       sections: ClassSection[];
     }
     const map = new Map<number, Group>();
@@ -165,6 +166,7 @@ export default function StudentRegisterPage() {
           course_code: cs.course_code,
           course_name: cs.course_name,
           course_credits: cs.course_credits,
+          is_learned: learnedCourseIds.has(cs.course),
           sections: [],
         };
         map.set(cs.course, g);
@@ -559,6 +561,7 @@ export default function StudentRegisterPage() {
                     <span className="flex-1 truncate text-[13px] font-medium text-ink">
                       {g.course_name}
                     </span>
+                    {g.is_learned && <Badge tone="neutral">Đã học</Badge>}
                     <Badge tone="accent">{g.course_credits} TC</Badge>
                     <span className="text-[11.5px] text-ink-muted w-16 text-right">
                       {g.sections.length} lớp

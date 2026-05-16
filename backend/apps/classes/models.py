@@ -55,6 +55,14 @@ class ClassSection(models.Model):
     def clean(self):
         """Plan §7.2: lớp ở trạng thái OPEN bắt buộc phải có giáo viên."""
         super().clean()
+        if (
+            self.status == self.Status.OPEN
+            and self.semester_id
+            and not self.semester.is_open
+        ):
+            raise ValidationError(
+                {"status": "Khong the mo lop hoc phan trong hoc ky da dong."}
+            )
         if self.status == self.Status.OPEN and self.teacher_id is None:
             raise ValidationError(
                 {"teacher": "Lớp ở trạng thái 'Đang mở' phải có giáo viên phụ trách."}

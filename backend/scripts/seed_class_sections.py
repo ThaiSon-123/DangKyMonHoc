@@ -32,8 +32,6 @@ def run():
     # Lấy học kỳ đang mở
     semester = Semester.objects.filter(is_open=True).first()
     if not semester:
-        semester = Semester.objects.order_by("-start_date").first()
-    if not semester:
         print("✗ Không có học kỳ nào. Tạo học kỳ trước.")
         return
     print(f"✓ Học kỳ: {semester.code}")

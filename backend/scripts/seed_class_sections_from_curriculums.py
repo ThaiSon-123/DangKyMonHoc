@@ -235,7 +235,11 @@ def seed():
                             "teacher": teacher,
                             "periods_per_session": 5,
                             "max_students": 45 + ((link.course_id + number) % 4) * 5,
-                            "status": ClassSection.Status.OPEN,
+                            "status": (
+                                ClassSection.Status.OPEN
+                                if semester.is_open
+                                else ClassSection.Status.CLOSED
+                            ),
                             "note": (
                                 f"Seed từ {curriculum.code}, "
                                 f"học kỳ gợi ý {link.suggested_semester}."

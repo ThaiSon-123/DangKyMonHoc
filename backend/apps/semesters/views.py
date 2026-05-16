@@ -1,3 +1,4 @@
+from django.db import transaction
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -6,6 +7,7 @@ from apps.accounts.mixins import HandleProtectedDeleteMixin
 from apps.accounts.permissions import IsAdminOrReadOnly, IsAdminRole
 from .models import Semester
 from .serializers import SemesterSerializer
+from .services import close_class_sections_for_semester
 
 
 class SemesterViewSet(HandleProtectedDeleteMixin, viewsets.ModelViewSet):
@@ -27,6 +29,8 @@ class SemesterViewSet(HandleProtectedDeleteMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], permission_classes=[IsAdminRole])
     def close(self, request, pk=None):
         semester = self.get_object()
-        semester.is_open = False
-        semester.save(update_fields=["is_open", "updated_at"])
+        with transaction.atomic():
+            semester.is_open = False
+            semester.save(update_fields=["is_open", "updated_at"])
+            close_class_sections_for_semester(semester)
         return Response(SemesterSerializer(semester).data)

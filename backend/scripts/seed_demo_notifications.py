@@ -4,19 +4,17 @@ Run inside Docker backend container:
 python manage.py shell -c "exec(open('/app/scripts/seed_demo_notifications.py', encoding='utf-8').read())"
 """
 
-from django.db import transaction
+from django.db import models, transaction
+from django.db.models import Q
 
 from apps.accounts.models import Role, User
 from apps.notifications.models import Notification
 from apps.registrations.models import Registration
 
 
-DEMO_PREFIX = "[DEMO]"
-
-
 def create_notification(title, body, category, audience, sender, recipients=None):
     notification = Notification.objects.create(
-        title=f"{DEMO_PREFIX} {title}",
+        title=title,
         body=body,
         category=category,
         audience=audience,
@@ -124,8 +122,22 @@ def seed_student_absence_notifications():
     )
 
     created = 0
+    per_student_counts = {
+        row["sender_id"]: row["count"]
+        for row in (
+            Notification.objects.filter(
+                sender__role=Role.STUDENT,
+                title__icontains="xin nghỉ",
+            )
+            .values("sender_id")
+            .annotate(count=models.Count("id"))
+        )
+    }
     for registration in registrations:
         student = registration.student
+        count = per_student_counts.get(student.user_id, 0)
+        if count >= 2:
+            continue
         class_section = registration.class_section
         create_notification(
             title=f"Xin nghỉ học lớp {class_section.code}",
@@ -139,12 +151,19 @@ def seed_student_absence_notifications():
             sender=student.user,
             recipients=[class_section.teacher.user],
         )
+        per_student_counts[student.user_id] = count + 1
         created += 1
     return created
 
 
 with transaction.atomic():
-    deleted = Notification.objects.filter(title__startswith=f"{DEMO_PREFIX} ").delete()
+    deleted = Notification.objects.filter(
+        Q(title__startswith="[DEMO] ")
+        | Q(title="Mở đăng ký học phần học kỳ 1 năm 2026-2027")
+        | Q(title="Rà soát lớp học phần và danh sách sinh viên đăng ký")
+        | Q(title__contains=" - Nhắc sinh viên chuẩn bị buổi học")
+        | Q(title__startswith="Xin nghỉ học lớp ")
+    ).delete()
     admin_user = first_admin()
     seed_admin_notifications(admin_user)
     teacher_to_class = seed_teacher_to_class_notifications()

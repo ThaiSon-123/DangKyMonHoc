@@ -1,18 +1,16 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 import { Badge, Button, Card, Modal, ScheduleGrid, type ScheduleEvent } from "@/components/ui";
 import Icon from "@/components/ui/Icon";
 import { api } from "@/api/client";
 import { listSemesters } from "@/api/semesters";
 import {
-  PRESET_DESCRIPTIONS,
-  PRESET_LABELS,
   SESSION_OPTIONS,
   listAvailableCourses,
   suggestSchedules,
   type AutoScheduleCandidate,
   type AvailableCourse,
-  type PriorityPreset,
   type Session,
 } from "@/api/autoSchedule";
 import { extractApiError } from "@/lib/errors";
@@ -23,9 +21,15 @@ import {
 } from "@/types/domain";
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
-const PRESETS: PriorityPreset[] = ["AUTO", "BALANCED", "TEACHER_FIRST", "SESSION_FIRST", "COMPACT_FIRST"];
 
 type CourseStatus = "available" | "learned" | "missing_prereq" | "registered";
+type SelectedCourseSummary = {
+  id: number;
+  code: string;
+  name: string;
+  credits?: number;
+  teacherName: string;
+};
 
 function getCourseStatus(c: AvailableCourse): CourseStatus {
   if (c.has_grade) return "learned";
@@ -40,6 +44,23 @@ const STATUS_BADGE: Record<CourseStatus, { label: string; tone: "neutral" | "acc
   missing_prereq: { label: "Thiếu tiên quyết", tone: "warn" },
   registered: { label: "Đã đăng ký", tone: "accent" },
 };
+
+const BREAKDOWN_LABELS = {
+  total: "Tổng điểm",
+  weekday: "Ngày học",
+  session: "Ca học",
+  teacher: "Giáo viên",
+  free_day: "Ngày nghỉ",
+} as const;
+
+function extractApiDetails(err: unknown): string[] {
+  if (!(err instanceof AxiosError) || !err.response) return [];
+  const data = err.response.data;
+  if (!data || typeof data !== "object" || !("details" in data)) return [];
+  const details = (data as { details?: unknown }).details;
+  if (!Array.isArray(details)) return [];
+  return details.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+}
 
 export default function StudentAutoSchedulePage() {
   const navigate = useNavigate();
@@ -64,12 +85,13 @@ export default function StudentAutoSchedulePage() {
   // Preferences
   const [avoidWeekdays, setAvoidWeekdays] = useState<Set<number>>(new Set());
   const [preferredSessions, setPreferredSessions] = useState<Set<Session>>(new Set());
-  const [preset, setPreset] = useState<PriorityPreset>("AUTO");
+  const [optimizeFreeDays, setOptimizeFreeDays] = useState(false);
 
   // Results
   const [results, setResults] = useState<AutoScheduleCandidate[]>([]);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
   const [sortKey, setSortKey] = useState<"total" | "weekday" | "session" | "teacher" | "free_day">("total");
 
   // Detail modal
@@ -85,7 +107,10 @@ export default function StudentAutoSchedulePage() {
         setSemester(result.semester);
         setSemesterStatus(result.status);
       })
-      .catch((err) => setError(extractApiError(err, "Không tải được học kỳ.")));
+      .catch((err) => {
+        setErrorDetails([]);
+        setError(extractApiError(err, "Không tải được học kỳ."));
+      });
   }, []);
 
   // Load available courses khi semester/search/filter thay đổi (debounce search)
@@ -106,7 +131,10 @@ export default function StudentAutoSchedulePage() {
           if (!cancelled) setAvailableCourses(r.results);
         })
         .catch((err) => {
-          if (!cancelled) setError(extractApiError(err, "Không tải được danh sách môn."));
+          if (!cancelled) {
+            setErrorDetails([]);
+            setError(extractApiError(err, "Không tải được danh sách môn."));
+          }
         })
         .finally(() => {
           if (!cancelled) setCoursesLoading(false);
@@ -148,11 +176,13 @@ export default function StudentAutoSchedulePage() {
   const handleSearch = useCallback(async (e?: FormEvent) => {
     if (e) e.preventDefault();
     if (!semesterId || selectedCourseIds.size === 0) {
+      setErrorDetails([]);
       setError("Vui lòng chọn học kỳ + ít nhất 1 môn.");
       return;
     }
     setSearching(true);
     setError(null);
+    setErrorDetails([]);
     setResults([]);
 
     const constraints: Record<string, number> = {};
@@ -166,24 +196,42 @@ export default function StudentAutoSchedulePage() {
         course_ids: Array.from(selectedCourseIds),
         avoid_weekdays: Array.from(avoidWeekdays),
         preferred_sessions: Array.from(preferredSessions),
-        preset,
+        preset: optimizeFreeDays ? "COMPACT_FIRST" : "AUTO",
         course_teacher_constraints: constraints,
       });
       setResults(data.results);
       setView("results");
       if (data.results.length === 0) {
+        setErrorDetails([]);
         setError("Không có phương án nào không trùng lịch. Hãy quay lại tinh chỉnh.");
       }
     } catch (err) {
+      setErrorDetails(extractApiDetails(err));
       setError(extractApiError(err, "Không tạo được TKB."));
     } finally {
       setSearching(false);
     }
-  }, [semesterId, selectedCourseIds, teacherByCourse, avoidWeekdays, preferredSessions, preset]);
+  }, [semesterId, selectedCourseIds, teacherByCourse, avoidWeekdays, preferredSessions, optimizeFreeDays]);
 
   const displayed = useMemo(() => {
     return [...results].sort((a, b) => b.breakdown[sortKey] - a.breakdown[sortKey]);
   }, [results, sortKey]);
+
+  const selectedCourseSummaries = useMemo<SelectedCourseSummary[]>(() => {
+    const byId = new Map(availableCourses.map((course) => [course.course_id, course]));
+    return Array.from(selectedCourseIds).map((courseId) => {
+      const course = byId.get(courseId);
+      const teacherId = teacherByCourse.get(courseId) ?? null;
+      const teacher = course?.teachers.find((item) => item.teacher_id === teacherId);
+      return {
+        id: courseId,
+        code: course?.course_code ?? `Môn #${courseId}`,
+        name: course?.course_name ?? "Môn đã chọn",
+        credits: course?.credits,
+        teacherName: teacherId === null ? "Tự chọn lớp/GV" : teacher?.teacher_name ?? `GV ${teacherId}`,
+      };
+    });
+  }, [availableCourses, selectedCourseIds, teacherByCourse]);
 
   async function handleApply(cand: AutoScheduleCandidate) {
     setApplying(true);
@@ -228,12 +276,13 @@ export default function StudentAutoSchedulePage() {
         setAvoidWeekdays={setAvoidWeekdays}
         preferredSessions={preferredSessions}
         setPreferredSessions={setPreferredSessions}
-        preset={preset}
-        setPreset={setPreset}
+        optimizeFreeDays={optimizeFreeDays}
+        setOptimizeFreeDays={setOptimizeFreeDays}
         toggleSet={toggleSet}
         onSubmit={handleSearch}
         searching={searching}
         error={error}
+        errorDetails={errorDetails}
         hasPreviousResults={results.length > 0}
         onBackToResults={() => setView("results")}
       />
@@ -253,21 +302,22 @@ export default function StudentAutoSchedulePage() {
             </h1>
           </div>
           <p className="mt-1 text-[12.5px] text-ink-muted">
-            {semester?.code ?? "—"} · {selectedCourseIds.size} môn ·
-            chế độ <strong className="text-ink">{PRESET_LABELS[preset]}</strong>
-            {avoidWeekdays.size > 0 && (
-              <> · tránh {Array.from(avoidWeekdays).sort().map(formatWeekday).join("/")}</>
-            )}
-            {preferredSessions.size > 0 && (
-              <> · ưu tiên {Array.from(preferredSessions).map(sessionLabel).join("/")}</>
-            )}
-            {teacherByCourse.size > 0 && <> · {teacherByCourse.size} môn khoá GV</>}
+            Kiểm tra lại thông tin đã chọn trước khi áp dụng một phương án.
           </p>
         </div>
         <Button variant="secondary" icon="sparkle" onClick={() => handleSearch()} disabled={searching}>
           {searching ? "Đang tìm..." : "Tìm lại với cấu hình này"}
         </Button>
       </div>
+
+      <SelectedInputSummary
+        semester={semester}
+        courses={selectedCourseSummaries}
+        avoidWeekdays={avoidWeekdays}
+        preferredSessions={preferredSessions}
+        optimizeFreeDays={optimizeFreeDays}
+        lockedTeacherCount={teacherByCourse.size}
+      />
 
       <div className="flex items-center gap-3 flex-wrap">
         <h2 className="m-0 text-[15px] font-semibold text-ink">
@@ -282,19 +332,17 @@ export default function StudentAutoSchedulePage() {
               className="px-2 py-1 rounded-md bg-card border border-line text-[12.5px]"
             >
               <option value="total">Tổng điểm</option>
-              <option value="weekday">Weekday</option>
-              <option value="session">Session</option>
-              <option value="teacher">Teacher</option>
-              <option value="free_day">Free day</option>
+              <option value="weekday">Ngày học</option>
+              <option value="session">Ca học</option>
+              <option value="teacher">Giáo viên</option>
+              <option value="free_day">Ngày nghỉ</option>
             </select>
           </div>
         )}
       </div>
 
       {error && (
-        <div className="text-sm text-danger bg-red-50 border border-red-200 rounded-md px-3 py-2">
-          {error}
-        </div>
+        <ErrorAlert message={error} details={errorDetails} />
       )}
 
       {searching && <div className="text-ink-muted">Đang xếp lịch...</div>}
@@ -344,13 +392,13 @@ export default function StudentAutoSchedulePage() {
 
       <Modal
         open={detailCandidate !== null}
-        title={detailCandidate ? `Phương án (score ${detailCandidate.score.toFixed(2)})` : ""}
+        title={detailCandidate ? `Phương án (điểm ${detailCandidate.score.toFixed(2)})` : ""}
         subtitle={detailCandidate ? `${detailCandidate.class_sections.length} lớp HP · ${detailCandidate.stats.study_days} ngày học/${detailCandidate.stats.free_days} ngày nghỉ` : ""}
         onClose={() => {
           setDetailIdx(null);
           setApplyResult(null);
         }}
-        size="lg"
+        size="xl"
         footer={
           detailCandidate && !applyResult ? (
             <>
@@ -406,7 +454,7 @@ export default function StudentAutoSchedulePage() {
               </div>
             </div>
             <div>
-              <div className="text-[12.5px] font-medium text-ink mb-1.5">Preview TKB</div>
+              <div className="text-[12.5px] font-medium text-ink mb-1.5">Xem trước TKB</div>
               <ScheduleGrid events={candidateToEvents(detailCandidate)} />
             </div>
             {applyResult && (
@@ -462,12 +510,13 @@ interface FormViewProps {
   setAvoidWeekdays: (s: Set<number>) => void;
   preferredSessions: Set<Session>;
   setPreferredSessions: (s: Set<Session>) => void;
-  preset: PriorityPreset;
-  setPreset: (p: PriorityPreset) => void;
+  optimizeFreeDays: boolean;
+  setOptimizeFreeDays: (v: boolean) => void;
   toggleSet: <T>(set: Set<T>, value: T, setFn: (s: Set<T>) => void) => void;
   onSubmit: (e?: FormEvent) => void;
   searching: boolean;
   error: string | null;
+  errorDetails: string[];
   hasPreviousResults: boolean;
   onBackToResults: () => void;
 }
@@ -483,9 +532,9 @@ function FormView(props: FormViewProps) {
     filterUnlearned, setFilterUnlearned,
     avoidWeekdays, setAvoidWeekdays,
     preferredSessions, setPreferredSessions,
-    preset, setPreset,
+    optimizeFreeDays, setOptimizeFreeDays,
     toggleSet,
-    onSubmit, searching, error,
+    onSubmit, searching, error, errorDetails,
     hasPreviousResults, onBackToResults,
   } = props;
 
@@ -544,7 +593,7 @@ function FormView(props: FormViewProps) {
               <Label>
                 Môn muốn học *{" "}
                 <span className="text-ink-faint font-normal">
-                  ({selectedCourseIds.size}/10 đã chọn ·
+                  ({selectedCourseIds.size} đã chọn ·
                   {coursesLoading ? " đang tải..." : ` ${availableCourses.length} môn khả dụng`})
                 </span>
               </Label>
@@ -560,7 +609,7 @@ function FormView(props: FormViewProps) {
                   const checked = selectedCourseIds.has(c.course_id);
                   const status = getCourseStatus(c);
                   const blocked = status === "learned" || status === "missing_prereq";
-                  const disabled = blocked || (!checked && selectedCourseIds.size >= 10);
+                  const disabled = blocked;
                   const teacherId = teacherByCourse.get(c.course_id) ?? null;
                   const expanded = expandedCourse === c.course_id;
                   const totalClassSections = c.teachers.reduce((s, t) => s + t.class_sections.length, 0);
@@ -708,44 +757,34 @@ function FormView(props: FormViewProps) {
                 ))}
               </div>
             </div>
-          </div>
-        </Card>
 
-        <Card title="3. Chế độ ưu tiên" subtitle="Chọn 1 chế độ — quyết định cách hệ thống xếp hạng các phương án">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
-            {PRESETS.map((p) => (
-              <label
-                key={p}
-                className={`block px-3 py-2.5 rounded border cursor-pointer text-[13px] transition-colors ${
-                  preset === p
-                    ? "border-navy-600 bg-navy-50 ring-1 ring-navy-100"
-                    : "border-line hover:border-navy-400"
-                }`}
-              >
-                <div className="flex items-start gap-2">
-                  <input
-                    type="radio"
-                    name="preset"
-                    checked={preset === p}
-                    onChange={() => setPreset(p)}
-                    className="accent-navy-600 mt-0.5"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold">{PRESET_LABELS[p]}</div>
-                    <div className="text-[11.5px] text-ink-muted mt-0.5">
-                      {PRESET_DESCRIPTIONS[p]}
-                    </div>
-                  </div>
-                </div>
-              </label>
-            ))}
+            <label
+              className={`flex items-start gap-3 rounded-md border px-3 py-3 cursor-pointer transition-colors ${
+                optimizeFreeDays
+                  ? "border-navy-600 bg-navy-50 ring-1 ring-navy-100"
+                  : "border-line bg-card hover:border-navy-400"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={optimizeFreeDays}
+                onChange={(e) => setOptimizeFreeDays(e.target.checked)}
+                className="accent-navy-600 mt-0.5"
+              />
+              <span className="min-w-0">
+                <span className="block text-[13px] font-semibold text-ink">
+                  TKB tối ưu (nghỉ nhiều ngày)
+                </span>
+                <span className="block text-[12px] text-ink-muted mt-0.5">
+                  Khi bật, hệ thống ưu tiên gom lịch để tăng số ngày nghỉ trong tuần.
+                </span>
+              </span>
+            </label>
           </div>
         </Card>
 
         {error && (
-          <div className="text-sm text-danger bg-red-50 border border-red-200 rounded-md px-3 py-2">
-            {error}
-          </div>
+          <ErrorAlert message={error} details={errorDetails} />
         )}
 
         <div className="sticky bottom-0 bg-bg pt-3 pb-1 -mx-1 px-1 border-t border-line/60">
@@ -780,6 +819,97 @@ function FormView(props: FormViewProps) {
 
 function Label({ children }: { children: React.ReactNode }) {
   return <div className="text-[12.5px] font-medium text-ink mb-1.5">{children}</div>;
+}
+
+function ErrorAlert({ message, details }: { message: string; details?: string[] }) {
+  return (
+    <div className="text-sm text-danger bg-red-50 border border-red-200 rounded-md px-3 py-2">
+      <div>{message}</div>
+      {details && details.length > 0 && (
+        <ul className="mt-2 space-y-1 list-disc pl-5 text-[12.5px] text-red-700">
+          {details.map((detail, idx) => (
+            <li key={`${idx}-${detail}`}>{detail}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function SelectedInputSummary({
+  semester,
+  courses,
+  avoidWeekdays,
+  preferredSessions,
+  optimizeFreeDays,
+  lockedTeacherCount,
+}: {
+  semester: Semester | null;
+  courses: SelectedCourseSummary[];
+  avoidWeekdays: Set<number>;
+  preferredSessions: Set<Session>;
+  optimizeFreeDays: boolean;
+  lockedTeacherCount: number;
+}) {
+  const avoidText = avoidWeekdays.size > 0
+    ? Array.from(avoidWeekdays).sort().map(formatWeekday).join(", ")
+    : "Không chọn";
+  const sessionText = preferredSessions.size > 0
+    ? Array.from(preferredSessions).map(sessionLabel).join(", ")
+    : "Không chọn";
+
+  return (
+    <Card
+      title="Thông tin đã chọn"
+      subtitle="Các phương án bên dưới được tạo theo đúng cấu hình này."
+      bodyClassName="p-4"
+    >
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4">
+        <div>
+          <div className="text-[12.5px] font-medium text-ink mb-2">
+            Môn học ({courses.length})
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+            {courses.map((course) => (
+              <div key={course.id} className="rounded-md border border-line bg-surface px-3 py-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-mono text-[12px] text-ink-muted flex-shrink-0">{course.code}</span>
+                  <span className="font-semibold text-[13px] text-ink truncate">{course.name}</span>
+                  {course.credits !== undefined && <Badge tone="accent">{course.credits} TC</Badge>}
+                </div>
+                <div className="mt-1 text-[11.5px] text-ink-muted">
+                  GV: {course.teacherName}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-md border border-line bg-cardAlt px-3 py-2.5">
+          <div className="text-[12.5px] font-medium text-ink mb-2">Cấu hình xếp lịch</div>
+          <div className="space-y-2 text-[12.5px]">
+            <SummaryLine label="Học kỳ" value={semester ? `${semester.code} - ${semester.name}` : "Chưa có"} />
+            <SummaryLine
+              label="Cách tính"
+              value={optimizeFreeDays ? "TKB tối ưu (nghỉ nhiều ngày)" : "Tự động theo input đã chọn"}
+            />
+            <SummaryLine label="Tránh ngày" value={avoidText} />
+            <SummaryLine label="Ưu tiên ca" value={sessionText} />
+            <SummaryLine label="Khóa GV" value={lockedTeacherCount > 0 ? `${lockedTeacherCount} môn` : "Không khóa"} />
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function SummaryLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <span className="w-20 flex-shrink-0 text-ink-muted">{label}</span>
+      <span className="font-medium text-ink">{value}</span>
+    </div>
+  );
 }
 
 function SemesterBanner({ semester, status }: { semester: Semester | null; status: SemesterStatus }) {
@@ -834,17 +964,17 @@ function CandidateCard({
           <div className="flex items-center gap-2">
             <Badge tone={rank === 1 ? "success" : "accent"}>#{rank}</Badge>
             <span className="text-[18px] font-semibold tracking-tight text-ink">
-              Score {cand.score.toFixed(2)}
+              Điểm {cand.score.toFixed(2)}
             </span>
             <span className="text-[12px] text-ink-muted">
               · {cand.class_sections.length} lớp · {cand.stats.study_days} ngày học / {cand.stats.free_days} ngày nghỉ
             </span>
           </div>
           <div className="mt-2 flex gap-3 text-[11.5px] text-ink-muted flex-wrap">
-            <span>Weekday: <strong className="text-ink">{cand.breakdown.weekday.toFixed(0)}</strong></span>
-            <span>Session: <strong className="text-ink">{cand.breakdown.session.toFixed(0)}</strong></span>
-            <span>Teacher: <strong className="text-ink">{cand.breakdown.teacher.toFixed(0)}</strong></span>
-            <span>Free day: <strong className="text-ink">{cand.breakdown.free_day.toFixed(0)}</strong></span>
+            <span>Ngày học: <strong className="text-ink">{cand.breakdown.weekday.toFixed(0)}</strong></span>
+            <span>Ca học: <strong className="text-ink">{cand.breakdown.session.toFixed(0)}</strong></span>
+            <span>Giáo viên: <strong className="text-ink">{cand.breakdown.teacher.toFixed(0)}</strong></span>
+            <span>Ngày nghỉ: <strong className="text-ink">{cand.breakdown.free_day.toFixed(0)}</strong></span>
           </div>
           <div className="mt-2 flex gap-1.5 flex-wrap">
             {cand.class_sections.map((cs) => (
@@ -879,10 +1009,10 @@ function CandidateCard({
 
 function BreakdownBars({ breakdown }: { breakdown: AutoScheduleCandidate["breakdown"] }) {
   const items: Array<[string, number]> = [
-    ["Weekday", breakdown.weekday],
-    ["Session", breakdown.session],
-    ["Teacher", breakdown.teacher],
-    ["Free day", breakdown.free_day],
+    [BREAKDOWN_LABELS.weekday, breakdown.weekday],
+    [BREAKDOWN_LABELS.session, breakdown.session],
+    [BREAKDOWN_LABELS.teacher, breakdown.teacher],
+    [BREAKDOWN_LABELS.free_day, breakdown.free_day],
   ];
   return (
     <div className="space-y-1.5">

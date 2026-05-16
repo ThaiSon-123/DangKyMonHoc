@@ -141,6 +141,15 @@ class ClassSectionSerializer(serializers.ModelSerializer):
             return None
         return obj.teacher.user.get_full_name() or obj.teacher.user.username
 
+    def validate(self, attrs):
+        semester = attrs.get("semester", self.instance.semester if self.instance else None)
+        status = attrs.get("status", self.instance.status if self.instance else None)
+        if semester and status == ClassSection.Status.OPEN and not semester.is_open:
+            raise serializers.ValidationError(
+                {"status": "Khong the mo lop hoc phan trong hoc ky da dong."}
+            )
+        return attrs
+
     def _save_primary_schedule(self, class_section, schedule_data):
         payload = {
             **schedule_data,

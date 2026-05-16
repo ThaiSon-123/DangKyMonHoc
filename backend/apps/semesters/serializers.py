@@ -1,6 +1,8 @@
+from django.db import transaction
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from .models import Semester
+from .services import close_class_sections_for_semester
 
 
 class SemesterSerializer(serializers.ModelSerializer):
@@ -40,3 +42,10 @@ class SemesterSerializer(serializers.ModelSerializer):
         if rs and re and rs >= re:
             raise serializers.ValidationError({"registration_end": "Phải sau lúc bắt đầu đăng ký."})
         return attrs
+
+    def update(self, instance, validated_data):
+        with transaction.atomic():
+            semester = super().update(instance, validated_data)
+            if "is_open" in validated_data and not semester.is_open:
+                close_class_sections_for_semester(semester)
+            return semester

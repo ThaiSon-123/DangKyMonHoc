@@ -9,6 +9,7 @@ export interface StudentProfile {
   major: number;
   major_code: string;
   major_name: string;
+  major_duration_years: number;
   enrollment_year: number;
   gpa: string;
   completed_credits: number;
