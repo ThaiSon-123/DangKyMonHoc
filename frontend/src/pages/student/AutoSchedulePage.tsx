@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 import { Badge, Button, Card, Modal, ScheduleGrid, type ScheduleEvent } from "@/components/ui";
 import Icon from "@/components/ui/Icon";
@@ -14,6 +13,7 @@ import {
   type Session,
 } from "@/api/autoSchedule";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { formatRegistrationWindow, pickActiveSemester, type SemesterStatus } from "@/lib/semester";
 import {
   WEEKDAY_LABELS,
@@ -53,15 +53,6 @@ const BREAKDOWN_LABELS = {
   free_day: "Ngày nghỉ",
 } as const;
 
-function extractApiDetails(err: unknown): string[] {
-  if (!(err instanceof AxiosError) || !err.response) return [];
-  const data = err.response.data;
-  if (!data || typeof data !== "object" || !("details" in data)) return [];
-  const details = (data as { details?: unknown }).details;
-  if (!Array.isArray(details)) return [];
-  return details.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
-}
-
 export default function StudentAutoSchedulePage() {
   const navigate = useNavigate();
   const [view, setView] = useState<"form" | "results">("form");
@@ -90,8 +81,6 @@ export default function StudentAutoSchedulePage() {
   // Results
   const [results, setResults] = useState<AutoScheduleCandidate[]>([]);
   const [searching, setSearching] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [errorDetails, setErrorDetails] = useState<string[]>([]);
   const [sortKey, setSortKey] = useState<"total" | "weekday" | "session" | "teacher" | "free_day">("total");
 
   // Detail modal
@@ -108,8 +97,7 @@ export default function StudentAutoSchedulePage() {
         setSemesterStatus(result.status);
       })
       .catch((err) => {
-        setErrorDetails([]);
-        setError(extractApiError(err, "Không tải được học kỳ."));
+        showErrorToast(extractApiError(err, "Không tải được danh sách học kỳ."));
       });
   }, []);
 
@@ -132,8 +120,7 @@ export default function StudentAutoSchedulePage() {
         })
         .catch((err) => {
           if (!cancelled) {
-            setErrorDetails([]);
-            setError(extractApiError(err, "Không tải được danh sách môn."));
+            showErrorToast(extractApiError(err, "Không tải được danh sách môn học."));
           }
         })
         .finally(() => {
@@ -176,13 +163,10 @@ export default function StudentAutoSchedulePage() {
   const handleSearch = useCallback(async (e?: FormEvent) => {
     if (e) e.preventDefault();
     if (!semesterId || selectedCourseIds.size === 0) {
-      setErrorDetails([]);
-      setError("Vui lòng chọn học kỳ + ít nhất 1 môn.");
+      showErrorToast("Vui lòng chọn học kỳ và ít nhất một môn học.");
       return;
     }
     setSearching(true);
-    setError(null);
-    setErrorDetails([]);
     setResults([]);
 
     const constraints: Record<string, number> = {};
@@ -202,12 +186,18 @@ export default function StudentAutoSchedulePage() {
       setResults(data.results);
       setView("results");
       if (data.results.length === 0) {
-        setErrorDetails([]);
-        setError("Không có phương án nào không trùng lịch. Hãy quay lại tinh chỉnh.");
+        showErrorToast(
+          "Không tìm được phương án nào không trùng lịch. Hãy quay lại tinh chỉnh tiêu chí.",
+          "Không có phương án phù hợp",
+        );
+      } else {
+        showSuccessToast(
+          `Đã tìm được ${data.results.length} phương án phù hợp.`,
+          "Tìm thấy phương án",
+        );
       }
     } catch (err) {
-      setErrorDetails(extractApiDetails(err));
-      setError(extractApiError(err, "Không tạo được TKB."));
+      showErrorToast(extractApiError(err, "Không tạo được thời khoá biểu."));
     } finally {
       setSearching(false);
     }
@@ -243,13 +233,27 @@ export default function StudentAutoSchedulePage() {
         await api.post("/registrations/", { class_section: cs.id });
         ok.push(cs.id);
       } catch (err) {
-        failed.push({ code: cs.code, msg: extractApiError(err, "Lỗi đăng ký") });
+        failed.push({ code: cs.code, msg: extractApiError(err, "Không đăng ký được lớp này.") });
       }
     }
     setApplyResult({ ok: ok.length, failed });
     setApplying(false);
     if (failed.length === 0) {
+      showSuccessToast(
+        `Đã đăng ký thành công ${ok.length} lớp học phần.`,
+        "Áp dụng phương án thành công",
+      );
       setTimeout(() => navigate("/student/history"), 1500);
+    } else if (ok.length > 0) {
+      showErrorToast(
+        `Đăng ký thành công ${ok.length}/${ok.length + failed.length} lớp. Một số lớp gặp lỗi.`,
+        "Áp dụng một phần",
+      );
+    } else {
+      showErrorToast(
+        "Không đăng ký được lớp nào trong phương án này.",
+        "Áp dụng thất bại",
+      );
     }
   }
 
@@ -281,8 +285,6 @@ export default function StudentAutoSchedulePage() {
         toggleSet={toggleSet}
         onSubmit={handleSearch}
         searching={searching}
-        error={error}
-        errorDetails={errorDetails}
         hasPreviousResults={results.length > 0}
         onBackToResults={() => setView("results")}
       />
@@ -340,10 +342,6 @@ export default function StudentAutoSchedulePage() {
           </div>
         )}
       </div>
-
-      {error && (
-        <ErrorAlert message={error} details={errorDetails} />
-      )}
 
       {searching && <div className="text-ink-muted">Đang xếp lịch...</div>}
 
@@ -515,8 +513,6 @@ interface FormViewProps {
   toggleSet: <T>(set: Set<T>, value: T, setFn: (s: Set<T>) => void) => void;
   onSubmit: (e?: FormEvent) => void;
   searching: boolean;
-  error: string | null;
-  errorDetails: string[];
   hasPreviousResults: boolean;
   onBackToResults: () => void;
 }
@@ -534,7 +530,7 @@ function FormView(props: FormViewProps) {
     preferredSessions, setPreferredSessions,
     optimizeFreeDays, setOptimizeFreeDays,
     toggleSet,
-    onSubmit, searching, error, errorDetails,
+    onSubmit, searching,
     hasPreviousResults, onBackToResults,
   } = props;
 
@@ -783,10 +779,6 @@ function FormView(props: FormViewProps) {
           </div>
         </Card>
 
-        {error && (
-          <ErrorAlert message={error} details={errorDetails} />
-        )}
-
         <div className="sticky bottom-0 bg-bg pt-3 pb-1 -mx-1 px-1 border-t border-line/60">
           <Button
             type="submit"
@@ -819,21 +811,6 @@ function FormView(props: FormViewProps) {
 
 function Label({ children }: { children: React.ReactNode }) {
   return <div className="text-[12.5px] font-medium text-ink mb-1.5">{children}</div>;
-}
-
-function ErrorAlert({ message, details }: { message: string; details?: string[] }) {
-  return (
-    <div className="text-sm text-danger bg-red-50 border border-red-200 rounded-md px-3 py-2">
-      <div>{message}</div>
-      {details && details.length > 0 && (
-        <ul className="mt-2 space-y-1 list-disc pl-5 text-[12.5px] text-red-700">
-          {details.map((detail, idx) => (
-            <li key={`${idx}-${detail}`}>{detail}</li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
 }
 
 function SelectedInputSummary({

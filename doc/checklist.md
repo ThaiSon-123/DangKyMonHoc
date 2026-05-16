@@ -171,11 +171,16 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [ ] FR-ADM-REG-006 - Endpoint xuất CSV/Excel danh sách đăng ký
 - [x] Filter list registrations theo `?semester=`, `?status=`, `?class_section=`, `?student=`
 
-### 1.3.7. Báo cáo & thống kê (FR-ADM-RPT)
+### 1.3.7. Báo cáo & thống kê (FR-ADM-RPT) ✅ DONE
 
-- [ ] FR-ADM-RPT-001 - API thống kê SV theo môn
-- [ ] FR-ADM-RPT-002 - API thống kê SV theo ngành
-- [ ] FR-ADM-RPT-003 - API thống kê lớp đầy / còn chỗ
+- [x] **`GET /api/reports/admin-summary/?semester=<id>`** — single endpoint trả 7 nhóm thống kê
+- [x] FR-ADM-RPT-001 - Top 10 môn nhiều đăng ký nhất (`top_courses` array)
+- [x] FR-ADM-RPT-002 - Thống kê theo ngành (`by_major`: registrations + students/major)
+- [x] FR-ADM-RPT-003 - Lớp đầy / còn chỗ (`classes`: total/draft/open/closed/cancelled/full)
+- [x] `users` block: count theo role (admin/student/teacher/locked) — không phụ thuộc HK
+- [x] `registrations` block: count theo status (confirmed/pending/cancelled) — theo HK
+- [x] `by_semester` block: 10 HK gần nhất với registrations count (cho bar chart)
+- [x] Permission `IsAdminRole` enforce
 - [ ] FR-ADM-RPT-004 - Xuất Excel / PDF (SHOULD)
 
 ### 1.3.8. Thông báo Admin (FR-ADM-NOT)
@@ -348,11 +353,13 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [x] Loading state cho App bootstrap (spinner ĐK)
 - [ ] Skeleton loader cho list / table
 
-### 2.1.1. Dashboard skeleton (UI mockup với dữ liệu mẫu)
+### 2.1.1. Dashboard 3 role (real API data) ✅ DONE
 
-- [x] Dashboard Admin — 4 KPI + tiến độ đăng ký + cần xem xét + activity feed
-- [x] Dashboard Sinh viên — 4 KPI + danh sách môn đăng ký + thông báo
-- [x] Dashboard Giáo viên — 4 KPI + grid 4 lớp phụ trách
+- [x] **Dashboard Admin** (`/admin`) — 4 KPI từ API (SV/GV/Lớp HP/Đăng ký) + tỷ lệ lớp đầy + 5 lối tắt + 5 noti gần đây
+- [x] **Dashboard Sinh viên** (`/student`) — 4 KPI (TC kỳ này/GPA/TC tích lũy/% CTĐT) + greeting theo giờ + môn đăng ký + thông báo
+- [x] **Dashboard Giáo viên** (`/teacher`) — 4 KPI (lớp/SV/đăng ký/% nhập điểm) + grid 6 lớp với schedule + thông báo
+- [x] Tất cả gọi API thật: `listUsers`/`listSemesters`/`listClassSections`/`listRegistrations`/`listGrades`/`listNotifications`/`getMyCurriculum`/`getMyTeacherProfile`
+- [x] Loading state · empty state · error banner
 
 ## 2.2. Admin UI
 
@@ -432,10 +439,19 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [x] Mở / đóng đợt đăng ký vẫn ở SemestersPage
 - [ ] Nút xuất CSV/Excel danh sách đăng ký
 
-### 2.2.8. Báo cáo & thống kê (FR-ADM-RPT)
+### 2.2.8. Báo cáo & thống kê (FR-ADM-RPT) ✅ DONE
 
-- [x] Route placeholder `/admin/reports`
-- [ ] Trang dashboard biểu đồ thống kê SV theo môn
+- [x] **Route `/admin/reports`** — trang thực (bỏ Placeholder)
+- [x] `api/reports.ts` — `getAdminReportsSummary()` + types
+- [x] **6 section**:
+  1. Tài khoản hệ thống — 5 mini-stat (Tổng/SV/GV/Admin/Khoá)
+  2. Lớp HP — Stat tổng + 4 status row + progress bar tỷ lệ đầy
+  3. Đăng ký môn — Stat CONFIRMED + 2 row PENDING/CANCELLED
+  4. Top 10 môn nhiều đăng ký — table 5 cột
+  5. Thống kê theo ngành — table (mã/tên/SV/đăng ký)
+  6. Đăng ký qua các HK — bar chart đơn giản 10 HK gần nhất
+- [x] Header dropdown chọn HK → auto reload data
+- [ ] Nút export Excel/PDF (defer — FR-ADM-RPT-004)
 - [ ] Trang thống kê SV theo ngành
 - [ ] Trang thống kê lớp đầy / còn chỗ
 - [ ] Nút export Excel / PDF (SHOULD)
@@ -667,12 +683,12 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 |---|---|---|
 | Hạ tầng (mục 0) | 95% | Còn ERD diagram + README root |
 | Backend models (1.1) | 100% | 15 entity đầy đủ, migration OK, đã có seed scripts |
-| Backend Admin API (1.2 – 1.3) | ~90% | Còn Reports + nút export CSV/Excel |
+| Backend Admin API (1.2 – 1.3) | ~95% | **Reports endpoint DONE**; còn nút export CSV/Excel |
 | Backend SV/GV API (1.4 – 1.5) | ~70% | Cơ bản qua các ViewSet + `/curriculums/my/`, `/students/me/`, `/notifications/mark-read/`, etc. |
 | Backend BR (1.6) | 100% | Tất cả 11 BR đã wire + 48 tests pass |
 | Backend testing (1.7) | 60% | 48 tests (BR + accounts + courses + majors + semesters + schedule conflict + notify_class + atomic class schedule); còn auth/algorithm tests |
 | Frontend foundation (2.1) | 95% | Có ScheduleGrid mới. Còn toast, confirm dialog, skeleton loader |
-| Frontend admin (2.2) | ~80% | **8/10 module** xong; còn Reports, Settings |
+| Frontend admin (2.2) | ~90% | **9/10 module** xong (+ Reports); còn Settings |
 | Frontend student (2.3) | ~100% | **7/7 module** xong (Curriculum, Đăng ký, TKB, Lịch sử, Bảng điểm, Thông báo, Hồ sơ, **Auto TKB**) |
 | Frontend teacher (2.4) | ~95% | **5/5 module** xong + tính năng **gửi noti cho lớp**; chỉ thiếu export Excel + đề xuất đổi lịch (MAY) |
 | Frontend testing (2.5) | 0% | Chưa setup Vitest |
@@ -681,7 +697,7 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 ### Modules UI hoàn thành
 
-**Admin — 8/10 module:**
+**Admin — 9/10 module:**
 1. ✅ Tài khoản (`/admin/accounts`) — CRUD + lock/unlock + role validation
 2. ✅ Ngành đào tạo (`/admin/majors`)
 3. ✅ Chương trình đào tạo (`/admin/curriculum` + detail) — kèm import xlsx
@@ -690,7 +706,7 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 6. ✅ Lớp học phần (`/admin/classes` + detail) — schedule management
 7. ✅ Quản lý đăng ký (`/admin/registrations`) — filter + cancel + delete
 8. ✅ Gửi thông báo (`/admin/notifications`) — soạn + audience SPECIFIC autocomplete
-- ⬜ Báo cáo (`/admin/reports`) — chưa làm
+9. ✅ **Báo cáo & thống kê** (`/admin/reports`) — 6 section: users/classes/registrations/top courses/by major/by semester
 - ⬜ Cấu hình (`/admin/settings`) — chưa làm
 
 **Sinh viên — 7/7 module:**
@@ -712,11 +728,10 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 ### Bước tiếp theo khuyến nghị
 
-1. **Admin: Reports** (`/admin/reports`) — thống kê SV theo môn / ngành / lớp đầy (4 biểu đồ)
-2. **Admin: Settings** (`/admin/settings`) — cấu hình BR-006/008 grace days
-3. **Sinh viên: Auto TKB** (`/student/auto`) — module phức tạp với thuật toán search tổ hợp
-4. **Backend testing** — auth flow + admin CRUD + algorithm tests
-5. **Frontend testing** — Vitest + Testing Library cho store, interceptor, form
+1. **Admin: Settings** (`/admin/settings`) — cấu hình BR-006/008 grace days
+2. **Export** Excel / PDF cho Reports (FR-ADM-RPT-004) + danh sách SV cho GV (FR-TEA-EXP)
+3. **Backend testing** — auth flow tests + more BR coverage
+4. **Frontend testing** — Vitest + Testing Library cho store, interceptor, form
 
 ---
 
@@ -769,6 +784,26 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - Fix bug **GPA không cập nhật khi chỉnh điểm** (TeacherGradesPage `updateRow` chỉ recalc total + letter, bổ sung `calcGpa` mirror backend)
 - Thêm **Compose noti tại `/teacher/notifications`** — GV soạn noti gửi lớp ngay từ trang thông báo (không cần vào ClassDetailPage)
 - Backend `NotificationViewSet.get_queryset` thêm `Q(sender=user)` để GV thấy noti mình đã gửi
+
+### Phase 12 — Dashboards real-data + Admin Reports (FR-ADM-RPT)
+
+- **3 dashboard rewrite** từ mock data sang real API:
+  - `AdminDashboard`: 4 KPI (SV/GV/Lớp HP/Đăng ký) từ `listUsers`/`listClassSections`/`listRegistrations` + tỷ lệ lớp đầy + 5 lối tắt + noti gần đây
+  - `StudentDashboard`: GPA tích lũy weighted by TC + % hoàn thành CTĐT từ `listGrades`+`getMyCurriculum` + greeting theo giờ + môn đăng ký + thông báo
+  - `TeacherDashboard`: count lớp/SV/đăng ký + % nhập điểm từ `listClassSections({teacher})`+`listGrades` + grid 6 lớp link đến detail
+- **Backend endpoint mới** `GET /api/reports/admin-summary/` (`apps/accounts/reports.py`):
+  - Single endpoint trả 7 nhóm thống kê (users/classes/registrations/top_courses/by_major/by_semester/total_majors)
+  - Query DB hiệu quả với `annotate(Count)`, `values(F(...))` — không cần loop trong Python
+  - Filter theo `?semester=<id>`, default = HK đang mở, fallback = HK mới nhất
+- **Frontend `ReportsPage`** (`/admin/reports`) — 6 section:
+  - Mini-stat tài khoản (Tổng/SV/GV/Admin/Khoá)
+  - Lớp HP với progress bar tỷ lệ đầy
+  - Đăng ký với breakdown CONFIRMED/PENDING/CANCELLED
+  - Top 10 môn nhiều đăng ký nhất
+  - Thống kê theo ngành
+  - Bar chart đơn giản đăng ký qua 10 HK gần nhất
+- Bỏ Placeholder entry `reports` khỏi `STUDENT_ROUTES`/`ADMIN_ROUTES` trong App.tsx
+- Backend 31/31 tests pass (accounts + registrations)
 
 ### Phase 11 — TKB tự động (FR-STU-TKB) — module SV cuối cùng
 

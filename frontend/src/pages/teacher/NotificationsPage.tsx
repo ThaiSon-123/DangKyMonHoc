@@ -14,6 +14,7 @@ import {
 import { listClassSections, notifyClass, type NotifyClassInput } from "@/api/classes";
 import { getMyTeacherProfile } from "@/api/teachers";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { PAGE_SIZE } from "@/lib/constants";
 import type { ClassSection } from "@/types/domain";
 
@@ -63,7 +64,6 @@ export default function TeacherNotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [error, setError] = useState<string | null>(null);
   const [viewing, setViewing] = useState<Notification | null>(null);
   const [markingAll, setMarkingAll] = useState(false);
 
@@ -73,19 +73,17 @@ export default function TeacherNotificationsPage() {
   const [composeForm, setComposeForm] = useState<ComposeForm>(INITIAL_COMPOSE);
   const [submitting, setSubmitting] = useState(false);
   const [composeError, setComposeError] = useState<string | null>(null);
-  const [composeSuccess, setComposeSuccess] = useState<string | null>(null);
 
   const unreadCount = items.filter((n) => !n.is_read).length;
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const data = await listNotifications({ page });
       setItems(data.results);
       setTotal(data.count);
     } catch (err) {
-      setError(extractApiError(err, "Không tải được thông báo."));
+      showErrorToast(extractApiError(err, "Không tải được danh sách thông báo."));
     } finally {
       setLoading(false);
     }
@@ -131,8 +129,9 @@ export default function TeacherNotificationsPage() {
     try {
       await markAllNotificationsRead();
       setItems((arr) => arr.map((x) => ({ ...x, is_read: true })));
+      showSuccessToast("Đã đánh dấu tất cả thông báo là đã đọc.");
     } catch (err) {
-      setError(extractApiError(err, "Không đánh dấu được."));
+      showErrorToast(extractApiError(err, "Không đánh dấu được thông báo."));
     } finally {
       setMarkingAll(false);
     }
@@ -161,12 +160,12 @@ export default function TeacherNotificationsPage() {
         body: composeForm.body,
         category: composeForm.category,
       });
-      setComposeSuccess(
-        `Đã gửi "${result.notification.title}" tới ${result.recipient_count} SV lớp ${result.class_code}.`,
+      showSuccessToast(
+        `Đã gửi "${result.notification.title}" tới ${result.recipient_count} sinh viên lớp ${result.class_code}.`,
+        "Gửi thông báo thành công",
       );
       setShowCompose(false);
       setComposeForm(INITIAL_COMPOSE);
-      setTimeout(() => setComposeSuccess(null), 5000);
       // Reload để noti mình vừa gửi xuất hiện trong list (do thuộc Q(sender=user))
       refresh();
     } catch (err) {
@@ -217,25 +216,12 @@ export default function TeacherNotificationsPage() {
         </div>
       </div>
 
-      {composeSuccess && (
-        <div className="bg-green-50 border border-green-200 rounded-md px-3 py-2 text-[13px] text-success flex items-start gap-2">
-          <Icon name="check" size={16} className="mt-0.5 flex-shrink-0" />
-          <div>{composeSuccess}</div>
-        </div>
-      )}
-
       {classes.length === 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 text-[12.5px] text-warn flex items-start gap-2">
           <Icon name="bell" size={14} className="mt-0.5 flex-shrink-0" />
           <div>
             Để soạn thông báo gửi sinh viên, bạn cần có ít nhất 1 lớp phụ trách có SV đã CONFIRMED.
           </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="text-sm text-danger bg-red-50 border border-red-200 rounded-md px-3 py-2">
-          {error}
         </div>
       )}
 

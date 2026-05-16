@@ -93,14 +93,21 @@ def test_grade_auto_compute_total_and_letter(
 @pytest.mark.parametrize(
     ("total_score", "grade_letter", "gpa_4"),
     [
-        ("8.50", "A", "4.00"),
-        ("8.00", "B+", "3.50"),
-        ("7.00", "B", "3.00"),
-        ("6.50", "C+", "2.50"),
-        ("5.50", "C", "2.00"),
-        ("5.00", "D+", "1.50"),
-        ("4.00", "D", "1.00"),
+        # Pass: gpa_4 = total × 0.4 (linear, 2 decimal places)
+        ("10.00", "A", "4.00"),
+        ("8.50", "A", "3.40"),
+        ("8.10", "B+", "3.24"),
+        ("8.00", "B+", "3.20"),
+        ("7.49", "B", "3.00"),  # ví dụ: 7.49 × 0.4 = 2.996 → 3.00
+        ("7.00", "B", "2.80"),
+        ("6.50", "C+", "2.60"),
+        ("5.74", "C", "2.30"),  # ví dụ từ screenshot SV
+        ("5.50", "C", "2.20"),
+        ("5.00", "D+", "2.00"),
+        ("4.00", "D", "1.60"),
+        # Fail: F → 0 (môn không tích luỹ dù total dương)
         ("3.99", "F", "0.00"),
+        ("0.00", "F", "0.00"),
     ],
 )
 def test_grade_letter_and_gpa_follow_score_table(total_score, grade_letter, gpa_4):

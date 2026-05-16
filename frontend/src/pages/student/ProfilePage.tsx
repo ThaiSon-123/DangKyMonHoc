@@ -105,7 +105,7 @@ export default function StudentProfilePage() {
                 Đào tạo {profile.major_duration_years} năm
               </div>
             </InfoRow>
-            <InfoRow icon="chart" label="GPA tích luỹ">
+            <InfoRow icon="chart" label="Điểm tích luỹ">
               <div className="text-[13.5px] text-ink font-semibold font-mono">
                 {profile.gpa || "—"} / 10
               </div>
@@ -150,7 +150,7 @@ export default function StudentProfilePage() {
       {/* Tóm tắt KPI */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat
-          label="GPA tích luỹ"
+          label="Điểm tích luỹ"
           value={profile.gpa || "—"}
           hint="thang điểm 10"
           icon="chart"

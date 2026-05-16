@@ -3,6 +3,7 @@ import { Badge, Card, Stat, Table, type Column } from "@/components/ui";
 import Icon from "@/components/ui/Icon";
 import { listGrades, type Grade } from "@/api/grades";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast } from "@/lib/toast";
 
 // Letter → màu (Badge chỉ có 5 tone nên gộp B+/B, C+/C, D+/D)
 const LETTER_TONE: Record<string, "neutral" | "accent" | "success" | "warn" | "danger"> = {
@@ -48,7 +49,6 @@ function weightedGpa(grades: Grade[]): { gpa: number | null; totalCredits: numbe
 export default function StudentGradesPage() {
   const [grades, setGrades] = useState<Grade[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,7 +58,7 @@ export default function StudentGradesPage() {
         const data = await listGrades({ page_size: 1000 });
         if (!cancelled) setGrades(data.results);
       } catch (err) {
-        if (!cancelled) setError(extractApiError(err, "Không tải được điểm."));
+        if (!cancelled) showErrorToast(extractApiError(err, "Không tải được bảng điểm."));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -233,12 +233,6 @@ export default function StudentGradesPage() {
           icon="clock"
         />
       </div>
-
-      {error && (
-        <div className="text-sm text-danger bg-red-50 border border-red-200 rounded-md px-3 py-2">
-          {error}
-        </div>
-      )}
 
       {loading ? (
         <div className="text-ink-muted">Đang tải...</div>

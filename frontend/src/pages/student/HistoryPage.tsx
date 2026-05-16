@@ -19,6 +19,7 @@ import {
 } from "@/api/registrations";
 import { listSemesters } from "@/api/semesters";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { PAGE_SIZE } from "@/lib/constants";
 import type { Semester } from "@/types/domain";
 
@@ -37,7 +38,6 @@ export default function StudentHistoryPage() {
   const [filterStatus, setFilterStatus] = useState<RegistrationStatus | "">("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [error, setError] = useState<string | null>(null);
 
   const [cancelTarget, setCancelTarget] = useState<Registration | null>(null);
   const [cancelReason, setCancelReason] = useState("");
@@ -45,7 +45,6 @@ export default function StudentHistoryPage() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const params: Parameters<typeof listRegistrations>[0] = { page };
       if (filterSemester) params.semester = filterSemester;
@@ -54,7 +53,7 @@ export default function StudentHistoryPage() {
       setItems(data.results);
       setTotal(data.count);
     } catch (err) {
-      setError(extractApiError(err, "Không tải được lịch sử đăng ký."));
+      showErrorToast(extractApiError(err, "Không tải được lịch sử đăng ký."));
     } finally {
       setLoading(false);
     }
@@ -73,11 +72,15 @@ export default function StudentHistoryPage() {
     setCancelSubmitting(true);
     try {
       await cancelRegistration(cancelTarget.id, cancelReason || "SV tự huỷ");
+      showSuccessToast(
+        `Đã huỷ đăng ký lớp ${cancelTarget.class_section_code}.`,
+        "Huỷ đăng ký thành công",
+      );
       setCancelTarget(null);
       setCancelReason("");
       await refresh();
     } catch (err) {
-      setError(extractApiError(err, "Không huỷ được."));
+      showErrorToast(extractApiError(err, "Không huỷ được đăng ký."));
     } finally {
       setCancelSubmitting(false);
     }
@@ -221,11 +224,6 @@ export default function StudentHistoryPage() {
           )}
         </div>
 
-        {error && (
-          <div className="text-sm text-danger bg-red-50 border border-red-200 rounded-md px-3 py-2 mb-3">
-            {error}
-          </div>
-        )}
 
         <Table
           columns={columns}

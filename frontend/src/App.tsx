@@ -19,6 +19,7 @@ import AccountsPage from "@/pages/admin/AccountsPage";
 import RegistrationsPage from "@/pages/admin/RegistrationsPage";
 import NotificationsPage from "@/pages/admin/NotificationsPage";
 import AdminProfilePage from "@/pages/admin/ProfilePage";
+import AdminReportsPage from "@/pages/admin/ReportsPage";
 import StudentCurriculumPage from "@/pages/student/CurriculumPage";
 import StudentNotificationsPage from "@/pages/student/NotificationsPage";
 import StudentProfilePage from "@/pages/student/ProfilePage";
@@ -55,7 +56,6 @@ interface PlaceholderRoute {
 }
 
 const ADMIN_ROUTES: PlaceholderRoute[] = [
-  { path: "reports", title: "Báo cáo & thống kê", description: "Thống kê đăng ký theo môn, theo ngành, lớp đầy / còn chỗ.", frId: "FR-ADM-RPT", icon: "chart" },
   { path: "settings", title: "Cấu hình hệ thống", description: "Giới hạn tín chỉ, thời hạn hủy đăng ký, quy tắc nghiệp vụ.", icon: "settings" },
 ];
 
@@ -106,6 +106,7 @@ export default function App() {
             <Route path="/admin/accounts" element={<AccountsPage />} />
             <Route path="/admin/registrations" element={<RegistrationsPage />} />
             <Route path="/admin/notifications" element={<NotificationsPage />} />
+            <Route path="/admin/reports" element={<AdminReportsPage />} />
             <Route path="/admin/profile" element={<AdminProfilePage />} />
             <Route path="/admin/majors" element={<MajorsPage />} />
             <Route path="/admin/courses" element={<CoursesPage />} />

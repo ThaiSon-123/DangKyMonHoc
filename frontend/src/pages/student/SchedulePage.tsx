@@ -5,6 +5,7 @@ import { listRegistrations, type Registration } from "@/api/registrations";
 import { getClassSection } from "@/api/classes";
 import { listSemesters } from "@/api/semesters";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast } from "@/lib/toast";
 import {
   WEEKDAY_LABELS,
   type ClassSection,
@@ -54,7 +55,6 @@ export default function StudentSchedulePage() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [schedules, setSchedules] = useState<EnrichedSchedule[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const [selectedEvent, setSelectedEvent] = useState<EnrichedSchedule | null>(null);
   const [weekStart, setWeekStart] = useState<Date | null>(null);
@@ -70,14 +70,13 @@ export default function StudentSchedulePage() {
         setSelectedSemester(initial?.id ?? "");
         if (initial) setWeekStart(startOfWeek(parseDate(initial.start_date)));
       })
-      .catch((err) => setError(extractApiError(err, "Không tải được học kỳ.")));
+      .catch((err) => showErrorToast(extractApiError(err, "Không tải được danh sách học kỳ.")));
   }, []);
 
   // 2. Khi semester thay đổi: load registrations + enrich với schedules
   const loadSchedule = useCallback(async () => {
     if (!selectedSemester) return;
     setLoading(true);
-    setError(null);
     try {
       const regsData = await listRegistrations({
         semester: selectedSemester,
@@ -108,7 +107,7 @@ export default function StudentSchedulePage() {
       });
       setSchedules(flat);
     } catch (err) {
-      setError(extractApiError(err, "Không tải được TKB."));
+      showErrorToast(extractApiError(err, "Không tải được thời khoá biểu."));
     } finally {
       setLoading(false);
     }
@@ -211,12 +210,6 @@ export default function StudentSchedulePage() {
         <Stat label="Tổng tín chỉ" value={totalCredits} icon="layers" />
         <Stat label="Đã đăng ký" value={registrations.length} icon="check" />
       </div>
-
-      {error && (
-        <div className="text-sm text-danger bg-red-50 border border-red-200 rounded-md px-3 py-2">
-          {error}
-        </div>
-      )}
 
       <Card
         title="Lịch học theo tuần"
