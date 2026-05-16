@@ -56,7 +56,7 @@ export default function ToastHost() {
             />
             <div className="min-w-0 flex-1">
               {item.title && <div className="text-[13px] font-semibold">{item.title}</div>}
-              <div className="mt-0.5 text-[12.5px] leading-relaxed">{item.message}</div>
+              <div className="mt-0.5 whitespace-pre-line text-[12.5px] leading-relaxed">{item.message}</div>
             </div>
             <button
               type="button"

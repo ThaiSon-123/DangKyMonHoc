@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 import { Badge, Button, Card, Modal, ScheduleGrid, type ScheduleEvent } from "@/components/ui";
 import Icon from "@/components/ui/Icon";
@@ -15,6 +16,7 @@ import {
 import { extractApiError } from "@/lib/errors";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { formatRegistrationWindow, pickActiveSemester, type SemesterStatus } from "@/lib/semester";
+import { useAuthStore } from "@/stores/auth";
 import {
   WEEKDAY_LABELS,
   type Semester,
@@ -30,6 +32,134 @@ type SelectedCourseSummary = {
   credits?: number;
   teacherName: string;
 };
+type SavedSchedulePlan = {
+  id: string;
+  semesterId: number;
+  semesterCode: string;
+  semesterName: string;
+  savedAt: string;
+  comment?: string;
+  candidate: AutoScheduleCandidate;
+};
+type AutoScheduleInputContext = {
+  avoidWeekdays: Set<number>;
+  preferredSessions: Set<Session>;
+  optimizeFreeDays: boolean;
+  lockedTeacherCount: number;
+  selectedCourseCount: number;
+};
+type AutoScheduleErrorPayload = {
+  detail?: unknown;
+  details?: unknown;
+};
+
+const SAVED_PLANS_STORAGE_PREFIX = "dkmh-auto-schedule-saved";
+
+function savedPlanFingerprint(candidate: AutoScheduleCandidate): string {
+  return candidate.class_sections.map((cs) => cs.id).sort((a, b) => a - b).join("-");
+}
+
+function makeSavedPlansStorageKey(userId: number | null | undefined, semesterId: number | string): string {
+  return `${SAVED_PLANS_STORAGE_PREFIX}:${userId ?? "guest"}:${semesterId}`;
+}
+
+function readSavedPlans(key: string): SavedSchedulePlan[] {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function extractAutoScheduleErrorDetails(err: unknown): string[] {
+  if (!(err instanceof AxiosError)) return [];
+  const data = err.response?.data as AutoScheduleErrorPayload | undefined;
+  if (!data || !Array.isArray(data.details)) return [];
+  return data.details.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+}
+
+function formatAutoScheduleError(err: unknown): string {
+  const message = extractApiError(err, "Không tạo được thời khoá biểu.");
+  const details = extractAutoScheduleErrorDetails(err);
+  if (details.length === 0) return message;
+  return [message, ...details.slice(0, 6).map((detail) => `• ${detail}`)].join("\n");
+}
+
+function sessionFromPeriod(period: number): Session {
+  if (period <= 5) return "MORNING";
+  if (period <= 10) return "AFTERNOON";
+  return "EVENING";
+}
+
+function formatSessionList(sessions: Session[]): string {
+  const order: Session[] = ["MORNING", "AFTERNOON", "EVENING"];
+  const labels: Record<Session, string> = {
+    MORNING: "sáng",
+    AFTERNOON: "chiều",
+    EVENING: "tối",
+  };
+  return order
+    .filter((session) => sessions.includes(session))
+    .map((session) => labels[session])
+    .join(" và ");
+}
+
+function summarizeCandidateByInput(
+  candidate: AutoScheduleCandidate,
+  input: AutoScheduleInputContext,
+): string {
+  const weekdays = new Set<number>();
+  const sessions = new Set<Session>();
+
+  candidate.class_sections.forEach((cs) => {
+    cs.schedules.forEach((schedule) => {
+      weekdays.add(schedule.weekday);
+      sessions.add(sessionFromPeriod(schedule.start_period));
+    });
+  });
+
+  const notes: string[] = [];
+  if (input.avoidWeekdays.size > 0) {
+    const avoided = Array.from(input.avoidWeekdays).filter((day) => !weekdays.has(day));
+    if (avoided.length === input.avoidWeekdays.size) {
+      notes.push("tránh được toàn bộ ngày bạn không muốn học");
+    } else if (avoided.length > 0) {
+      notes.push(`tránh được ${avoided.length}/${input.avoidWeekdays.size} ngày bạn chọn`);
+    } else {
+      notes.push("vẫn có lớp rơi vào ngày bạn muốn tránh");
+    }
+  }
+
+  if (input.preferredSessions.size > 0) {
+    const matched = Array.from(input.preferredSessions).filter((session) => sessions.has(session));
+    const actualSessions = Array.from(sessions);
+    if (matched.length > 0 && actualSessions.length > matched.length) {
+      notes.push(`có cả ca học ${formatSessionList(actualSessions)}`);
+    } else if (matched.length === input.preferredSessions.size) {
+      notes.push(`đáp ứng ca học ${formatSessionList(matched)} bạn ưu tiên`);
+    } else if (matched.length > 0) {
+      notes.push(`khớp một phần ca học ưu tiên (${formatSessionList(matched)})`);
+    } else {
+      notes.push("không khớp ca học ưu tiên");
+    }
+  }
+
+  if (input.optimizeFreeDays) {
+    notes.push(`${candidate.stats.free_days} ngày nghỉ trong tuần`);
+  }
+
+  if (input.lockedTeacherCount > 0) {
+    notes.push(`đáp ứng đủ ${input.lockedTeacherCount} lựa chọn GV`);
+  }
+
+  if (notes.length === 0) {
+    return `Phương án cân bằng cho ${input.selectedCourseCount} môn đã chọn, gồm ${candidate.stats.study_days} ngày học và ${candidate.stats.free_days} ngày nghỉ.`;
+  }
+  return `Nhận xét: ${notes.join(", ")}.`;
+}
 
 function getCourseStatus(c: AvailableCourse): CourseStatus {
   if (c.has_grade) return "learned";
@@ -55,6 +185,7 @@ const BREAKDOWN_LABELS = {
 
 export default function StudentAutoSchedulePage() {
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
   const [view, setView] = useState<"form" | "results">("form");
 
   // Semester + courses (auto-pick active hoặc upcoming, không cho user chọn)
@@ -82,11 +213,17 @@ export default function StudentAutoSchedulePage() {
   const [results, setResults] = useState<AutoScheduleCandidate[]>([]);
   const [searching, setSearching] = useState(false);
   const [sortKey, setSortKey] = useState<"total" | "weekday" | "session" | "teacher" | "free_day">("total");
+  const [savedPlans, setSavedPlans] = useState<SavedSchedulePlan[]>([]);
+  const [noSolutionDetails, setNoSolutionDetails] = useState<string[]>([]);
 
   // Detail modal
-  const [detailIdx, setDetailIdx] = useState<number | null>(null);
+  const [detailCandidate, setDetailCandidate] = useState<AutoScheduleCandidate | null>(null);
   const [applying, setApplying] = useState(false);
   const [applyResult, setApplyResult] = useState<{ ok: number; failed: { code: string; msg: string }[] } | null>(null);
+
+  const savedPlansStorageKey = semesterId
+    ? makeSavedPlansStorageKey(user?.id, semesterId)
+    : "";
 
   // Load semesters + auto-pick active hoặc upcoming
   useEffect(() => {
@@ -133,6 +270,14 @@ export default function StudentAutoSchedulePage() {
     };
   }, [semesterId, searchTerm, filterUnlearned]);
 
+  useEffect(() => {
+    if (!savedPlansStorageKey) {
+      setSavedPlans([]);
+      return;
+    }
+    setSavedPlans(readSavedPlans(savedPlansStorageKey));
+  }, [savedPlansStorageKey]);
+
   function toggleSet<T>(set: Set<T>, value: T, setFn: (s: Set<T>) => void) {
     const next = new Set(set);
     if (next.has(value)) next.delete(value);
@@ -168,6 +313,7 @@ export default function StudentAutoSchedulePage() {
     }
     setSearching(true);
     setResults([]);
+    setNoSolutionDetails([]);
 
     const constraints: Record<string, number> = {};
     teacherByCourse.forEach((teacherId, courseId) => {
@@ -197,7 +343,10 @@ export default function StudentAutoSchedulePage() {
         );
       }
     } catch (err) {
-      showErrorToast(extractApiError(err, "Không tạo được thời khoá biểu."));
+      const details = extractAutoScheduleErrorDetails(err);
+      setNoSolutionDetails(details);
+      setView("results");
+      showErrorToast(formatAutoScheduleError(err));
     } finally {
       setSearching(false);
     }
@@ -206,6 +355,14 @@ export default function StudentAutoSchedulePage() {
   const displayed = useMemo(() => {
     return [...results].sort((a, b) => b.breakdown[sortKey] - a.breakdown[sortKey]);
   }, [results, sortKey]);
+
+  const inputContext = useMemo<AutoScheduleInputContext>(() => ({
+    avoidWeekdays,
+    preferredSessions,
+    optimizeFreeDays,
+    lockedTeacherCount: teacherByCourse.size,
+    selectedCourseCount: selectedCourseIds.size,
+  }), [avoidWeekdays, preferredSessions, optimizeFreeDays, teacherByCourse.size, selectedCourseIds.size]);
 
   const selectedCourseSummaries = useMemo<SelectedCourseSummary[]>(() => {
     const byId = new Map(availableCourses.map((course) => [course.course_id, course]));
@@ -222,6 +379,61 @@ export default function StudentAutoSchedulePage() {
       };
     });
   }, [availableCourses, selectedCourseIds, teacherByCourse]);
+
+  const detailSavedPlan = useMemo(() => {
+    if (!detailCandidate) return null;
+    const fingerprint = savedPlanFingerprint(detailCandidate);
+    return savedPlans.find((plan) => savedPlanFingerprint(plan.candidate) === fingerprint) ?? null;
+  }, [detailCandidate, savedPlans]);
+
+  function persistSavedPlans(next: SavedSchedulePlan[]) {
+    setSavedPlans(next);
+    if (savedPlansStorageKey) {
+      window.localStorage.setItem(savedPlansStorageKey, JSON.stringify(next));
+    }
+  }
+
+  function openCandidateDetail(candidate: AutoScheduleCandidate) {
+    setDetailCandidate(candidate);
+    setApplyResult(null);
+  }
+
+  function handleSavePlan(candidate: AutoScheduleCandidate) {
+    if (!semester || !savedPlansStorageKey) {
+      showErrorToast("Chưa có học kỳ để lưu phương án.");
+      return;
+    }
+    const fingerprint = savedPlanFingerprint(candidate);
+    if (savedPlans.some((plan) => savedPlanFingerprint(plan.candidate) === fingerprint)) {
+      showSuccessToast("Phương án này đã có trong danh sách đã lưu.");
+      return;
+    }
+
+    const next: SavedSchedulePlan[] = [
+      {
+        id: `${Date.now()}`,
+        semesterId: semester.id,
+        semesterCode: semester.code,
+        semesterName: semester.name,
+        savedAt: new Date().toISOString(),
+        comment: summarizeCandidateByInput(candidate, inputContext),
+        candidate,
+      },
+      ...savedPlans,
+    ].slice(0, 10);
+    persistSavedPlans(next);
+    showSuccessToast("Đã lưu phương án TKB.");
+  }
+
+  function handleDeleteSavedPlan(planId: string) {
+    const next = savedPlans.filter((plan) => plan.id !== planId);
+    persistSavedPlans(next);
+    if (detailSavedPlan?.id === planId) {
+      setDetailCandidate(null);
+      setApplyResult(null);
+    }
+    showSuccessToast("Đã xóa phương án đã lưu.");
+  }
 
   async function handleApply(cand: AutoScheduleCandidate) {
     setApplying(true);
@@ -257,37 +469,66 @@ export default function StudentAutoSchedulePage() {
     }
   }
 
-  const detailCandidate = detailIdx !== null ? displayed[detailIdx] : null;
+  const detailModal = (
+    <CandidateDetailModal
+      candidate={detailCandidate}
+      savedPlan={detailSavedPlan}
+      comment={
+        detailCandidate
+          ? detailSavedPlan?.comment ?? summarizeCandidateByInput(detailCandidate, inputContext)
+          : ""
+      }
+      applyResult={applyResult}
+      applying={applying}
+      applyDisabled={semesterStatus !== "active"}
+      applyDisabledReason={
+        semesterStatus === "upcoming" ? "Học kỳ sắp mở — chưa thể đăng ký" : ""
+      }
+      onClose={() => {
+        setDetailCandidate(null);
+        setApplyResult(null);
+      }}
+      onSave={handleSavePlan}
+      onDeleteSaved={handleDeleteSavedPlan}
+      onApply={handleApply}
+    />
+  );
 
   if (view === "form") {
     return (
-      <FormView
-        semester={semester}
-        semesterStatus={semesterStatus}
-        availableCourses={availableCourses}
-        coursesLoading={coursesLoading}
-        selectedCourseIds={selectedCourseIds}
-        toggleCourse={toggleCourse}
-        teacherByCourse={teacherByCourse}
-        setCourseTeacher={setCourseTeacher}
-        expandedCourse={expandedCourse}
-        setExpandedCourse={setExpandedCourse}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        filterUnlearned={filterUnlearned}
-        setFilterUnlearned={setFilterUnlearned}
-        avoidWeekdays={avoidWeekdays}
-        setAvoidWeekdays={setAvoidWeekdays}
-        preferredSessions={preferredSessions}
-        setPreferredSessions={setPreferredSessions}
-        optimizeFreeDays={optimizeFreeDays}
-        setOptimizeFreeDays={setOptimizeFreeDays}
-        toggleSet={toggleSet}
-        onSubmit={handleSearch}
-        searching={searching}
-        hasPreviousResults={results.length > 0}
-        onBackToResults={() => setView("results")}
-      />
+      <>
+        <FormView
+          semester={semester}
+          semesterStatus={semesterStatus}
+          availableCourses={availableCourses}
+          coursesLoading={coursesLoading}
+          selectedCourseIds={selectedCourseIds}
+          toggleCourse={toggleCourse}
+          teacherByCourse={teacherByCourse}
+          setCourseTeacher={setCourseTeacher}
+          expandedCourse={expandedCourse}
+          setExpandedCourse={setExpandedCourse}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          filterUnlearned={filterUnlearned}
+          setFilterUnlearned={setFilterUnlearned}
+          avoidWeekdays={avoidWeekdays}
+          setAvoidWeekdays={setAvoidWeekdays}
+          preferredSessions={preferredSessions}
+          setPreferredSessions={setPreferredSessions}
+          optimizeFreeDays={optimizeFreeDays}
+          setOptimizeFreeDays={setOptimizeFreeDays}
+          toggleSet={toggleSet}
+          onSubmit={handleSearch}
+          searching={searching}
+          hasPreviousResults={results.length > 0}
+          onBackToResults={() => setView("results")}
+          savedPlans={savedPlans}
+          onViewSaved={(plan) => openCandidateDetail(plan.candidate)}
+          onDeleteSaved={handleDeleteSavedPlan}
+        />
+        {detailModal}
+      </>
     );
   }
 
@@ -355,6 +596,19 @@ export default function StudentAutoSchedulePage() {
             <p className="text-[13px] text-ink-muted mt-1 mb-3">
               Các môn bạn chọn có lịch xung đột với nhau hoặc lớp đã đầy. Hãy quay lại tinh chỉnh.
             </p>
+            {noSolutionDetails.length > 0 && (
+              <div className="mx-auto mb-4 max-w-3xl rounded-md border border-red-100 bg-red-50 px-4 py-3 text-left text-[12.5px] text-red-900">
+                <div className="mb-2 font-semibold">Chi tiết xung đột</div>
+                <ul className="space-y-1.5">
+                  {noSolutionDetails.map((detail, idx) => (
+                    <li key={`${idx}-${detail}`} className="flex gap-2">
+                      <span className="mt-[1px] text-red-700">•</span>
+                      <span>{detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <Button variant="primary" icon="chevronLeft" onClick={() => setView("form")}>
               Quay lại tinh chỉnh
             </Button>
@@ -376,115 +630,223 @@ export default function StudentAutoSchedulePage() {
           key={idx}
           cand={cand}
           rank={idx + 1}
+          comment={summarizeCandidateByInput(cand, inputContext)}
           applyDisabled={semesterStatus !== "active"}
           applyDisabledReason={
             semesterStatus === "upcoming" ? "Học kỳ sắp mở — chưa thể đăng ký" : ""
           }
-          onDetail={() => setDetailIdx(idx)}
+          onDetail={() => openCandidateDetail(cand)}
           onApply={() => {
-            setDetailIdx(idx);
-            setApplyResult(null);
+            openCandidateDetail(cand);
           }}
         />
       ))}
-
-      <Modal
-        open={detailCandidate !== null}
-        title={detailCandidate ? `Phương án (điểm ${detailCandidate.score.toFixed(2)})` : ""}
-        subtitle={detailCandidate ? `${detailCandidate.class_sections.length} lớp HP · ${detailCandidate.stats.study_days} ngày học/${detailCandidate.stats.free_days} ngày nghỉ` : ""}
-        onClose={() => {
-          setDetailIdx(null);
-          setApplyResult(null);
-        }}
-        size="xl"
-        footer={
-          detailCandidate && !applyResult ? (
-            <>
-              <Button variant="ghost" onClick={() => setDetailIdx(null)}>
-                Đóng
-              </Button>
-              <Button
-                variant="primary"
-                icon="check"
-                onClick={() => handleApply(detailCandidate)}
-                disabled={applying || semesterStatus !== "active"}
-                title={
-                  semesterStatus === "upcoming"
-                    ? "Học kỳ sắp mở — chưa thể đăng ký"
-                    : ""
-                }
-              >
-                {applying
-                  ? "Đang đăng ký..."
-                  : semesterStatus === "upcoming"
-                    ? "Sắp mở — chưa thể đăng ký"
-                    : `Áp dụng (đăng ký ${detailCandidate.class_sections.length} lớp)`}
-              </Button>
-            </>
-          ) : (
-            <Button variant="ghost" onClick={() => setDetailIdx(null)}>
-              Đóng
-            </Button>
-          )
-        }
-      >
-        {detailCandidate && (
-          <div className="space-y-4">
-            <BreakdownBars breakdown={detailCandidate.breakdown} />
-            <div>
-              <div className="text-[12.5px] font-medium text-ink mb-1.5">Lớp HP trong phương án</div>
-              <div className="space-y-1.5">
-                {detailCandidate.class_sections.map((cs) => (
-                  <div key={cs.id} className="px-3 py-2 rounded-md border border-line bg-card text-[12.5px]">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-ink-muted">{cs.code}</span>
-                      <span className="font-semibold">{cs.course_code} – {cs.course_name}</span>
-                      <Badge tone="accent">{cs.course_credits} TC</Badge>
-                    </div>
-                    <div className="text-[11.5px] text-ink-muted mt-1">
-                      GV: {cs.teacher_name ?? "—"} ·{" "}
-                      {cs.schedules.map((s) =>
-                        `${WEEKDAY_LABELS[s.weekday]} tiết ${s.start_period}-${s.end_period} ${s.room}`,
-                      ).join(" · ")}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <div className="text-[12.5px] font-medium text-ink mb-1.5">Xem trước TKB</div>
-              <ScheduleGrid events={candidateToEvents(detailCandidate)} />
-            </div>
-            {applyResult && (
-              <div
-                className={`rounded-md border px-3 py-2 text-[13px] ${
-                  applyResult.failed.length === 0
-                    ? "bg-green-50 border-green-200 text-success"
-                    : "bg-amber-50 border-amber-200 text-warn"
-                }`}
-              >
-                <div className="font-semibold">
-                  Đã đăng ký {applyResult.ok} / {applyResult.ok + applyResult.failed.length} lớp.
-                </div>
-                {applyResult.failed.length > 0 && (
-                  <ul className="mt-2 text-[12.5px] space-y-0.5">
-                    {applyResult.failed.map((f) => (
-                      <li key={f.code}>
-                        <code className="font-mono">{f.code}</code>: {f.msg}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {applyResult.failed.length === 0 && (
-                  <div className="text-[12px] mt-1">Đang chuyển sang Lịch sử đăng ký...</div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
+      {detailModal}
     </div>
   );
+}
+
+function CandidateDetailModal({
+  candidate,
+  savedPlan,
+  comment,
+  applyResult,
+  applying,
+  applyDisabled,
+  applyDisabledReason,
+  onClose,
+  onSave,
+  onDeleteSaved,
+  onApply,
+}: {
+  candidate: AutoScheduleCandidate | null;
+  savedPlan: SavedSchedulePlan | null;
+  comment: string;
+  applyResult: { ok: number; failed: { code: string; msg: string }[] } | null;
+  applying: boolean;
+  applyDisabled: boolean;
+  applyDisabledReason: string;
+  onClose: () => void;
+  onSave: (candidate: AutoScheduleCandidate) => void;
+  onDeleteSaved: (planId: string) => void;
+  onApply: (candidate: AutoScheduleCandidate) => void;
+}) {
+  return (
+    <Modal
+      open={candidate !== null}
+      title={candidate ? `Phương án (điểm ${candidate.score.toFixed(2)})` : ""}
+      subtitle={candidate ? `${candidate.class_sections.length} lớp HP · ${candidate.stats.study_days} ngày học/${candidate.stats.free_days} ngày nghỉ` : ""}
+      onClose={onClose}
+      size="xl"
+      footer={
+        candidate && !applyResult ? (
+          <>
+            <Button variant="ghost" onClick={onClose}>
+              Đóng
+            </Button>
+            {savedPlan ? (
+              <Button variant="danger" icon="trash" onClick={() => onDeleteSaved(savedPlan.id)}>
+                Xóa phương án
+              </Button>
+            ) : (
+              <Button variant="secondary" icon="clipboard" onClick={() => onSave(candidate)}>
+                Lưu phương án
+              </Button>
+            )}
+            <Button
+              variant="primary"
+              icon="check"
+              onClick={() => onApply(candidate)}
+              disabled={applying || applyDisabled}
+              title={applyDisabled ? applyDisabledReason : ""}
+            >
+              {applying
+                ? "Đang đăng ký..."
+                : applyDisabled
+                  ? "Sắp mở — chưa thể đăng ký"
+                  : `Áp dụng (đăng ký ${candidate.class_sections.length} lớp)`}
+            </Button>
+          </>
+        ) : (
+          <Button variant="ghost" onClick={onClose}>
+            Đóng
+          </Button>
+        )
+      }
+    >
+      {candidate && (
+        <div className="space-y-4">
+          {comment && (
+            <div className="rounded-md border border-navy-100 bg-navy-50 px-3 py-2 text-[12.5px] text-navy-900">
+              {comment}
+            </div>
+          )}
+          <BreakdownBars breakdown={candidate.breakdown} />
+          <div>
+            <div className="text-[12.5px] font-medium text-ink mb-1.5">Lớp HP trong phương án</div>
+            <div className="space-y-1.5">
+              {candidate.class_sections.map((cs) => (
+                <div key={cs.id} className="px-3 py-2 rounded-md border border-line bg-card text-[12.5px]">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-ink-muted">{cs.code}</span>
+                    <span className="font-semibold">{cs.course_code} – {cs.course_name}</span>
+                    <Badge tone="accent">{cs.course_credits} TC</Badge>
+                  </div>
+                  <div className="text-[11.5px] text-ink-muted mt-1">
+                    GV: {cs.teacher_name ?? "—"} ·{" "}
+                    {cs.schedules.map((s) =>
+                      `${WEEKDAY_LABELS[s.weekday]} tiết ${s.start_period}-${s.end_period} ${s.room}`,
+                    ).join(" · ")}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="text-[12.5px] font-medium text-ink mb-1.5">Xem trước TKB</div>
+            <ScheduleGrid events={candidateToEvents(candidate)} />
+          </div>
+          {applyResult && (
+            <div
+              className={`rounded-md border px-3 py-2 text-[13px] ${
+                applyResult.failed.length === 0
+                  ? "bg-green-50 border-green-200 text-success"
+                  : "bg-amber-50 border-amber-200 text-warn"
+              }`}
+            >
+              <div className="font-semibold">
+                Đã đăng ký {applyResult.ok} / {applyResult.ok + applyResult.failed.length} lớp.
+              </div>
+              {applyResult.failed.length > 0 && (
+                <ul className="mt-2 text-[12.5px] space-y-0.5">
+                  {applyResult.failed.map((f) => (
+                    <li key={f.code}>
+                      <code className="font-mono">{f.code}</code>: {f.msg}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {applyResult.failed.length === 0 && (
+                <div className="text-[12px] mt-1">Đang chuyển sang Lịch sử đăng ký...</div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function SavedPlansCard({
+  plans,
+  onView,
+  onDelete,
+}: {
+  plans: SavedSchedulePlan[];
+  onView: (plan: SavedSchedulePlan) => void;
+  onDelete: (planId: string) => void;
+}) {
+  return (
+    <Card title="Phương án đã lưu" subtitle="Mở lại phương án để xem chi tiết và đăng ký khi học kỳ đang mở.">
+      <div className="space-y-2">
+        {plans.map((plan) => (
+          <div
+            key={plan.id}
+            className="flex items-center gap-3 rounded-md border border-line bg-cardAlt px-3 py-2 text-[12.5px]"
+          >
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-ink">
+                  Điểm {plan.candidate.score.toFixed(2)}
+                </span>
+                <span className="text-ink-muted">
+                  · {plan.candidate.class_sections.length} lớp · {plan.candidate.stats.study_days} ngày học / {plan.candidate.stats.free_days} ngày nghỉ
+                </span>
+              </div>
+              <div className="mt-1 flex gap-1.5 flex-wrap">
+                {plan.candidate.class_sections.map((cs) => (
+                  <span
+                    key={cs.id}
+                    className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-surface text-ink-muted"
+                  >
+                    {cs.code}
+                  </span>
+                ))}
+              </div>
+              {plan.comment && (
+                <div className="mt-1 text-[11.5px] text-navy-900">
+                  {plan.comment}
+                </div>
+              )}
+              <div className="text-[11.5px] text-ink-faint mt-1">
+                Lưu lúc {formatSavedPlanTime(plan.savedAt)}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Button variant="secondary" size="sm" icon="doc" onClick={() => onView(plan)}>
+                Xem
+              </Button>
+              <Button variant="danger" size="sm" icon="trash" onClick={() => onDelete(plan.id)}>
+                Xóa
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function formatSavedPlanTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "không rõ";
+  return date.toLocaleString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
 // ────────────────────────────── FormView ──────────────────────────────
@@ -515,6 +877,9 @@ interface FormViewProps {
   searching: boolean;
   hasPreviousResults: boolean;
   onBackToResults: () => void;
+  savedPlans: SavedSchedulePlan[];
+  onViewSaved: (plan: SavedSchedulePlan) => void;
+  onDeleteSaved: (planId: string) => void;
 }
 
 function FormView(props: FormViewProps) {
@@ -532,6 +897,7 @@ function FormView(props: FormViewProps) {
     toggleSet,
     onSubmit, searching,
     hasPreviousResults, onBackToResults,
+    savedPlans, onViewSaved, onDeleteSaved,
   } = props;
 
   return (
@@ -541,9 +907,6 @@ function FormView(props: FormViewProps) {
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">
             Tạo TKB tự động
           </h1>
-          <p className="mt-1 text-[13px] text-ink-muted">
-            Chỉ hiển thị môn thuộc <strong>Chương trình đào tạo</strong> của bạn và có lớp HP đang mở. Chọn môn → cấu hình ưu tiên → tìm phương án.
-          </p>
         </div>
         {hasPreviousResults && (
           <Button variant="ghost" icon="chevronRight" onClick={onBackToResults}>
@@ -551,6 +914,14 @@ function FormView(props: FormViewProps) {
           </Button>
         )}
       </div>
+
+      {savedPlans.length > 0 && (
+        <SavedPlansCard
+          plans={savedPlans}
+          onView={onViewSaved}
+          onDelete={onDeleteSaved}
+        />
+      )}
 
       <form onSubmit={onSubmit} className="space-y-4">
         <Card title="1. Học kỳ và môn học">
@@ -614,7 +985,7 @@ function FormView(props: FormViewProps) {
                       key={c.course_id}
                       className={`rounded ${checked ? "bg-navy-50 border border-navy-100" : "border border-transparent hover:bg-surface"}`}
                     >
-                      <div className="flex items-center gap-2 px-2 py-1.5 text-[13px]">
+                      <div className="flex items-center gap-2 pl-2 pr-5 py-1.5 text-[13px]">
                         <input
                           type="checkbox"
                           checked={checked}
@@ -634,7 +1005,7 @@ function FormView(props: FormViewProps) {
                         <Badge tone={STATUS_BADGE[status].tone}>
                           {STATUS_BADGE[status].label}
                         </Badge>
-                        <span className="text-[11.5px] text-ink-faint w-16 text-right">
+                        <span className="text-[11.5px] text-ink-faint w-24 text-right whitespace-nowrap">
                           {totalClassSections} lớp · {c.credits} TC
                         </span>
                         <button
@@ -712,7 +1083,7 @@ function FormView(props: FormViewProps) {
           </div>
         </Card>
 
-        <Card title="2. Ưu tiên cá nhân" subtitle="Tuỳ chọn — bỏ trống = không thiên vị">
+        <Card title="2. Ưu tiên cá nhân">
           <div className="space-y-4">
             <div>
               <Label>Tránh ngày trong tuần</Label>
@@ -791,14 +1162,14 @@ function FormView(props: FormViewProps) {
               semesterStatus === "none"
                 ? "Chưa có học kỳ nào đang/sắp mở"
                 : semesterStatus === "upcoming"
-                  ? "Học kỳ sắp mở — bạn có thể tìm và xem trước, nhưng chưa thể áp dụng đăng ký."
+                  ? "Học kỳ sắp mở — bạn có thể chuẩn bị trước, nhưng chưa thể đăng ký môn."
                   : ""
             }
           >
             {searching
               ? "Đang tìm phương án..."
               : semesterStatus === "upcoming"
-                ? "Tìm phương án (xem trước)"
+                ? "Tìm phương án"
                 : "Tìm phương án"}
           </Button>
         </div>
@@ -917,7 +1288,7 @@ function SemesterBanner({ semester, status }: { semester: Semester | null; statu
         <div className="text-[12px] text-ink-muted mt-0.5">
           {isActive
             ? `Cửa sổ đăng ký: ${formatRegistrationWindow(semester)}`
-            : `Sẽ mở từ ${formatRegistrationWindow(semester)} — bạn có thể chuẩn bị trước nhưng chưa thể tìm phương án.`}
+            : `Sẽ mở từ ${formatRegistrationWindow(semester)} — bạn có thể chuẩn bị trước nhưng chưa thể đăng ký môn.`}
         </div>
       </div>
     </div>
@@ -925,10 +1296,11 @@ function SemesterBanner({ semester, status }: { semester: Semester | null; statu
 }
 
 function CandidateCard({
-  cand, rank, applyDisabled, applyDisabledReason, onDetail, onApply,
+  cand, rank, comment, applyDisabled, applyDisabledReason, onDetail, onApply,
 }: {
   cand: AutoScheduleCandidate;
   rank: number;
+  comment: string;
   applyDisabled?: boolean;
   applyDisabledReason?: string;
   onDetail: () => void;
@@ -952,6 +1324,9 @@ function CandidateCard({
             <span>Ca học: <strong className="text-ink">{cand.breakdown.session.toFixed(0)}</strong></span>
             <span>Giáo viên: <strong className="text-ink">{cand.breakdown.teacher.toFixed(0)}</strong></span>
             <span>Ngày nghỉ: <strong className="text-ink">{cand.breakdown.free_day.toFixed(0)}</strong></span>
+          </div>
+          <div className="mt-2 rounded-md bg-navy-50 px-2.5 py-1.5 text-[12px] text-navy-900">
+            {comment}
           </div>
           <div className="mt-2 flex gap-1.5 flex-wrap">
             {cand.class_sections.map((cs) => (
