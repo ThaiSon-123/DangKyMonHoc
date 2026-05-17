@@ -15,3 +15,11 @@ export function showToast(payload: ToastPayload) {
 export function showErrorToast(message: string, title = "Không thực hiện được") {
   showToast({ type: "error", title, message });
 }
+
+export function showSuccessToast(message: string, title = "Thành công") {
+  showToast({ type: "success", title, message });
+}
+
+export function showInfoToast(message: string, title?: string) {
+  showToast({ type: "info", title, message });
+}
