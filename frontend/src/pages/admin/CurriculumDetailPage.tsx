@@ -10,6 +10,7 @@ import {
 } from "@/api/curriculums";
 import { listCourses } from "@/api/courses";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast } from "@/lib/toast";
 import { semesterLabel } from "@/lib/semester";
 import {
   KNOWLEDGE_BLOCK_LABELS,
@@ -112,6 +113,17 @@ export default function CurriculumDetailPage() {
     setShowForm(true);
   }
 
+  function handleCourseChange(courseId: number) {
+    const selected = allCourses.find((course) => course.id === courseId);
+    setForm({
+      ...form,
+      course: courseId,
+      knowledge_block: selected?.code.toUpperCase().startsWith("KTCH")
+        ? "GENERAL"
+        : form.knowledge_block,
+    });
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -125,7 +137,9 @@ export default function CurriculumDetailPage() {
       setShowForm(false);
       await refresh();
     } catch (err) {
-      setFormError(extractApiError(err));
+      const message = extractApiError(err);
+      setFormError(message);
+      showErrorToast(message, "Không lưu được môn trong CTĐT");
     } finally {
       setSubmitting(false);
     }
@@ -318,7 +332,7 @@ export default function CurriculumDetailPage() {
               <select
                 required
                 value={form.course}
-                onChange={(e) => setForm({ ...form, course: Number(e.target.value) })}
+                onChange={(e) => handleCourseChange(Number(e.target.value))}
                 className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
               >
                 <option value={0}>-- chọn môn --</option>
@@ -377,7 +391,7 @@ export default function CurriculumDetailPage() {
               ))}
             </select>
             <div className="text-[11.5px] text-ink-faint mt-1">
-              Quy ước: 2 học kỳ chính / năm (không tính HK hè).
+              Quy ước: 2 học kỳ chính / năm (không tính HK3).
             </div>
           </label>
 

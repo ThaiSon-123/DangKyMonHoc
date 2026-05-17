@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { Badge, Button, Card, Modal, Pagination, Table, type Column } from "@/components/ui";
 import Icon from "@/components/ui/Icon";
@@ -8,19 +8,28 @@ import {
   listClassSections,
   updateClassSection,
   type ClassSectionInput,
+  type ScheduleInput,
 } from "@/api/classes";
 import { listCourses } from "@/api/courses";
+import { listMajors } from "@/api/majors";
 import { listSemesters } from "@/api/semesters";
 import { listTeachers } from "@/api/teachers";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast } from "@/lib/toast";
 import { PAGE_SIZE } from "@/lib/constants";
 import {
   CLASS_STATUS_LABELS,
+  SESSION_LABELS,
+  SESSION_PERIODS,
+  WEEKDAY_LABELS,
   type ClassSection,
   type ClassStatus,
   type Course,
+  type Major,
   type Semester,
+  type SessionType,
   type TeacherProfile,
+  type Weekday,
 } from "@/types/domain";
 
 const EMPTY: ClassSectionInput = {
@@ -30,8 +39,17 @@ const EMPTY: ClassSectionInput = {
   teacher: null,
   periods_per_session: 3,
   max_students: 50,
-  status: "DRAFT",
+  status: "CLOSED",
   note: "",
+};
+
+const EMPTY_SCHEDULE: Omit<ScheduleInput, "class_section"> = {
+  weekday: 0,
+  session: "MORNING",
+  start_period: 1,
+  room: "",
+  start_date: null,
+  end_date: null,
 };
 
 const STATUS_TONE: Record<ClassStatus, "neutral" | "success" | "warn" | "danger"> = {
@@ -41,9 +59,12 @@ const STATUS_TONE: Record<ClassStatus, "neutral" | "success" | "warn" | "danger"
   CANCELLED: "danger",
 };
 
+const EDITABLE_CLASS_STATUSES: ClassStatus[] = ["OPEN", "CLOSED", "CANCELLED"];
+
 export default function ClassesPage() {
   const [items, setItems] = useState<ClassSection[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [majors, setMajors] = useState<Major[]>([]);
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [teachers, setTeachers] = useState<TeacherProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +73,9 @@ export default function ClassesPage() {
   const [appliedSearch, setAppliedSearch] = useState("");
   const [filterSemester, setFilterSemester] = useState<number | "">("");
   const [filterStatus, setFilterStatus] = useState<ClassStatus | "">("");
+  const [filterTeacher, setFilterTeacher] = useState<number | "">("");
+  const [filterDepartment, setFilterDepartment] = useState("");
+  const [filterMajor, setFilterMajor] = useState<number | "">("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +83,8 @@ export default function ClassesPage() {
   const [editing, setEditing] = useState<ClassSection | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<ClassSectionInput>(EMPTY);
+  const [scheduleForm, setScheduleForm] =
+    useState<Omit<ScheduleInput, "class_section">>(EMPTY_SCHEDULE);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -72,6 +98,9 @@ export default function ClassesPage() {
       if (appliedSearch) params.search = appliedSearch;
       if (filterSemester) params.semester = filterSemester;
       if (filterStatus) params.status = filterStatus;
+      if (filterTeacher) params.teacher = filterTeacher;
+      if (filterDepartment) params.department = filterDepartment;
+      if (filterMajor) params.major = filterMajor;
       const data = await listClassSections(params);
       setItems(data.results);
       setTotal(data.count);
@@ -80,11 +109,25 @@ export default function ClassesPage() {
     } finally {
       setLoading(false);
     }
-  }, [appliedSearch, filterSemester, filterStatus, page]);
+  }, [appliedSearch, filterDepartment, filterMajor, filterSemester, filterStatus, filterTeacher, page]);
+
+  const departments = useMemo(
+    () => Array.from(new Set(majors.map((m) => m.department).filter(Boolean))).sort(),
+    [majors],
+  );
+
+  const filteredMajors = useMemo(
+    () =>
+      filterDepartment
+        ? majors.filter((m) => m.department === filterDepartment)
+        : majors,
+    [filterDepartment, majors],
+  );
 
   useEffect(() => {
     // Fetch full list cho dropdown (page_size lớn)
     listCourses({ page_size: 1000 }).then((r) => setCourses(r.results));
+    listMajors({ page_size: 1000 }).then((r) => setMajors(r.results));
     listSemesters({ page: 1 }).then((r) => setSemesters(r.results));
     listTeachers({ page_size: 1000 }).then((r) => setTeachers(r.results));
   }, []);
@@ -102,6 +145,7 @@ export default function ClassesPage() {
     setEditing(null);
     const defaultSemester = semesters.find((s) => s.is_open)?.id ?? semesters[0]?.id ?? 0;
     setForm({ ...EMPTY, semester: defaultSemester, course: courses[0]?.id ?? 0 });
+    setScheduleForm(EMPTY_SCHEDULE);
     setFormError(null);
     setShowForm(true);
   }
@@ -118,6 +162,22 @@ export default function ClassesPage() {
       status: cs.status,
       note: cs.note,
     });
+    if (cs.status === "DRAFT") {
+      setForm((current) => ({ ...current, status: "CLOSED" }));
+    }
+    const firstSchedule = cs.schedules[0] ?? null;
+    setScheduleForm(
+      firstSchedule
+        ? {
+            weekday: firstSchedule.weekday,
+            session: firstSchedule.session,
+            start_period: firstSchedule.start_period,
+            room: firstSchedule.room,
+            start_date: firstSchedule.start_date,
+            end_date: firstSchedule.end_date,
+          }
+        : EMPTY_SCHEDULE,
+    );
     setFormError(null);
     setShowForm(true);
   }
@@ -127,12 +187,23 @@ export default function ClassesPage() {
     setSubmitting(true);
     setFormError(null);
     try {
-      if (editing) await updateClassSection(editing.id, form);
-      else await createClassSection(form);
+      const primary_schedule: Omit<ScheduleInput, "class_section"> = {
+        weekday: scheduleForm.weekday,
+        session: scheduleForm.session,
+        start_period: scheduleForm.start_period,
+        room: scheduleForm.room,
+        start_date: scheduleForm.start_date || null,
+        end_date: scheduleForm.end_date || null,
+      };
+      const payload: ClassSectionInput = { ...form, primary_schedule };
+      if (editing) await updateClassSection(editing.id, payload);
+      else await createClassSection(payload);
       setShowForm(false);
       await refresh();
     } catch (err) {
-      setFormError(extractApiError(err));
+      const message = extractApiError(err);
+      setFormError(message);
+      showErrorToast(message, "Không lưu được lớp học phần");
     } finally {
       setSubmitting(false);
     }
@@ -149,6 +220,16 @@ export default function ClassesPage() {
       setDeleteTarget(null);
     }
   }
+
+  const [sessionStart, sessionEnd] = SESSION_PERIODS[scheduleForm.session];
+  const maxStartPeriod = Math.min(
+    sessionEnd,
+    sessionEnd - form.periods_per_session + 1,
+  );
+  const validStartPeriods = Array.from(
+    { length: Math.max(0, maxStartPeriod - sessionStart + 1) },
+    (_, i) => sessionStart + i,
+  );
 
   const columns: Column<ClassSection>[] = [
     {
@@ -201,16 +282,44 @@ export default function ClassesPage() {
       ),
     },
     {
+      key: "primary_schedule",
+      label: "Lịch chính",
+      width: "220px",
+      render: (cs) => {
+        const firstSchedule = cs.schedules[0];
+        if (!firstSchedule) return <Badge tone="warn">Chưa có</Badge>;
+        return (
+          <div className="space-y-1">
+            <div className="text-[13px] text-ink">
+              {WEEKDAY_LABELS[firstSchedule.weekday]} ·{" "}
+              {SESSION_LABELS[firstSchedule.session].split(" (")[0]} · tiết{" "}
+              {firstSchedule.start_period}-{firstSchedule.end_period}
+            </div>
+            <div className="font-mono text-[11.5px] text-ink-faint">
+              {firstSchedule.start_date || "?"} → {firstSchedule.end_date || "?"}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
       key: "schedules",
-      label: "Lịch",
-      width: "80px",
+      label: "Phòng học",
+      width: "120px",
       align: "center",
-      render: (cs) =>
-        cs.schedules.length === 0 ? (
-          <Badge tone="warn">Chưa có</Badge>
-        ) : (
-          <Badge tone="accent">{cs.schedules.length} buổi</Badge>
-        ),
+      render: (cs) => {
+        const rooms = Array.from(new Set(cs.schedules.map((s) => s.room).filter(Boolean)));
+        if (rooms.length === 0) return <span className="text-ink-faint">—</span>;
+        return (
+          <div className="flex flex-wrap justify-center gap-1">
+            {rooms.map((room) => (
+              <Badge key={room} tone="accent" className="font-mono">
+                {room}
+              </Badge>
+            ))}
+          </div>
+        );
+      },
     },
     {
       key: "status",
@@ -248,9 +357,6 @@ export default function ClassesPage() {
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">
             Lớp học phần
           </h1>
-          <p className="mt-1 text-[13.5px] text-ink-muted">
-            Tạo lớp cho từng môn học theo học kỳ, gán giáo viên, thiết lập sĩ số và lịch học.
-          </p>
         </div>
         <Button variant="primary" icon="plus" onClick={openCreate}>
           Thêm lớp
@@ -267,7 +373,7 @@ export default function ClassesPage() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") applyFilters();
               }}
-              placeholder="Tìm theo mã lớp / mã môn…"
+              placeholder="Tìm theo mã lớp / mã môn / phòng học…"
               className="flex-1 bg-transparent outline-none text-[13px] min-w-0"
             />
           </div>
@@ -287,6 +393,52 @@ export default function ClassesPage() {
             ))}
           </select>
           <select
+            value={filterTeacher}
+            onChange={(e) => {
+              setFilterTeacher(e.target.value === "" ? "" : Number(e.target.value));
+              setPage(1);
+            }}
+            className="px-3 py-1.5 rounded-md bg-surface border border-line text-[13px] max-w-[220px]"
+          >
+            <option value="">Tất cả giáo viên</option>
+            {teachers.map((teacher) => (
+              <option key={teacher.id} value={teacher.id}>
+                {teacher.teacher_code} - {teacher.full_name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterDepartment}
+            onChange={(e) => {
+              setFilterDepartment(e.target.value);
+              setFilterMajor("");
+              setPage(1);
+            }}
+            className="px-3 py-1.5 rounded-md bg-surface border border-line text-[13px]"
+          >
+            <option value="">Tất cả khoa</option>
+            {departments.map((department) => (
+              <option key={department} value={department}>
+                {department}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterMajor}
+            onChange={(e) => {
+              setFilterMajor(e.target.value === "" ? "" : Number(e.target.value));
+              setPage(1);
+            }}
+            className="px-3 py-1.5 rounded-md bg-surface border border-line text-[13px] max-w-[220px]"
+          >
+            <option value="">Tất cả ngành</option>
+            {filteredMajors.map((major) => (
+              <option key={major.id} value={major.id}>
+                {major.code} - {major.name}
+              </option>
+            ))}
+          </select>
+          <select
             value={filterStatus}
             onChange={(e) => {
               setFilterStatus(e.target.value as ClassStatus | "");
@@ -295,20 +447,28 @@ export default function ClassesPage() {
             className="px-3 py-1.5 rounded-md bg-surface border border-line text-[13px]"
           >
             <option value="">Tất cả trạng thái</option>
-            {Object.entries(CLASS_STATUS_LABELS).map(([k, label]) => (
-              <option key={k} value={k}>
-                {label}
+            {EDITABLE_CLASS_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {CLASS_STATUS_LABELS[status]}
               </option>
             ))}
           </select>
           <Button onClick={applyFilters}>Tìm</Button>
-          {(appliedSearch || filterSemester !== "" || filterStatus !== "") && (
+          {(appliedSearch ||
+            filterSemester !== "" ||
+            filterTeacher !== "" ||
+            filterDepartment ||
+            filterMajor !== "" ||
+            filterStatus !== "") && (
             <Button
               variant="ghost"
               onClick={() => {
                 setSearch("");
                 setAppliedSearch("");
                 setFilterSemester("");
+                setFilterTeacher("");
+                setFilterDepartment("");
+                setFilterMajor("");
                 setFilterStatus("");
                 setPage(1);
               }}
@@ -452,19 +612,118 @@ export default function ClassesPage() {
               onChange={(e) => setForm({ ...form, status: e.target.value as ClassStatus })}
               className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
             >
-              {Object.entries(CLASS_STATUS_LABELS).map(([k, label]) => (
-                <option key={k} value={k}>
-                  {label}
+              {EDITABLE_CLASS_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {CLASS_STATUS_LABELS[status]}
                 </option>
               ))}
             </select>
           </div>
+          <div className="col-span-2 rounded-md border border-line bg-surface p-3">
+            <div className="text-[12.5px] font-semibold text-ink mb-2">Lịch học chính</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Học thứ mấy *</Label>
+                <select
+                  required
+                  value={scheduleForm.weekday}
+                  onChange={(e) =>
+                    setScheduleForm({
+                      ...scheduleForm,
+                      weekday: Number(e.target.value) as Weekday,
+                    })
+                  }
+                  className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
+                >
+                  {Object.entries(WEEKDAY_LABELS).map(([k, label]) => (
+                    <option key={k} value={k}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Buổi học *</Label>
+                <select
+                  required
+                  value={scheduleForm.session}
+                  onChange={(e) => {
+                    const newSession = e.target.value as SessionType;
+                    const [start] = SESSION_PERIODS[newSession];
+                    setScheduleForm({
+                      ...scheduleForm,
+                      session: newSession,
+                      start_period: start,
+                    });
+                  }}
+                  className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
+                >
+                  {Object.entries(SESSION_LABELS).map(([k, label]) => (
+                    <option key={k} value={k}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Tiết bắt đầu *</Label>
+                <select
+                  required
+                  value={scheduleForm.start_period}
+                  onChange={(e) =>
+                    setScheduleForm({ ...scheduleForm, start_period: Number(e.target.value) })
+                  }
+                  className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
+                >
+                  {validStartPeriods.map((p) => (
+                    <option key={p} value={p}>
+                      Tiết {p} (đến tiết {p + form.periods_per_session - 1})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Phòng học</Label>
+                <input
+                  value={scheduleForm.room}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, room: e.target.value })}
+                  placeholder="B4.12"
+                  className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
+                />
+              </div>
+              <div>
+                <Label>Ngày bắt đầu học *</Label>
+                <input
+                  required
+                  type="date"
+                  value={scheduleForm.start_date ?? ""}
+                  onChange={(e) =>
+                    setScheduleForm({ ...scheduleForm, start_date: e.target.value || null })
+                  }
+                  className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
+                />
+              </div>
+              <div>
+                <Label>Ngày kết thúc học *</Label>
+                <input
+                  required
+                  type="date"
+                  value={scheduleForm.end_date ?? ""}
+                  onChange={(e) =>
+                    setScheduleForm({ ...scheduleForm, end_date: e.target.value || null })
+                  }
+                  className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
+                />
+              </div>
+            </div>
+          </div>
           <div className="col-span-2">
-            <Label>Ghi chú</Label>
+            <Label>Ghi chú (không bắt buộc)</Label>
             <textarea
               value={form.note}
               onChange={(e) => setForm({ ...form, note: e.target.value })}
               rows={2}
+              placeholder="Ghi chú thêm về lớp học phần..."
               className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none resize-y"
             />
           </div>

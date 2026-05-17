@@ -51,28 +51,34 @@ class Grade(models.Model):
         s = float(self.total_score)
         if s >= 8.5:
             return "A"
+        if s >= 8.0:
+            return "B+"
         if s >= 7.0:
             return "B"
+        if s >= 6.5:
+            return "C+"
         if s >= 5.5:
             return "C"
+        if s >= 5.0:
+            return "D+"
         if s >= 4.0:
             return "D"
         return "F"
 
     def compute_gpa_4(self) -> Decimal | None:
-        """Quy đổi điểm 10 sang GPA thang 4 (theo quy chế phổ biến)."""
+        """Quy đổi điểm 10 → GPA thang 4 tuyến tính: gpa_4 = total_score × 0.4.
+
+        - Nếu môn rớt (total_score < 4.0 = F) → gpa_4 = 0.00 (môn không tích luỹ).
+        - Khác với `grade_letter` (vẫn quy chuẩn A/B+/B/C+/C/D+/D/F theo bậc),
+          gpa_4 cho các môn pass tính liên tục để giữ độ chính xác — phù hợp khi
+          cumulative GPA cần phân biệt mịn giữa 2 SV có cùng điểm chữ.
+        """
         if self.total_score is None:
             return None
-        s = float(self.total_score)
-        if s >= 8.5:
-            return Decimal("4.00")
-        if s >= 7.0:
-            return Decimal("3.00")
-        if s >= 5.5:
-            return Decimal("2.00")
-        if s >= 4.0:
-            return Decimal("1.00")
-        return Decimal("0.00")
+        s = Decimal(str(self.total_score))
+        if s < Decimal("4.0"):
+            return Decimal("0.00")
+        return (s * Decimal("0.4")).quantize(Decimal("0.01"))
 
     def save(self, *args, **kwargs):
         self.total_score = self.compute_total()

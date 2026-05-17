@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('code', models.CharField(help_text='VD: 2025-2026-HK1', max_length=24, unique=True)),
                 ('name', models.CharField(max_length=200)),
-                ('term', models.CharField(choices=[('SPRING', 'Học kỳ 1'), ('SUMMER', 'Học kỳ hè'), ('FALL', 'Học kỳ 2')], max_length=8)),
+                ('term', models.CharField(choices=[('SPRING', 'Học kỳ 1'), ('SUMMER', 'Học kỳ 3'), ('FALL', 'Học kỳ 2')], max_length=8)),
                 ('academic_year', models.CharField(help_text='VD: 2025-2026', max_length=12)),
                 ('start_date', models.DateField()),
                 ('end_date', models.DateField()),

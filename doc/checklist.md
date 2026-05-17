@@ -1,6 +1,6 @@
 # Checklist Tiến Độ - Hệ Thống Đăng Ký Môn Học
 
-Tham chiếu: [`plan.md`](./plan.md) (SRS-DKMH v0.2).
+Tham chiếu: [`plan.md`](./plan.md) (SRS-DKMH đã cập nhật §5 BR-001 → 011 và §7.2 schema).
 
 Quy ước:
 
@@ -19,19 +19,21 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 - [x] Khởi tạo Django REST Framework project (`backend/`)
 - [x] Cấu hình PostgreSQL + Docker Compose
-- [x] Cấu hình JWT auth (SimpleJWT) - access 60', refresh 7 ngày
+- [x] Cấu hình JWT auth (SimpleJWT) — access 60', refresh 7 ngày
 - [x] Cấu hình Swagger / OpenAPI (drf-spectacular) tại `/api/docs/`
 - [x] Cấu hình CORS cho frontend (5173, 3000)
-- [x] Custom User model với role `ADMIN / STUDENT / TEACHER`
-- [x] Migration đầu tiên cho app `accounts`
-- [x] Endpoint login/refresh JWT
+- [x] Custom User model với role `ADMIN / STUDENT / TEACHER` + `is_locked` + `phone` + `full_name` (plan §7.2.1)
+- [x] Endpoint login/refresh JWT + `LockedAwareJWTAuthentication` chặn user đã khoá
 - [x] Endpoint quản lý user (Admin only) + `/me`
-- [x] Chặn tạo tài khoản role ADMIN qua API (FR-ADM-ACC-006)
+- [x] Chặn tạo / đổi role ADMIN qua API (FR-ADM-ACC-006)
+- [x] `StandardPagination` — client override `page_size` (max 1000)
+- [x] `HandleProtectedDeleteMixin` — trả 409 friendly khi xoá entity có FK PROTECT
+- [x] `UserProfileFieldsMixin` — auto-sync StudentProfile.major + TeacherProfile.department khi tạo/sửa User
 
 ### 0.2. Frontend skeleton
 
 - [x] Khởi tạo project ReactJS + Vite (TypeScript)
-- [x] Cấu hình Tailwind CSS
+- [x] Cấu hình Tailwind CSS + IBM Plex Sans/Mono
 - [x] Cấu hình Zustand store (persist localStorage)
 - [x] Setup router (react-router v6) + ProtectedRoute theo role
 - [x] Service gọi API + interceptor JWT (auto refresh khi 401)
@@ -47,12 +49,18 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [x] docker-compose production (`docker-compose.prod.yml`)
 - [x] File `.env.production.example`
 - [x] `.dockerignore` cho backend & frontend
-- [x] `.gitignore` ở root project
+- [x] `.gitignore` ở root project (bao gồm `.codex/`, `*.tsbuildinfo`)
+- [x] Service pgAdmin tích hợp trong docker-compose
 
 ### 0.4. Tài liệu
 
-- [x] SRS v0.2 (`plan.md`)
+- [x] SRS (`plan.md`) — đã cập nhật §5 BR-001 → 011 và §7.2 schema
 - [x] README backend
+- [x] Design bundle Anthropic Design (`doc/design-bundle/`)
+- [ ] README root project (mô tả full-stack)
+- [ ] Sơ đồ ERD (TBD trong plan §13)
+- [ ] Sơ đồ use case (TBD trong plan §13)
+- [ ] Sơ đồ luồng đăng ký môn học (TBD trong plan §13)
 
 ---
 
@@ -60,230 +68,252 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 ## 1.1. Data Models & Migrations (plan §7)
 
-- [x] `User` (accounts) - 3 role
-- [x] `Major` (majors) - ngành đào tạo
-- [x] `Curriculum` + `CurriculumCourse` (curriculums) - CTĐT + môn trong CTĐT (knowledge_block, is_required, suggested_semester)
-- [x] `Course` (courses) - môn học + theory/practice hours
-- [x] `Prerequisite` (courses) - môn tiên quyết (self-ref M2M qua through)
-- [x] `Semester` (semesters) - học kỳ + registration_start/end + is_open
-- [x] `ClassSection` (classes) - lớp HP + max/enrolled_count + status
-- [x] `Schedule` (classes) - lịch học (weekday + time_slot + room)
-- [x] `Registration` (registrations) - đăng ký môn
-- [x] `Grade` (grades) - điểm + auto-compute total + grade_letter
-- [x] `Notification` + `NotificationRead` (notifications) - thông báo + audience targeting
-- [x] `StudentProfile` (profiles) - MSSV, major, enrollment_year, gpa, completed_credits
-- [x] `TeacherProfile` (profiles) - mã GV, department, title
-
-### ⚙ Schema audit + hiệu chỉnh theo plan §7
-
-- [x] `Schedule` (đã refactor) — `session` + `start_period` + `end_period` + UniqueConstraint `(class_section, weekday, start_period)`
-- [x] `ClassSection` — `periods_per_session` + indexes + `clean()` enforce teacher khi `status=OPEN`
-- [x] `Registration.save()` — tự đồng bộ `semester` theo `class_section.semester`
-- [x] `Registration` — composite indexes `(student, semester)`, `(class_section, status)`, `(semester, status)`
-- [x] `Course.credits/theory_hours/practice_hours` — Validators
-- [x] `Grade.process/midterm/final_score` — Validators 0–10
-- [x] `StudentProfile.gpa` — Validators 0–10
-- [x] **Seed 5 ngành** CNTT / KTPM / HTTT / KHMT / ATTT (FR-ADM-MAJ-004)
-- [x] Management command `setup_profiles` — backfill profile
-
-### ⚙ Schema audit lần 2 — sau cập nhật plan §7.2
-
-- [x] `Major.duration_years` PositiveSmallInteger (plan §7.2.4) — default 4
-- [x] `Semester.term` CharField → **PositiveSmallInteger 1/2/3** (plan §7.2.9) — data migration `0002_term_to_integer.py`
-- [x] `Grade.gpa_4` DecimalField(3,2) auto-compute từ total_score (plan §7.2.13)
-- [x] Frontend types update: `SemesterTerm = 1 | 2 | 3`, `Major.duration_years`
-- [x] Frontend pages update: `MajorsPage` form + table có duration_years, `SemestersPage` select integer
-- [x] BR-001 đã bỏ check tín chỉ theo plan §5 line 342 (DECISION: không áp dụng kiểm tra tín chỉ)
-- [ ] **Defer**: `Schedule.weekday` đang là PositiveSmallInteger nhưng plan §7.2.11 nói CharField(16) — đụng nhiều code/test, để sau
-- [ ] **Defer**: `User.full_name` (plan §7.2.1) — Django AbstractUser dùng first_name/last_name, có `get_full_name()` đủ dùng
-- [x] Verify: 18/18 tests pass + frontend build 277 kB pass
+- [x] `User` (accounts) - 3 role + `is_locked` + `phone` + `full_name` (plan §7.2.1 — gộp first/last name)
+- [x] `Major` - ngành đào tạo + `duration_years` (plan §7.2.4)
+- [x] Seed 5 ngành CNTT / KTPM / HTTT / KHMT / ATTT (FR-ADM-MAJ-004)
+- [x] `Curriculum` - chương trình đào tạo + `cohort_year` + `total_credits_required`
+- [x] `CurriculumCourse` - bảng trung gian + `knowledge_block` + `is_required` + `suggested_semester`
+- [x] `Course` - môn học + `credits` + `theory_hours` + `practice_hours`
+- [x] `Prerequisite` - môn tiên quyết (M2M qua Course)
+- [x] `Semester` - học kỳ + `term` IntegerField 1/2/3 + `registration_start/end` + `is_open`
+- [x] `ClassSection` - lớp học phần + `periods_per_session` (BR-011) + `enrolled_count` + `max_students`
+- [x] `Schedule` - lịch học + `weekday` + `session` (MORNING/AFTERNOON/EVENING) + `start_period` + `end_period` auto (BR-010)
+- [x] `Registration` - đăng ký môn học + soft delete (CANCELLED)
+- [x] `Grade` - điểm + `total_score` + `gpa_4` + `grade_letter` auto-compute (BR-009)
+- [x] `Notification` + `NotificationRead` - thông báo + trạng thái đã đọc
+- [x] `StudentProfile` - student_code, major, enrollment_year, gpa, completed_credits
+- [x] `TeacherProfile` - teacher_code, department, title
+- [x] Management command `setup_profiles` — backfill profile cho user chưa có
+- [x] Management command `import_curriculum_xlsx` — import CTĐT từ file Excel
+- [x] Script `seed_teachers.py` — seed 15 GV với các khoa khác nhau
+- [x] Script `realign_teacher_departments.py` — đồng bộ khoa GV với Major.department
 
 ## 1.2. Auth & Account API
 
 ### 1.2.1. Auth chung (FR-GEN)
 
 - [x] FR-GEN-001 - `POST /api/auth/login/` (JWT)
+- [x] FR-GEN-001a - Tài khoản `is_locked=True` không login / refresh / dùng access; trả thông báo VN
 - [ ] FR-GEN-002 - `POST /api/auth/logout/` (blacklist refresh token)
 - [ ] FR-GEN-003 - `POST /api/accounts/change-password/`
 - [ ] FR-GEN-004 - Quên mật khẩu (gửi email reset) (SHOULD)
 - [x] FR-GEN-005 - `GET /api/accounts/users/me/`
 - [ ] FR-GEN-006 - `PATCH /api/accounts/users/me/`
-- [x] FR-GEN-007 - Permission class theo role
+- [x] FR-GEN-007 - Permission class theo role (`IsAdminRole`, `IsAdminOrReadOnly`)
 
 ### 1.2.2. Admin quản lý tài khoản (FR-ADM-ACC)
 
-- [x] FR-ADM-ACC-001 - API tạo SV/GV
-- [x] FR-ADM-ACC-002 - API cập nhật user (PATCH/PUT trên ViewSet)
-- [x] FR-ADM-ACC-003 - API khoá/mở khoá (`is_locked`) qua PATCH
-- [x] FR-ADM-ACC-004 - API gán/đổi role qua PATCH
-- [x] FR-ADM-ACC-005 - Query param search/filter users (search + role + is_locked)
-- [x] FR-ADM-ACC-006 - Chặn role=ADMIN khi tạo qua API
+- [x] FR-ADM-ACC-001 - API tạo SV/GV (auto-sync `StudentProfile.major` hoặc `TeacherProfile.department`)
+- [x] FR-ADM-ACC-002 - API cập nhật user (PATCH qua `UserViewSet`)
+- [x] FR-ADM-ACC-003 - Toggle `is_locked` qua PATCH
+- [x] FR-ADM-ACC-004 - API gán/đổi role (qua PATCH, chặn gán ADMIN qua `perform_update`)
+- [x] FR-ADM-ACC-005 - Query param search/filter users (`?search=`, `?role=`, `?is_locked=`)
+- [x] FR-ADM-ACC-006 - Chặn role=ADMIN khi tạo + đổi qua API
+- [x] Backend validation: SV bắt buộc có `student_major`, GV bắt buộc có `teacher_department`
 
 ## 1.3. Admin domain APIs
 
 ### 1.3.1. Ngành đào tạo (FR-ADM-MAJ)
 
-- [x] FR-ADM-MAJ-001 - API thêm ngành (`POST /api/majors/`)
-- [x] FR-ADM-MAJ-002 - API cập nhật ngành (PATCH/PUT)
-- [x] FR-ADM-MAJ-003 - API xoá ngành + flag `is_active` (soft delete qua PATCH)
-- [ ] FR-ADM-MAJ-004 - Seed dữ liệu CNTT, KTPM, HTTT, KHMT, ATTT (migration data)
+- [x] FR-ADM-MAJ-001 - API thêm ngành
+- [x] FR-ADM-MAJ-002 - API cập nhật ngành
+- [x] FR-ADM-MAJ-003 - API xoá ngành (PROTECT khi có liên kết, hoặc `is_active=False`)
+- [x] FR-ADM-MAJ-004 - Seed dữ liệu CNTT, KTPM, HTTT, KHMT, ATTT
 
 ### 1.3.2. Chương trình đào tạo (FR-ADM-CUR)
 
-- [x] FR-ADM-CUR-001 - API tạo CTĐT theo ngành (`POST /api/curriculums/`)
-- [x] FR-ADM-CUR-002 - API cập nhật CTĐT
-- [x] FR-ADM-CUR-003 - API gán môn (`POST /api/curriculum-courses/`)
-- [x] FR-ADM-CUR-004 - Field `is_required` + `knowledge_block` cho môn
-- [x] FR-ADM-CUR-005 - Field `total_credits_required`
+- [x] FR-ADM-CUR-001 - API tạo chương trình theo ngành
+- [x] FR-ADM-CUR-002 - API cập nhật chương trình
+- [x] FR-ADM-CUR-003 - API gán môn học vào chương trình (`POST /api/curriculum-courses/`)
+- [x] FR-ADM-CUR-004 - Field `is_required` cho môn (bắt buộc/tự chọn)
+- [x] FR-ADM-CUR-005 - Field tổng tín chỉ yêu cầu (`total_credits_required`)
+- [x] Field `knowledge_block` (GENERAL / BASIC / MAJOR / ELECTIVE / THESIS)
+- [x] Field `suggested_semester` cho gợi ý kỳ
 
 ### 1.3.3. Môn học (FR-ADM-CRS)
 
-- [x] FR-ADM-CRS-001 - API thêm môn (`POST /api/courses/`)
-- [x] FR-ADM-CRS-002 - API cập nhật môn
-- [x] FR-ADM-CRS-003 - API xoá / ngừng môn (`is_active`)
-- [x] FR-ADM-CRS-004 - Field `credits` + theory_hours / practice_hours
-- [x] FR-ADM-CRS-005 - API gán môn tiên quyết (`POST /api/prerequisites/`)
+- [x] FR-ADM-CRS-001 - API thêm môn học
+- [x] FR-ADM-CRS-002 - API cập nhật môn học
+- [x] FR-ADM-CRS-003 - API xoá / ngừng môn học (PROTECT khi liên kết)
+- [x] FR-ADM-CRS-004 - Field `credits` + `theory_hours` + `practice_hours`
+- [x] FR-ADM-CRS-005 - API gán môn tiên quyết qua `prerequisite_ids` trong CourseSerializer
+- [x] Query param filter `?department=`, `?major=`, `?curriculum=` cho list courses
 
 ### 1.3.4. Học kỳ (FR-ADM-SEM)
 
-- [x] FR-ADM-SEM-001 - API tạo học kỳ (`POST /api/semesters/`)
-- [x] FR-ADM-SEM-002 - API cập nhật thời gian + validation start<end
-- [x] FR-ADM-SEM-003 - API mở/đóng học kỳ (`POST /api/semesters/{id}/open|close/`)
+- [x] FR-ADM-SEM-001 - API tạo học kỳ
+- [x] FR-ADM-SEM-002 - API cập nhật thời gian học kỳ
+- [x] FR-ADM-SEM-003 - API mở / đóng (`POST /api/semesters/{id}/open/`, `/close/`)
 - [x] FR-ADM-SEM-004 - Field `registration_start/end`
+- [x] Validation: `end_date` phải lớn hơn `start_date` khi tạo và cập nhật học kỳ
+- [x] Cho phép `registration_start/end` nằm trước thời gian học kỳ, miễn là `registration_end > registration_start`
 
 ### 1.3.5. Lớp học phần (FR-ADM-CLS)
 
-- [x] FR-ADM-CLS-001 - API tạo lớp HP (`POST /api/class-sections/`)
-- [x] FR-ADM-CLS-002 - API gán GV (FK `teacher`)
-- [x] FR-ADM-CLS-003 - API set lịch học (`POST /api/schedules/`)
+- [x] FR-ADM-CLS-001 - API tạo lớp học phần
+- [x] FR-ADM-CLS-002 - API gán giáo viên (bắt buộc khi status=OPEN qua `clean()`)
+- [x] FR-ADM-CLS-003 - API set lịch học (`Schedule` CRUD qua `/api/schedules/`)
 - [x] FR-ADM-CLS-004 - Field `room` trong Schedule
-- [x] FR-ADM-CLS-005 - Field `max_students` + enrolled_count + is_full
-- [x] FR-ADM-CLS-006 - API cập nhật lớp HP
+- [x] FR-ADM-CLS-005 - Field `max_students` + auto `enrolled_count` qua signal
+- [x] FR-ADM-CLS-006 - API cập nhật lớp học phần
+- [x] BR-011: Field `periods_per_session` (1-5) bắt buộc khi tạo
+- [x] Validation: ngày bắt đầu/kết thúc học của Schedule phải nằm trong `Semester.start_date/end_date`
+- [x] Validation: 1 phòng không thể có 2 lớp trùng thứ + giao tiết + giao khoảng ngày
+- [x] Validation: 1 giáo viên không thể dạy 2 lớp trùng thứ + giao tiết + giao khoảng ngày
 
 ### 1.3.6. Đăng ký môn học - Admin (FR-ADM-REG)
 
 - [x] FR-ADM-REG-001 - API mở đợt đăng ký (`POST /api/semesters/{id}/open/`)
 - [x] FR-ADM-REG-002 - API đóng đợt đăng ký (`POST /api/semesters/{id}/close/`)
-- [ ] FR-ADM-REG-003 - API thống kê SV theo lớp (đã có enrolled_count, cần endpoint aggregate)
-- [x] FR-ADM-REG-004 - Logic detect trùng lịch (BR-004 wire trong RegistrationSerializer) ✓
+- [ ] FR-ADM-REG-003 - API thống kê SV theo lớp (đã có `enrolled_count`, cần endpoint aggregate)
+- [x] FR-ADM-REG-004 - Logic detect trùng lịch (BR-004)
 - [x] FR-ADM-REG-005 - API hủy đăng ký SV (`POST /api/registrations/{id}/cancel/`)
 - [ ] FR-ADM-REG-006 - Endpoint xuất CSV/Excel danh sách đăng ký
+- [x] Filter list registrations theo `?semester=`, `?status=`, `?class_section=`, `?student=`
 
-### 1.3.7. Báo cáo & thống kê (FR-ADM-RPT)
+### 1.3.7. Báo cáo & thống kê (FR-ADM-RPT) ✅ DONE
 
-- [ ] FR-ADM-RPT-001 - API thống kê SV theo môn
-- [ ] FR-ADM-RPT-002 - API thống kê SV theo ngành
-- [ ] FR-ADM-RPT-003 - API thống kê lớp đầy / còn chỗ
+- [x] **`GET /api/reports/admin-summary/?semester=<id>`** — single endpoint trả 7 nhóm thống kê
+- [x] FR-ADM-RPT-001 - Top 10 môn nhiều đăng ký nhất (`top_courses` array)
+- [x] FR-ADM-RPT-002 - Thống kê theo ngành (`by_major`: registrations + students/major)
+- [x] FR-ADM-RPT-003 - Lớp đầy / còn chỗ (`classes`: total/draft/open/closed/cancelled/full)
+- [x] `users` block: count theo role (admin/student/teacher/locked) — không phụ thuộc HK
+- [x] `registrations` block: count theo status (confirmed/pending/cancelled) — theo HK
+- [x] `by_semester` block: 10 HK gần nhất với registrations count (cho bar chart)
+- [x] Permission `IsAdminRole` enforce
 - [ ] FR-ADM-RPT-004 - Xuất Excel / PDF (SHOULD)
 
 ### 1.3.8. Thông báo Admin (FR-ADM-NOT)
 
-- [x] FR-ADM-NOT-001 - API gửi thông báo cho SV (audience=ALL_STUDENTS hoặc recipients cụ thể)
+- [x] Model `Notification` + `NotificationRead`
+- [x] FR-ADM-NOT-001 - API gửi thông báo cho SV (audience=ALL_STUDENTS / SPECIFIC)
 - [x] FR-ADM-NOT-002 - API gửi thông báo cho GV (audience=ALL_TEACHERS)
+- [x] Filter theo role: SV/GV chỉ thấy noti phù hợp + đích danh; Admin thấy tất cả
+- [x] **FR-TEA-CLS-005**: `POST /api/class-sections/{id}/notify/` — GV gửi noti cho SV của lớp phụ trách
+  - Validate GV phụ trách lớp (403 nếu không); Admin gửi được mọi lớp
+  - Auto audience=SPECIFIC, recipients = SV CONFIRMED của lớp
+  - 6 pytest cases pass (positive / 403 other GV / Admin bypass / SV reject / missing title / empty class)
 
 ## 1.4. Student domain APIs
 
 ### 1.4.1. Xem thông tin học tập (FR-STU-INF, FR-STU-CUR)
 
-- [x] FR-STU-INF-001 - API thông tin SV (`GET /api/students/?user=me` hoặc `/api/accounts/users/me/`)
-- [x] FR-STU-CUR-001 - API xem CTĐT (`GET /api/curriculums/?major=X`)
-- [x] FR-STU-CUR-002 - API danh sách môn theo ngành (qua curriculum)
-- [x] FR-STU-CUR-003 - Trả về flag bắt buộc / tự chọn (field `is_required`)
-- [ ] FR-STU-CUR-004 - API tính tiến độ hoàn thành CTĐT (SHOULD - cần endpoint riêng)
+- [x] FR-STU-INF-001 - API thông tin cá nhân SV (`/me` + `StudentProfile`)
+- [x] FR-STU-CUR-001 - `GET /api/curriculums/my/` — auto match CTĐT theo `major` + `enrollment_year` của SV (fallback cohort gần nhất)
+- [x] FR-STU-CUR-002 - API trả danh sách môn trong CTĐT (qua nested `curriculum_courses`)
+- [x] FR-STU-CUR-003 - Trả về flag `is_required` (bắt buộc / tự chọn)
+- [ ] FR-STU-CUR-004 - API tính tiến độ hoàn thành CTĐT — cần aggregate với Registration + Grade (SHOULD)
 
 ### 1.4.2. Xem môn học được đăng ký (FR-STU-CRS)
 
-- [x] FR-STU-CRS-001 - API danh sách lớp HP (`GET /api/class-sections/`)
-- [x] FR-STU-CRS-002 - Filter theo `?semester=X`
-- [ ] FR-STU-CRS-003 - Filter theo major (cần thêm qua course→curriculum)
-- [x] FR-STU-CRS-004 - Detail trả về môn + tín chỉ + tiên quyết (CourseSerializer)
+- [ ] FR-STU-CRS-001 - API danh sách lớp học phần SV được phép đăng ký
+- [x] FR-STU-CRS-002 - Filter theo `semester_id` (query param)
+- [ ] FR-STU-CRS-003 - Filter theo `major_id`
+- [ ] FR-STU-CRS-004 - Detail trả về môn + tín chỉ + tiên quyết
 
 ### 1.4.3. Đăng ký môn học thủ công (FR-STU-REG)
 
-- [x] FR-STU-REG-001 - API chọn course (qua Course filter)
-- [x] FR-STU-REG-002 - API chọn ClassSection (`GET /api/class-sections/?course=X`)
-- [x] FR-STU-REG-003 - Filter theo teacher (`?teacher=X`)
-- [ ] FR-STU-REG-004 - Logic lọc theo ngày/ca học (cần filter qua Schedule)
+- [x] FR-STU-REG-001 - API chọn course (qua POST `/api/registrations/`)
+- [x] FR-STU-REG-002 - API chọn ClassSection
+- [ ] FR-STU-REG-003 - Logic lọc theo teacher (cần endpoint riêng)
+- [ ] FR-STU-REG-004 - Logic lọc theo ngày/ca học
 - [x] FR-STU-REG-005 - Validation trùng lịch trước khi commit (BR-004) ✓
 - [x] FR-STU-REG-006 - Validation môn tiên quyết (BR-002) ✓
-- [x] FR-STU-REG-007 - Validation giới hạn tín chỉ (BR-001) ✓
-- [x] FR-STU-REG-008 - `POST /api/registrations/` xác nhận (CRUD đã có)
-- [x] FR-STU-REG-009 - `DELETE /api/registrations/{id}/` (CRUD đã có)
+- [x] ~~FR-STU-REG-007 - Validation giới hạn tín chỉ~~ — **BR-001 đảo: KHÔNG áp dụng** (plan §5)
+- [x] FR-STU-REG-008 - `POST /api/registrations/` xác nhận
+- [x] FR-STU-REG-009 - `POST /api/registrations/{id}/cancel/` (BR-006)
 
-### 1.4.4. Tự động tạo TKB (FR-STU-TKB)
+### 1.4.4. Tự động tạo TKB (FR-STU-TKB) ✅ DONE
 
-- [ ] FR-STU-TKB-001 - API nhận danh sách courses đăng ký
-- [ ] FR-STU-TKB-002 - Input giáo viên ưu tiên
-- [ ] FR-STU-TKB-003 - Input ngày học ưu tiên
-- [ ] FR-STU-TKB-004 - Input ca học ưu tiên
-- [ ] FR-STU-TKB-005 - Thuật toán search tổ hợp TKB không trùng
-- [ ] FR-STU-TKB-006 - Trả về nhiều phương án (SHOULD)
-- [ ] FR-STU-TKB-007 - Score & sort phương án (SHOULD)
-- [ ] FR-STU-TKB-008 - Trả về 409/422 khi không tìm được
-- [ ] FR-STU-TKB-009 - Endpoint commit phương án đã chọn
+- [x] **`POST /api/auto-schedule/suggest/`** — endpoint mới (chỉ SV)
+- [x] **Algorithm module** `apps/registrations/auto_schedule.py` — CSP: Backtracking + Forward Checking + MRV heuristic
+- [x] Hard constraints: BR-002 (prereq), BR-003 (HK đang mở), BR-004 (không trùng lịch + existing registrations), BR-005 (lớp chưa đầy), CTĐT match, môn chưa học
+- [x] Soft constraints (4 sub-scores): weekday avoid, preferred session, preferred teacher, **free_day** (nhiều ngày nghỉ)
+- [x] **4 PriorityPreset weighting modes**: BALANCED / TEACHER_FIRST / SESSION_FIRST / COMPACT_FIRST (0.55/0.15)
+- [x] Reuse logic `_schedules_overlap` từ RegistrationSerializer (BR-004)
+- [x] `AutoScheduleError` cho missing course / missing prereq / empty domain
+- [x] Cap `max_results` (default 50, max 200) — chặn combinatorial explosion
+- [x] 13 unit tests pass (smoke, conflict, prereq, full, scoring, preset, cap, endpoint)
 
 ### 1.4.5. Xem TKB & lịch sử (FR-STU-SCH, FR-STU-HIS)
 
-- [ ] FR-STU-SCH-001 - API TKB theo tuần (cần endpoint riêng aggregate)
-- [ ] FR-STU-SCH-002 - API TKB theo học kỳ (có thể derive từ registrations)
+- [ ] FR-STU-SCH-001 - API TKB theo tuần
+- [ ] FR-STU-SCH-002 - API TKB theo học kỳ
 - [ ] FR-STU-SCH-003 - Endpoint xuất TKB (PDF/Excel) (SHOULD)
-- [x] FR-STU-HIS-001 - API lịch sử đăng ký (`GET /api/registrations/`)
+- [x] FR-STU-HIS-001 - API lịch sử đăng ký (qua `GET /api/registrations/?student=me`)
 
 ### 1.4.6. Nhận thông báo (FR-STU-NOT)
 
 - [ ] FR-STU-NOT-001 - Sinh notification khi mở/đóng đăng ký (signal)
-- [ ] FR-STU-NOT-002 - Sinh notification khi lịch học thay đổi (signal)
-- [ ] FR-STU-NOT-003 - Sinh notification khi lớp bị hủy (signal)
-- [x] FR-STU-NOT-004 - API list notifications của user (`GET /api/notifications/` lọc theo audience)
+- [ ] FR-STU-NOT-002 - Sinh notification khi lịch học thay đổi
+- [ ] FR-STU-NOT-003 - Sinh notification khi lớp bị hủy
+- [x] FR-STU-NOT-004 - API list notifications của user (filter theo audience)
+- [x] API `POST /notifications/{id}/mark-read/` — đánh dấu đã đọc
+- [x] API `POST /notifications/mark-all-read/` — đánh dấu đọc tất cả
+- [x] API `GET /notifications/unread-count/` — số chưa đọc cho badge
+- [x] Field `is_read` trong NotificationSerializer (computed per user)
+- [x] API `POST /notifications/` — SV chỉ gửi thông báo đích danh cho GV của lớp mình học (`Registration.CONFIRMED`)
+- [x] API `GET /students/me/` — SV xem hồ sơ cá nhân
+- [x] API `GET /teachers/me/` — GV xem hồ sơ cá nhân
 
 ## 1.5. Teacher domain APIs
 
 ### 1.5.1. Xem thông tin & lớp học phần (FR-TEA-INF, FR-TEA-CLS, FR-TEA-SCH)
 
-- [x] FR-TEA-INF-001 - API thông tin GV (dùng chung `/api/accounts/users/me/` hoặc `/api/teachers/`)
-- [x] FR-TEA-CLS-001 - API danh sách lớp được phân công (`GET /api/class-sections/?teacher=X`)
-- [ ] FR-TEA-SCH-001 - API TKB cá nhân GV (cần endpoint aggregate)
-- [x] FR-TEA-CLS-002 - API danh sách SV trong lớp (`GET /api/registrations/?class_section=X`)
-- [x] FR-TEA-CLS-003 - Trường `enrolled_count` / `max_students` + `is_full`
-- [x] FR-TEA-CLS-004 - Detail trả lịch học + phòng (ScheduleSerializer nested)
-- [ ] FR-TEA-CLS-005 - API gửi thông báo cho lớp (MAY - cần action endpoint)
+- [x] FR-TEA-INF-001 - API thông tin GV (`/me` + `TeacherProfile`)
+- [x] FR-TEA-CLS-001 - API danh sách lớp được phân công (`GET /api/class-sections/?teacher=me`)
+- [ ] FR-TEA-SCH-001 - API TKB cá nhân GV (endpoint aggregate)
+- [x] FR-TEA-CLS-002 - API danh sách SV trong lớp (Registration filter)
+- [x] FR-TEA-CLS-003 - Field `enrolled_count` / `max_students` + `is_full`
+- [x] FR-TEA-CLS-004 - Detail trả lịch học + phòng
+- [ ] FR-TEA-CLS-005 - API gửi thông báo cho lớp (MAY)
 
 ### 1.5.2. Nhập điểm (FR-TEA-GRD)
 
-- [x] FR-TEA-GRD-001 - API nhập điểm quá trình (`POST/PATCH /api/grades/` field process_score)
-- [x] FR-TEA-GRD-002 - API nhập điểm giữa kỳ (field midterm_score)
-- [x] FR-TEA-GRD-003 - API nhập điểm cuối kỳ (field final_score)
-- [ ] FR-TEA-GRD-004 - Validation thời hạn cập nhật [!] TBD
+- [x] FR-TEA-GRD-001 - API nhập điểm quá trình (`POST /api/grades/`)
+- [x] FR-TEA-GRD-002 - API nhập điểm giữa kỳ
+- [x] FR-TEA-GRD-003 - API nhập điểm cuối kỳ
+- [x] FR-TEA-GRD-004 - Validation thời hạn (BR-008: 2 tuần sau end_date)
 - [ ] FR-TEA-GRD-005 - Endpoint xuất bảng điểm Excel
 
 ### 1.5.3. Khác (FR-TEA-REQ, FR-TEA-EXP, FR-TEA-NOT)
 
 - [ ] FR-TEA-REQ-001 - API đề xuất thay đổi lịch dạy (MAY)
-- [ ] FR-TEA-EXP-001 - Endpoint xuất danh sách SV (Excel)
-- [x] FR-TEA-NOT-001 - API list notifications GV (chung `/api/notifications/`)
+- [ ] FR-TEA-EXP-001 - Endpoint xuất danh sách SV
+- [x] FR-TEA-NOT-001 - API list notifications của GV
 
 ## 1.6. Business Rules (plan §5)
 
-- [x] BR-001 - Giới hạn tín chỉ max/kỳ (env `REG_MAX_CREDITS`, default 24) — check trong RegistrationSerializer
-- [x] BR-002 - Check môn tiên quyết khi đăng ký (so với grade.total_score >= passing)
+- [x] BR-001 - **Hệ thống KHÔNG áp dụng** giới hạn tín chỉ min/max (đảo ngược theo plan)
+- [x] BR-002 - Check môn tiên quyết khi đăng ký (`grade.total_score >= GRADE_PASSING_SCORE`)
 - [x] BR-003 - Chỉ cho đăng ký khi `Semester.is_open` + trong cửa sổ `registration_start/end`
-- [x] BR-004 - Chặn đăng ký khi trùng `(weekday, time_slot)` với reg khác
+- [x] BR-004 - Chặn đăng ký khi overlap `(weekday, [start_period, end_period])`
 - [x] BR-005 - Chặn đăng ký khi `enrolled_count >= max_students`
-- [x] BR-006 - Áp dụng thời hạn hủy (registration_end + GRACE_DAYS) — Admin bypass
-- [x] BR-007 - GV chỉ nhập điểm cho lớp được phân công + thời hạn cập nhật điểm
+- [x] BR-006 - Cho phép hủy đăng ký trong thời gian đăng ký (Admin bypass deadline)
+- [x] BR-007 - GV chỉ nhập điểm cho lớp được phân công
+- [x] BR-008 - GV cập nhật điểm trong 2 tuần (env `GRADE_UPDATE_GRACE_DAYS=14`)
+- [x] BR-009 - Công thức tổng kết: 10% QT + 40% GK + 50% CK (`Grade.compute_total`)
+- [x] BR-010 - TKB 15 tiết/ngày, sáng 1-5 / chiều 6-10 / tối 11-15 (`Schedule.SESSION_PERIODS`)
+- [x] BR-011 - Field `periods_per_session` bắt buộc khi tạo ClassSection
 - [x] **Bonus**: Signal auto cập nhật `enrolled_count` khi reg confirm/cancel
 - [x] **Bonus**: Soft delete reg (DELETE → status=CANCELLED + cancelled_at)
-- [x] **Bonus**: Endpoint riêng `POST /api/registrations/{id}/cancel/` với reason
+- [x] **Bonus**: Endpoint `POST /api/registrations/{id}/cancel/` với reason
 
 ## 1.7. Backend testing
 
-- [x] Setup pytest-django + conftest fixtures (admin/teacher/student users, profiles, semesters, course/class factories)
-- [x] API test cho student registration (BR-001 → BR-006) — 14 cases
-- [x] API test cho grade entry (BR-007 + auto-compute total + thời hạn cập nhật) — 4 cases
-- [ ] Unit test cho models (validators, custom methods)
+- [x] Setup pytest-django + conftest fixtures
+- [x] API test BR-002 → BR-006 (Registration) — 14 cases
+- [x] API test BR-007 + BR-008 + BR-009 (Grade) — 4 cases
+- [x] API test accounts (locked user / profile theo role) — 11 cases
+- [x] API test courses (prerequisites + filter) — 3 cases
+- [x] API test majors (`duration_years`) — 1 case
+- [x] API test classes/notify_class + schedule conflict/date validations + atomic class schedule — 12 cases
+- [x] API test semesters date range + registration window trước học kỳ — 3 cases
+- [x] **Tổng: 48/48 tests pass**
+- [ ] Unit test cho models (validators, custom methods, `Schedule.clean()`)
 - [ ] API test cho auth flow (login / refresh / 401 → refresh)
-- [ ] API test cho admin CRUD (Major / Course / Semester / ClassSection)
 - [ ] API test cho TKB algorithm
+- [x] API test cho Schedule conflict detection: phòng/GV giao tiết và khoảng ngày
 
 ---
 
@@ -293,11 +323,25 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 - [x] **Design system** — IBM Plex Sans/Mono, navy formal palette, tailwind theme tokens
 - [x] **UI primitives** — Icon (38 line-icons), Button (5 variants), Card, Badge (5 tones), Stat, Input
-- [x] **Sidebar** — dark navy `#0e1c33`, section grouping, nav theo role với icon + label
-- [x] **TopBar** — breadcrumb tự sinh theo URL, search bar, bell + dot, avatar dropdown logout
-- [x] **Placeholder page** — dùng chung cho 22 route con (đang phát triển + FR-ID tham chiếu)
-- [x] **Routing đầy đủ** — toàn bộ nav trong sidebar đều ấn được, render placeholder + highlight active
-- [x] FR-GEN-001 - Trang Login 3-portal (Sinh viên navy / GV teal / Admin tím) với 2FA toggle
+- [x] **Sidebar** — dark navy `#0e1c33`, section grouping, nav theo role, avatar dùng `getInitials()`
+- [x] **TopBar** — breadcrumb tự sinh, search bar, bell, avatar dropdown logout
+- [x] **Placeholder page** — dùng chung cho route con chưa làm + FR-ID tham chiếu
+- [x] **Routing đầy đủ** — toàn bộ nav trong sidebar đều ấn được
+- [x] **Modal** component (ESC + backdrop click + 3 size)
+- [x] **Table** component (typed `Column<T>`, mono cells, empty state, loading)
+- [x] **Pagination** component (Previous/Next + page numbers + range info, wired vào 8 list page)
+- [x] **ScheduleGrid** component — grid 7 ngày × 15 tiết, 8 màu, click event, session boundaries
+- [x] **`extractApiError`** util — đọc lỗi DRF
+- [x] **API services typed** (`users`, `majors`, `courses`, `semesters`, `curriculums`, `classes`, `teachers`, `registrations`, `notifications`, `students`)
+- [x] **`semesterLabel(suggested, cohortYear)`** util — derive nhãn "HK X - Năm học YYYY-YYYY"
+- [x] **`getInitials(fullName)`** util — chữ cái đầu cho avatar
+- [x] FR-GEN-001 - Trang Login 3-portal (SV navy / GV teal / Admin tím) với 2FA toggle + xử lý error tài khoản khoá
+- [x] **Tách Login thành 2 URL riêng** — `/login` (SV+GV, tab switcher 2 role) và `/admin/login` (Admin, purple, không 2FA)
+  - [x] Helper `loginPathForRole` + `loginPathForPathname` trong `lib/routes.ts`
+  - [x] `ProtectedRoute` redirect đúng cổng theo `location.pathname` (`/admin/*` → `/admin/login`)
+  - [x] `AccountMenu.handleLogout` redirect về login path đúng role
+  - [x] Frontend-only role enforcement: login sai cổng → logout + error message (backend `/auth/login/` không đổi)
+  - [x] Footer cross-link: `/login` ↔ `/admin/login`
 - [x] FR-GEN-002 - Nút Logout trong TopBar dropdown
 - [ ] FR-GEN-003 - Form đổi mật khẩu
 - [ ] FR-GEN-004 - Form quên mật khẩu (SHOULD)
@@ -308,114 +352,127 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [ ] Confirm dialog component dùng chung
 - [x] Loading state cho App bootstrap (spinner ĐK)
 - [ ] Skeleton loader cho list / table
-- [x] **Modal** component (with ESC + backdrop click + size sm/md/lg)
-- [x] **Table** component (typed Column<T>, mono cells, empty state, loading)
-- [x] **Pagination** component — Previous/Next + page numbers + range info (đã wire vào 4 list page)
-- [x] **`extractApiError`** util — đọc lỗi DRF (field errors / detail / non_field_errors)
-- [x] **API services** (`majors.ts`, `courses.ts`, `semesters.ts`, `curriculums.ts`) typed + accept `page` / `page_size`
-- [x] Backend `config/pagination.StandardPagination` — cho phép client override `page_size` (max 1000)
-- [x] **HandleProtectedDeleteMixin** — backend trả 409 + message thân thiện khi xoá entity có FK liên kết
 
-### 2.1.1. Dashboard skeleton (UI mockup với dữ liệu mẫu)
+### 2.1.1. Dashboard 3 role (real API data) ✅ DONE
 
-- [x] Dashboard Admin — 4 KPI + tiến độ đăng ký + cần xem xét + activity feed
-- [x] Dashboard Sinh viên — 4 KPI + danh sách môn đăng ký + thông báo
-- [x] Dashboard Giáo viên — 4 KPI + grid 4 lớp phụ trách
+- [x] **Dashboard Admin** (`/admin`) — 4 KPI từ API (SV/GV/Lớp HP/Đăng ký) + tỷ lệ lớp đầy + 5 lối tắt + 5 noti gần đây
+- [x] **Dashboard Sinh viên** (`/student`) — 4 KPI (TC kỳ này/GPA/TC tích lũy/% CTĐT) + greeting theo giờ + môn đăng ký + thông báo
+- [x] **Dashboard Giáo viên** (`/teacher`) — 4 KPI (lớp/SV/đăng ký/% nhập điểm) + grid 6 lớp với schedule + thông báo
+- [x] Tất cả gọi API thật: `listUsers`/`listSemesters`/`listClassSections`/`listRegistrations`/`listGrades`/`listNotifications`/`getMyCurriculum`/`getMyTeacherProfile`
+- [x] Loading state · empty state · error banner
 
 ## 2.2. Admin UI
 
-> Tất cả 10 route admin (`/admin/accounts` → `/admin/settings`) đã có **placeholder** kèm FR-ID tham chiếu. Implement chi tiết theo flow: backend model → backend API → frontend page.
+### 2.2.1. Quản lý tài khoản (FR-ADM-ACC) ✅ DONE
 
-### 2.2.1. Quản lý tài khoản (FR-ADM-ACC)
+- [x] Route `/admin/accounts` — trang thật
+- [x] Trang danh sách + search + pagination
+- [x] Filter theo role (ADMIN/TEACHER/STUDENT) + trạng thái (locked/active)
+- [x] Modal tạo SV/GV với form đầy đủ (username, password ≥8 chars, email, full_name, role, phone)
+- [x] Modal cập nhật tài khoản (username readonly, không hiển thị password)
+- [x] Dropdown chọn role STUDENT/TEACHER (chặn ADMIN ở UI + BE)
+- [x] Field `student_major` (dropdown từ Major) khi role=STUDENT
+- [x] Field `teacher_department` (dropdown từ Major.department) khi role=TEACHER
+- [x] Action toggle khoá/mở khoá + chặn tự khoá chính mình
+- [x] Modal xác nhận xoá + chặn xoá Admin / xoá chính mình
+- [x] Badge "Bạn" cho user đang đăng nhập + tooltip giải thích nút disabled
 
-- [x] Route placeholder `/admin/accounts`
-- [ ] Trang danh sách tài khoản + table + search/filter
-- [ ] Modal tạo SV/GV (chặn role ADMIN ở UI)
-- [ ] Modal cập nhật tài khoản
-- [ ] Toggle khoá/mở khoá
-- [ ] Dropdown đổi role
-
-### 2.2.2. Quản lý ngành đào tạo (FR-ADM-MAJ)
+### 2.2.2. Quản lý ngành đào tạo (FR-ADM-MAJ) ✅ DONE
 
 - [x] Route `/admin/majors` — trang thật
-- [x] Trang danh sách table + search box (`?search=`)
-- [x] Modal tạo ngành mới
-- [x] Modal sửa ngành
-- [x] Modal xác nhận xoá
-- [x] Toggle `is_active` qua field trong form
+- [x] Trang danh sách + search + pagination
+- [x] Modal tạo / sửa ngành (form có `duration_years`)
+- [x] Modal xác nhận xoá + thông báo 409 friendly khi có liên kết
 
-### 2.2.3. Quản lý chương trình đào tạo (FR-ADM-CUR)
+### 2.2.3. Quản lý chương trình đào tạo (FR-ADM-CUR) ✅ DONE
 
 - [x] Route `/admin/curriculum` — trang thật
-- [x] Trang danh sách CTĐT theo ngành (filter major + search)
+- [x] Trang danh sách CTĐT (filter major + search + pagination)
 - [x] Trang chi tiết `/admin/curriculum/:id` + nested CurriculumCourse
 - [x] UI phân loại bắt buộc / tự chọn (checkbox + Badge)
 - [x] UI chọn khối kiến thức (Đại cương / Cơ sở ngành / Chuyên ngành / Tự chọn / Tốt nghiệp)
-- [x] UI assign học kỳ gợi ý + group view by HK
-- [x] UI thêm môn vào CTĐT (modal với dropdown chọn course)
-- [x] UI gỡ môn khỏi CTĐT
-- [x] UI quản lý tổng tín chỉ yêu cầu (field trong form)
+- [x] UI gán học kỳ gợi ý + group view by HK với nhãn đầy đủ "HK X - Năm học YYYY-YYYY"
+- [x] UI thêm / sửa / gỡ môn trong CTĐT (modal)
+- [x] UI quản lý tổng tín chỉ yêu cầu
 - [x] Stats: tổng môn / tổng TC / bắt buộc vs tự chọn / số HK
+- [x] **Bonus**: Management command `import_curriculum_xlsx` import CTĐT từ Excel
 
-### 2.2.4. Quản lý môn học (FR-ADM-CRS)
+### 2.2.4. Quản lý môn học (FR-ADM-CRS) ✅ DONE
 
 - [x] Route `/admin/courses` — trang thật
-- [x] Trang danh sách + CRUD môn học (form full với credits / tiết LT / tiết TH)
-- [x] UI hiển thị + chỉnh tín chỉ
-- [x] UI hiển thị môn tiên quyết dạng badge (chỉ display)
-- [x] UI xoá môn học (modal confirm)
-- [x] Đổi label "giờ" → "tiết" cho LT/TH theo yêu cầu nghiệp vụ
-- [ ] UI gán môn tiên quyết qua multi-select (cần thêm endpoint prerequisite riêng)
+- [x] Trang danh sách + CRUD môn học (form: credits / tiết LT / tiết TH)
+- [x] Search + pagination
+- [x] Filter theo Khoa / Ngành / CTĐT (cascading dropdowns)
+- [x] UI hiển thị tiên quyết dạng badge + multi-select autocomplete trong form
+- [x] UI xoá môn học (modal confirm + thông báo 409 friendly)
+- [x] Label "tiết" (thay "giờ") cho LT/TH
 
-### 2.2.5. Quản lý học kỳ (FR-ADM-SEM)
+### 2.2.5. Quản lý học kỳ (FR-ADM-SEM) ✅ DONE
 
 - [x] Route `/admin/semesters` — trang thật
 - [x] Trang danh sách + CRUD học kỳ
+- [x] Field `term` IntegerChoices 1/2/3 (theo plan §7.2.9)
 - [x] UI mở/đóng học kỳ (nút Open/Close gọi action endpoint)
-- [x] UI thiết lập `start_date`, `end_date`, `registration_start`, `registration_end` (datetime-local)
+- [x] UI thiết lập `start_date`, `end_date`, `registration_start`, `registration_end`
 
-### 2.2.6. Quản lý lớp học phần (FR-ADM-CLS)
+### 2.2.6. Quản lý lớp học phần (FR-ADM-CLS) ✅ DONE
 
 - [x] Route `/admin/classes` — trang thật
-- [x] Trang danh sách lớp + filter theo học kỳ / trạng thái + search + pagination
+- [x] Trang danh sách + filter theo học kỳ / trạng thái + search + pagination
 - [x] CRUD lớp học phần (form: code, course, semester, teacher, periods/buổi, sĩ số, status, note)
 - [x] Dropdown gán GV cho lớp (fetch toàn bộ TeacherProfile)
 - [x] Route `/admin/classes/:id` — chi tiết lớp + 4 KPI stats
 - [x] UI thiết lập lịch học hàng tuần (table + add/edit/delete schedule)
-- [x] UI chọn buổi (Sáng/Chiều/Tối) + start_period (validate theo session range)
-- [x] UI thiết lập phòng + date range tùy chọn (lịch riêng)
-- [x] UI thiết lập sĩ số tối đa + hiển thị enrolled_count
-- [x] Badge trạng thái (DRAFT/OPEN/CLOSED/CANCELLED) + Badge "Đầy" khi enrolled >= max
+- [x] UI chọn buổi (Sáng/Chiều/Tối) + start_period validate theo session range (BR-010)
+- [x] UI thiết lập phòng + date range tùy chọn
+- [x] UI thiết lập sĩ số tối đa + hiển thị enrolled_count + Badge "Đầy"
+- [x] Badge trạng thái (DRAFT/OPEN/CLOSED/CANCELLED)
 
-### 2.2.7. Quản lý đăng ký môn học (FR-ADM-REG)
+### 2.2.7. Quản lý đăng ký môn học (FR-ADM-REG) ✅ DONE
 
-- [x] Route placeholder `/admin/registrations`
-- [ ] UI mở / đóng đợt đăng ký
-- [ ] Trang theo dõi số SV đăng ký theo lớp
-- [ ] UI hủy đăng ký cho SV (modal lý do)
-- [ ] Nút xuất danh sách đăng ký
+- [x] Route `/admin/registrations` — trang thật
+- [x] Trang danh sách đăng ký + search MSSV/mã lớp + pagination
+- [x] Filter theo học kỳ / lớp HP / trạng thái
+- [x] KPI stats: tổng / confirmed / cancelled / pending
+- [x] UI huỷ đăng ký cho SV (modal lý do, soft cancel)
+- [x] UI xoá vĩnh viễn bản ghi (cho data lỗi/test)
+- [x] Mở / đóng đợt đăng ký vẫn ở SemestersPage
+- [ ] Nút xuất CSV/Excel danh sách đăng ký
 
-### 2.2.8. Báo cáo & thống kê (FR-ADM-RPT)
+### 2.2.8. Báo cáo & thống kê (FR-ADM-RPT) ✅ DONE
 
-- [x] Route placeholder `/admin/reports`
-- [ ] Trang dashboard biểu đồ thống kê SV theo môn
+- [x] **Route `/admin/reports`** — trang thực (bỏ Placeholder)
+- [x] `api/reports.ts` — `getAdminReportsSummary()` + types
+- [x] **6 section**:
+  1. Tài khoản hệ thống — 5 mini-stat (Tổng/SV/GV/Admin/Khoá)
+  2. Lớp HP — Stat tổng + 4 status row + progress bar tỷ lệ đầy
+  3. Đăng ký môn — Stat CONFIRMED + 2 row PENDING/CANCELLED
+  4. Top 10 môn nhiều đăng ký — table 5 cột
+  5. Thống kê theo ngành — table (mã/tên/SV/đăng ký)
+  6. Đăng ký qua các HK — bar chart đơn giản 10 HK gần nhất
+- [x] Header dropdown chọn HK → auto reload data
+- [ ] Nút export Excel/PDF (defer — FR-ADM-RPT-004)
 - [ ] Trang thống kê SV theo ngành
 - [ ] Trang thống kê lớp đầy / còn chỗ
 - [ ] Nút export Excel / PDF (SHOULD)
 
-### 2.2.9. Gửi thông báo (FR-ADM-NOT)
+### 2.2.9. Gửi thông báo (FR-ADM-NOT) ✅ DONE
 
-- [x] Route placeholder `/admin/notifications`
-- [ ] Trang soạn + gửi thông báo cho SV
-- [ ] Trang soạn + gửi thông báo cho GV
-- [ ] Chọn người nhận (toàn bộ / theo lớp / theo ngành)
+- [x] Route `/admin/notifications` — trang thật
+- [x] Trang danh sách thông báo đã gửi + search + pagination
+- [x] Modal **Soạn thông báo**: title / body (textarea) / category / audience
+- [x] Audience: ALL / ALL_STUDENTS / ALL_TEACHERS / SPECIFIC
+- [x] Khi chọn SPECIFIC: autocomplete search user (theo username / full_name / email), chips selected
+- [x] Badge category (5 tone màu) + audience (4 tone)
+- [x] Modal **Xem chi tiết** hiển thị nội dung đầy đủ + danh sách người nhận
+- [x] Modal xác nhận xoá
 
 ### 2.2.10. Cấu hình hệ thống
 
 - [x] Route placeholder `/admin/settings`
-- [ ] UI cấu hình giới hạn tín chỉ min/max
 - [ ] UI cấu hình thời hạn hủy đăng ký
-- [ ] UI cấu hình thời hạn cập nhật điểm
+- [ ] UI cấu hình thời hạn cập nhật điểm (BR-008)
+- [x] BR-001 đã bỏ — không còn UI cấu hình tín chỉ min/max
 
 ## 2.3. Student UI
 
@@ -423,10 +480,20 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 
 ### 2.3.1. Xem thông tin học tập (FR-STU-INF, FR-STU-CUR)
 
-- [x] Route placeholder `/student/curriculum`, `/student/profile`
-- [ ] Trang chương trình đào tạo của ngành
-- [ ] Hiển thị danh sách môn + flag bắt buộc / tự chọn
-- [ ] Hiển thị tiến độ hoàn thành (SHOULD)
+- [x] **Route `/student/profile`** — trang hồ sơ cá nhân SV
+  - Avatar gradient navy + tên + MSSV
+  - Card "Thông tin học vụ": ngành, khóa (K2026), GPA, TC đã hoàn thành
+  - Card "Thông tin liên hệ": username, email, phone, trạng thái bảo mật
+  - 4 KPI: GPA / TC tích luỹ / Số năm đào tạo / Trạng thái
+- [x] **Route `/student/curriculum`** — trang thật, gọi `GET /api/curriculums/my/`
+- [x] Trang chương trình đào tạo của ngành (header + 4 KPI stats)
+- [x] Tỷ lệ hoàn thành CTĐT (progress bar TC vs yêu cầu)
+- [x] Grid phân bố 5 khối kiến thức (Đại cương/Cơ sở ngành/Chuyên ngành/Tự chọn/Tốt nghiệp)
+- [x] Hiển thị danh sách môn nhóm theo học kỳ với nhãn "HK X - Năm học YYYY-YYYY"
+- [x] Mỗi môn: code / tên / TC / khối kiến thức (badge) / bắt buộc-tự chọn (badge)
+- [x] Empty state khi SV không có CTĐT match
+- [ ] Hiển thị tiến độ hoàn thành môn (đã học / đang học / chưa học) — cần Grade data
+- [ ] Filter / sort theo khối kiến thức
 
 ### 2.3.2. Xem môn học được đăng ký (FR-STU-CRS)
 
@@ -435,66 +502,117 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 - [ ] Filter theo ngành
 - [ ] Modal chi tiết môn (tín chỉ, tiên quyết, các lớp mở)
 
-### 2.3.3. Đăng ký môn học thủ công (FR-STU-REG)
+### 2.3.3. Đăng ký môn học thủ công (FR-STU-REG) ✅ DONE
 
-- [x] Route placeholder `/student/register`
-- [ ] UI chọn môn → chọn lớp học phần
-- [ ] UI lọc theo GV (khi nhiều GV)
-- [ ] UI chọn ngày / ca học mong muốn
-- [ ] Hiển thị warning trùng lịch / thiếu tiên quyết / vượt tín chỉ
-- [ ] Confirm modal xác nhận đăng ký
-- [ ] Action hủy đăng ký
+- [x] **Route `/student/register`** — trang thật
+- [x] Dropdown chọn học kỳ (default = học kỳ đang mở)
+- [x] List lớp HP `status=OPEN` của học kỳ + search theo mã/tên
+- [x] Hiển thị: mã lớp / môn / TC / GV / lịch học / sĩ số (đỏ khi đầy)
+- [x] Badge "Đã đăng ký" cho lớp SV đã đăng ký
+- [x] Nút **Đăng ký** disabled khi: lớp đầy / học kỳ chưa mở
+- [x] Modal **Xác nhận** hiển thị chi tiết lớp + lịch học + thông báo các BR sẽ check
+- [x] Hiển thị error backend friendly (BR-002 → 006)
+- [x] Success banner sau khi đăng ký thành công (auto-hide 4s)
+- [x] Card "Lớp đã đăng ký" hiển thị toàn bộ reg trong kỳ + nút Huỷ
+- [x] Modal huỷ đăng ký với lý do
+- [x] Warning banner khi học kỳ chưa mở
+- [x] Stats: lớp đã đăng ký / tổng TC / lớp mở của kỳ
 
-### 2.3.4. Tự động tạo TKB (FR-STU-TKB)
+### 2.3.4. Tự động tạo TKB (FR-STU-TKB) ✅ DONE
 
-- [x] Route placeholder `/student/auto`
-- [ ] Trang chọn danh sách môn cần đăng ký
-- [ ] UI chọn GV ưu tiên
-- [ ] UI chọn ngày học ưu tiên
-- [ ] UI chọn ca học ưu tiên
-- [ ] Hiển thị nhiều phương án TKB (SHOULD)
-- [ ] Hiển thị warning khi không có phương án
-- [ ] Confirm modal xác nhận phương án
+- [x] **Route `/student/auto`** — trang thực (xoá Placeholder)
+- [x] **`api/autoSchedule.ts`** — types + `suggestSchedules()` + helper labels cho 4 preset
+- [x] UI 2 view (form ↔ results), form full width
+- [x] Input: chọn HK + multi-select môn (max 10) từ endpoint `/available-courses/` (đã filter CTĐT + lớp OPEN)
+- [x] Search môn + filter "Chỉ môn chưa học" + status badge per môn (Có thể đăng ký / Đã học / Thiếu tiên quyết / Đã đăng ký)
+- [x] Per-course teacher selection: click môn → expand → chọn GV cụ thể (hard filter domain) hoặc "Tự chọn"
+- [x] Preferences UI: avoid weekdays (7 buttons) · preferred sessions (3 buttons)
+- [x] 4 preset radio (BALANCED/TEACHER_FIRST/SESSION_FIRST/COMPACT_FIRST) với mô tả ngắn
+- [x] Results: candidate cards với rank badge + score breakdown 4 bars + danh sách mã lớp HP
+- [x] Sort thứ cấp theo từng sub-score · filter ca học · empty/loading state
+- [x] Detail modal: full ScheduleGrid preview + breakdown bars + danh sách lớp HP + nút "Áp dụng"
+- [x] Apply workflow: loop `POST /registrations/` cho từng lớp → hiển thị {ok, failed} → auto redirect `/student/history` nếu thành công
 
-### 2.3.5. Xem TKB & lịch sử (FR-STU-SCH, FR-STU-HIS)
+### 2.3.5. Xem TKB & lịch sử (FR-STU-SCH, FR-STU-HIS) ✅ DONE
 
-- [x] Route placeholder `/student/schedule`, `/student/history`
-- [ ] TKB view theo tuần (grid)
-- [ ] TKB view theo học kỳ
+- [x] **Route `/student/schedule`** — TKB view theo tuần (grid 7 ngày × 15 tiết)
+- [x] Component `ScheduleGrid` reusable với 8 màu phân biệt môn
+- [x] Phân chia rõ Sáng (1-5) / Chiều (6-10) / Tối (11-15) với border-t đậm
+- [x] Click ô buổi học → modal chi tiết (thứ / tiết / phòng / GV)
+- [x] Card "Danh sách môn đăng ký" dưới grid (mỗi môn 1 thẻ với badge TC)
+- [x] 4 KPI stats: môn / buổi/tuần / TC / số đăng ký
+- [x] Empty state khi chưa đăng ký môn nào
+- [ ] TKB view theo học kỳ (currently 1 view duy nhất)
 - [ ] Nút xuất TKB (SHOULD)
-- [ ] Trang lịch sử đăng ký
+- [x] **Route `/student/history`** — Trang lịch sử đăng ký
+- [x] Filter theo học kỳ + trạng thái
+- [x] Table với cột: HK / môn / lớp / TC / trạng thái (badge) / thời gian / lý do hủy
+- [x] Nút Huỷ trên dòng `status != CANCELLED` + warning banner BR-006
+- [x] 4 KPI stats: tổng / confirmed / cancelled / TC đang học
 
-### 2.3.6. Nhận thông báo (FR-STU-NOT)
+### 2.3.6. Bảng điểm (FR-STU-GRD) ✅ DONE
 
-- [x] Route placeholder `/student/notifications`
-- [ ] Trang danh sách thông báo (mở/đóng đăng ký, đổi lịch, lớp hủy, từ Admin)
-- [ ] Badge số notification chưa đọc trên layout
+- [x] **Route `/student/grades`** — trang xem bảng điểm cá nhân
+- [x] Sidebar entry "Bảng điểm" (icon graduation) trong section Học tập
+- [x] Backend `GradeSerializer` thêm `course_credits` + `semester_name` cho tính GPA HK weighted
+- [x] Backend filter `Q(student=user)` đã có sẵn từ `GradeViewSet.get_queryset` → SV chỉ thấy điểm của mình
+- [x] **Group theo học kỳ** (sort code desc) — mỗi HK 1 Card với GPA HK + số môn + TC đạt/tổng
+- [x] **4 KPI tổng**: GPA tích lũy (weighted by TC) / TC tích lũy / Số môn đạt / Số môn chờ điểm
+- [x] Bảng đầy đủ cột: Mã / Tên môn (kèm lớp HP) / TC / QT / GK / CK / Tổng / Chữ / GPA-4
+- [x] Badge tone theo điểm chữ: A=success, B/B+=accent, C/C+=neutral, D/D+=warn, F=danger
+- [x] Empty state khi chưa có điểm
+- [x] Đồng bộ thang điểm 7 bậc backend ↔ frontend (A/B+/B/C+/C/D+/D/F) — `compute_letter` + `compute_gpa_4` + tests parametrize 8 boundary case
+
+### 2.3.7. Nhận thông báo (FR-STU-NOT) ✅ DONE
+
+- [x] **Route `/student/notifications`** — trang thật
+- [x] Trang danh sách thông báo (card list, không phải table) + pagination
+- [x] Hiển thị `is_read` status với badge "chưa đọc" + ring viền navy
+- [x] Click 1 noti → mở modal chi tiết + auto mark-read
+- [x] Nút "Đánh dấu đã đọc tất cả" + counter unread
+- [x] Icon + tone theo category (megaphone/calendar/clipboard/settings/bell)
+- [x] Relative time ("5 phút trước", "2 ngày trước"...)
+- [x] Empty state đẹp khi không có noti
+- [x] Nút "Gửi giáo viên" — dropdown chỉ hiện GV của các lớp SV đã đăng ký/xác nhận học
+- [ ] Badge số notification chưa đọc trên layout TopBar
 
 ## 2.4. Teacher UI
 
 > Tất cả 5 route teacher (`/teacher/schedule` → `/teacher/profile`) đã có **placeholder** kèm FR-ID tham chiếu.
 
-### 2.4.1. Xem thông tin & lớp học phần (FR-TEA-INF, FR-TEA-CLS, FR-TEA-SCH)
+### 2.4.1. Xem thông tin & lớp học phần (FR-TEA-INF, FR-TEA-CLS, FR-TEA-SCH) ✅ DONE
 
-- [x] Route placeholder `/teacher/schedule`, `/teacher/classes`, `/teacher/profile`
-- [ ] Trang danh sách lớp được phân công
-- [ ] Trang TKB cá nhân GV
-- [ ] Trang chi tiết lớp (danh sách SV, sĩ số, lịch, phòng)
-- [ ] UI gửi thông báo cho lớp (MAY)
+- [x] **Route `/teacher/profile`** — hồ sơ GV (avatar emerald + thông tin công tác + liên hệ)
+- [x] **Route `/teacher/classes`** — list lớp phụ trách + 3 KPI + filter học kỳ
+- [x] **Route `/teacher/classes/:id`** — chi tiết lớp + 4 KPI + lịch học + danh sách SV
+- [x] **Route `/teacher/schedule`** — TKB cá nhân GV (dùng lại ScheduleGrid với màu emerald palette)
+- [x] Link nhanh từ class list → nhập điểm + xem SV
+- [x] **UI gửi thông báo cho lớp** (FR-TEA-CLS-005) — modal trong ClassDetailPage với title / body / category + count SV nhận
 
-### 2.4.2. Nhập điểm (FR-TEA-GRD)
+### 2.4.2. Nhập điểm (FR-TEA-GRD) ✅ DONE
 
-- [x] Route placeholder `/teacher/grades`
-- [ ] Trang nhập điểm dạng bảng (quá trình / giữa kỳ / cuối kỳ)
-- [ ] Validation thời hạn cập nhật [!] TBD
+- [x] **Route `/teacher/grades`** với dropdown chọn lớp
+- [x] Trang nhập điểm dạng bảng (QT/GK/CK) inline editable
+- [x] **Auto-preview** total_score + grade_letter ngay khi gõ (client-side calc theo BR-009)
+- [x] Sau khi save: cập nhật chính xác từ backend response (total_score, grade_letter, gpa_4)
+- [x] **Nút Lưu** chỉ enable khi dirty + nút "Lưu tất cả" batch save
+- [x] Hiển thị error per-row khi save fail (vd. BR-008 quá hạn)
+- [x] Badge "Đã lưu" / "Đang nhập" cho mỗi dòng
+- [x] 4 KPI stats: Sĩ số / Đã nhập / Đạt ≥4 / GPA TB lớp
+- [x] Preselect class qua query param `?class=<id>` (link từ ClassesPage)
+- [x] Backend filter `?class_section=` cho grades
 - [ ] Nút xuất bảng điểm Excel
 
-### 2.4.3. Khác (FR-TEA-REQ, FR-TEA-EXP, FR-TEA-NOT)
+### 2.4.3. Khác (FR-TEA-REQ, FR-TEA-EXP, FR-TEA-NOT) — Notifications DONE
 
-- [x] Route placeholder `/teacher/notifications`
+- [x] **Route `/teacher/notifications`** — copy pattern từ student, filter theo audience GV
+- [x] Auto mark-read khi click + "Đánh dấu đã đọc tất cả"
+- [x] **Compose noti cho lớp** từ `ClassDetailPage` → SV nhận ngay (FR-TEA-CLS-005)
+- [x] **Compose noti cho lớp ngay tại `/teacher/notifications`** — nút "Soạn thông báo" + modal chọn lớp (dropdown) + title/category/body
+- [x] GV thấy noti mình đã gửi trong danh sách (backend filter `Q(sender=user)`)
+- [x] Hiển thị `recipients.length` ("N người nhận") cho noti SPECIFIC trong list + detail modal
 - [ ] UI đề xuất thay đổi lịch dạy (MAY)
 - [ ] Nút xuất danh sách SV
-- [ ] Trang danh sách thông báo từ Admin
 
 ## 2.5. Frontend testing
 
@@ -509,43 +627,223 @@ Mỗi FR thường cần làm cả **Backend** (API + model + validation) và **
 ## 3. Non-Functional (plan §6)
 
 - [x] NFR-SEC-001 - Xác thực trước khi truy cập (JWT)
-- [x] NFR-SEC-002 - Phân quyền theo role
-- [ ] NFR-SEC-003 - Bảo vệ dữ liệu điểm và thông tin cá nhân
+- [x] NFR-SEC-002 - Phân quyền theo role (3 permission class)
+- [x] NFR-SEC-003 - Bảo vệ dữ liệu điểm: GradeViewSet filter theo role
+- [x] **Bonus security**: Locked user không login / refresh / dùng access token cũ
 - [ ] NFR-PER-001 - Phản hồi tra cứu trong thời gian chấp nhận được [!] TBD
 - [ ] NFR-AVL-001 - Cơ chế sao lưu / phục hồi
-- [ ] NFR-USA-001 - Giao diện dễ dùng
-- [ ] NFR-SCL-001 - Khả năng mở rộng
+- [x] NFR-USA-001 - Giao diện navy formal IBM Plex Sans, design system nhất quán
+- [x] NFR-SCL-001 - Pagination 25/page, max 1000
 - [ ] NFR-CMP-001 - Tương thích trình duyệt phổ biến
 
 ---
 
 ## 4. Verification / Testing (plan §11)
 
-- [ ] TEST-001 - Login, logout, đổi mật khẩu, phân quyền
-- [ ] TEST-002 - Quản lý tài khoản
-- [ ] TEST-003 - Quản lý chương trình đào tạo
-- [ ] TEST-004 - Quản lý môn học và tiên quyết
-- [ ] TEST-005 - Quản lý học kỳ và thời gian đăng ký
-- [ ] TEST-006 - Quản lý lớp học phần
-- [ ] TEST-007 - Đăng ký môn học thủ công
-- [ ] TEST-008 - Trùng lịch / tiên quyết / tín chỉ / sĩ số
-- [ ] TEST-009 - Thuật toán tạo TKB tự động
-- [ ] TEST-010 - Xem TKB sinh viên
-- [ ] TEST-011 - Xem TKB giáo viên
-- [ ] TEST-012 - Nhập điểm
-- [ ] TEST-013 - Gửi / nhận thông báo
-- [ ] TEST-014 - Báo cáo và thống kê
+- [x] TEST-001 - Login + phân quyền (manual + 6 pytest cases trong accounts)
+- [x] TEST-002 - Quản lý tài khoản (UI + API tests)
+- [x] TEST-003 - Quản lý CTĐT (CRUD via UI + import xlsx)
+- [x] TEST-004 - Quản lý môn học và tiên quyết (CRUD via UI + 6 pytest)
+- [x] TEST-005 - Quản lý học kỳ và thời gian đăng ký (CRUD + open/close + validate end_date > start_date)
+- [x] TEST-006 - Quản lý lớp học phần (CRUD + schedule + chặn trùng phòng/GV + validate ngày học trong học kỳ)
+- [ ] TEST-007 - Đăng ký môn học thủ công SV side (BE ready, FE pending)
+- [x] TEST-008 - BR-002 → BR-006 + signal (18 pytest cases pass)
+- [ ] TEST-009 - Thuật toán tạo TKB tự động (chưa implement)
+- [ ] TEST-010 - Xem TKB sinh viên (chưa implement)
+- [ ] TEST-011 - Xem TKB giáo viên (chưa implement)
+- [x] TEST-012 - Nhập điểm + BR-007/BR-008/BR-009 (pytest cases + auto-compute)
+- [x] TEST-013 - Gửi thông báo từ Admin (UI + API)
+- [x] TEST-013a - SV gửi thông báo cho GV của lớp mình học; chặn GV ngoài lớp / user không phải GV
+- [ ] TEST-014 - Báo cáo và thống kê (chưa implement)
 
 ---
 
-## 5. Open Questions / Risks (plan §12)
+## 5. Open Questions / Risks (plan §12) — **đã chốt hết qua BR mới**
 
-- [x] OPEN - Số tín chỉ tối thiểu là 1, tối đa tùy chỉnh
-- [x] OPEN - Công thức tính điểm tổng kết (vd. quá trình 10% + giữa kỳ 40% + cuối kỳ 50%)
-- [x] RISK - Độ phức tạp thuật toán TKB tự động khi quy mô tăng (tích hợp agent nâng cấp)
+- [x] OPEN - Số tín chỉ tối thiểu / tối đa → **KHÔNG áp dụng** (BR-001 đảo ngược)
+- [x] OPEN - Công thức tính điểm tổng kết → **10% + 40% + 50%** (BR-009)
+- [x] OPEN - Thời hạn hủy đăng ký → **trong thời gian đăng ký** (BR-006)
+- [x] OPEN - Thời hạn cập nhật điểm → **2 tuần sau khi kết thúc môn** (BR-008)
+- [x] OPEN - Quy ước tiết học → **15 tiết/ngày, sáng 1-5 / chiều 6-10 / tối 11-15** (BR-010)
+- [x] RISK - Độ phức tạp thuật toán TKB tự động khi quy mô tăng (sẽ tích hợp agent / heuristic sau)
 
 ---
 
 ## 6. Sửa SRS
 
 - [x] Cập nhật `plan.md` §2.2: `TypeORM` → `Django ORM`
+- [x] Cập nhật `plan.md` §5: BR-001 → BR-011 (thêm BR-008, BR-009, BR-010, BR-011 + đảo ngược BR-001)
+- [x] Cập nhật `plan.md` §7.2: bổ sung `Major.duration_years`, `Semester.term` int 1/2/3, `Grade.gpa_4`, `Schedule` mới với session + start_period + end_period, `ClassSection.periods_per_session`, `User.full_name`
+
+---
+
+## 7. Tổng quan tiến độ
+
+| Layer | Hoàn thành | Ghi chú |
+|---|---|---|
+| Hạ tầng (mục 0) | 95% | Còn ERD diagram + README root |
+| Backend models (1.1) | 100% | 15 entity đầy đủ, migration OK, đã có seed scripts |
+| Backend Admin API (1.2 – 1.3) | ~95% | **Reports endpoint DONE**; còn nút export CSV/Excel |
+| Backend SV/GV API (1.4 – 1.5) | ~70% | Cơ bản qua các ViewSet + `/curriculums/my/`, `/students/me/`, `/notifications/mark-read/`, etc. |
+| Backend BR (1.6) | 100% | Tất cả 11 BR đã wire + 48 tests pass |
+| Backend testing (1.7) | 60% | 48 tests (BR + accounts + courses + majors + semesters + schedule conflict + notify_class + atomic class schedule); còn auth/algorithm tests |
+| Frontend foundation (2.1) | 95% | Có ScheduleGrid mới. Còn toast, confirm dialog, skeleton loader |
+| Frontend admin (2.2) | ~90% | **9/10 module** xong (+ Reports); còn Settings |
+| Frontend student (2.3) | ~100% | **7/7 module** xong (Curriculum, Đăng ký, TKB, Lịch sử, Bảng điểm, Thông báo, Hồ sơ, **Auto TKB**) |
+| Frontend teacher (2.4) | ~95% | **5/5 module** xong + tính năng **gửi noti cho lớp**; chỉ thiếu export Excel + đề xuất đổi lịch (MAY) |
+| Frontend testing (2.5) | 0% | Chưa setup Vitest |
+
+**Tổng cộng**: 305 mục đã làm `[x]` / 82 mục chưa làm `[ ]` (387 items)
+
+### Modules UI hoàn thành
+
+**Admin — 9/10 module:**
+1. ✅ Tài khoản (`/admin/accounts`) — CRUD + lock/unlock + role validation
+2. ✅ Ngành đào tạo (`/admin/majors`)
+3. ✅ Chương trình đào tạo (`/admin/curriculum` + detail) — kèm import xlsx
+4. ✅ Môn học (`/admin/courses`) — filter cascading + prerequisite multi-select
+5. ✅ Học kỳ (`/admin/semesters`) — open/close action
+6. ✅ Lớp học phần (`/admin/classes` + detail) — schedule management
+7. ✅ Quản lý đăng ký (`/admin/registrations`) — filter + cancel + delete
+8. ✅ Gửi thông báo (`/admin/notifications`) — soạn + audience SPECIFIC autocomplete
+9. ✅ **Báo cáo & thống kê** (`/admin/reports`) — 6 section: users/classes/registrations/top courses/by major/by semester
+- ⬜ Cấu hình (`/admin/settings`) — chưa làm
+
+**Sinh viên — 7/7 module:**
+1. ✅ Chương trình đào tạo (`/student/curriculum`) — auto match theo major + cohort
+2. ✅ Đăng ký môn học (`/student/register`) — wire BR-002 → BR-006
+3. ✅ Thời khóa biểu (`/student/schedule`) — grid 7×15 với 8 màu
+4. ✅ Lịch sử đăng ký (`/student/history`) — filter + cancel
+5. ✅ Bảng điểm (`/student/grades`) — group theo HK, GPA HK + GPA tích lũy weighted by TC
+6. ✅ Thông báo (`/student/notifications`) — mark-read + autocomplete
+7. ✅ Hồ sơ cá nhân (`/student/profile`)
+8. ✅ **Tạo TKB tự động** (`/student/auto`) — CSP backtracking + 4 preset modes + apply workflow
+
+**Giáo viên — 5/5 module:**
+1. ✅ Lịch dạy (`/teacher/schedule`) — TKB grid, color theo môn
+2. ✅ Lớp phụ trách (`/teacher/classes` + `/teacher/classes/:id`) — list + chi tiết SV
+3. ✅ Nhập điểm (`/teacher/grades`) — inline edit + auto-compute BR-009
+4. ✅ Thông báo (`/teacher/notifications`) — mark-read flow
+5. ✅ Hồ sơ (`/teacher/profile`) — avatar emerald, thông tin công tác
+
+### Bước tiếp theo khuyến nghị
+
+1. **Admin: Settings** (`/admin/settings`) — cấu hình BR-006/008 grace days
+2. **Export** Excel / PDF cho Reports (FR-ADM-RPT-004) + danh sách SV cho GV (FR-TEA-EXP)
+3. **Backend testing** — auth flow tests + more BR coverage
+4. **Frontend testing** — Vitest + Testing Library cho store, interceptor, form
+
+---
+
+## Lịch sử các thay đổi lớn
+
+### Phase 1 — Setup (mục 0)
+
+- Khởi tạo backend Django + frontend React + Docker compose + JWT auth + Swagger
+
+### Phase 2 — Data Model (mục 1.1)
+
+- 15 entity + migrations + seed scripts
+- Schema updates theo plan §7.2: `full_name`, `duration_years`, `term` int, `Schedule` mới, `gpa_4`
+
+### Phase 3 — Backend BR (mục 1.6)
+
+- 11 Business Rules wire vào serializer / view / signal
+- 48 pytest cases pass
+
+### Phase 4 — Frontend foundation (mục 2.1)
+
+- Design system navy formal + UI primitives + routing + dashboards
+- Pagination + Modal + Table generic + extractApiError + semesterLabel + getInitials
+
+### Phase 5 — Admin UI modules (mục 2.2)
+
+- 8/10 module DONE: Accounts, Majors, Courses, Semesters, Curriculum, Classes, Registrations, Notifications
+- Mỗi module có CRUD + filter + pagination + 409 friendly delete
+
+### Phase 6 — Git recovery
+
+- Drop commit `e470eab` chứa secret token
+- Restore 38 file từ commit `02941a3` (chứa AccountsPage + RegistrationsPage + NotificationsPage + LockedAware auth)
+- Resolve 15 file có git merge conflict markers
+- 33/33 tests pass, push thành công
+
+### Phase 7 — Student UI modules (mục 2.3)
+
+- 6/7 module DONE: Chương trình đào tạo, Đăng ký môn học, Thời khóa biểu, Lịch sử đăng ký, **Bảng điểm**, Thông báo, Hồ sơ
+- Backend mới: `GET /curriculums/my/`, `GET /students/me/`, `GET /teachers/me/`, `POST /notifications/{id}/mark-read/`, `POST /notifications/mark-all-read/`, `GET /notifications/unread-count/`
+- Component mới: `ScheduleGrid` (7 ngày × 15 tiết, 8 màu, click event, BR-010 session boundaries)
+- Module **Auto TKB** defer vì cần thuật toán search tổ hợp lớp HP phức tạp
+
+### Phase 9 — Bảng điểm SV + đồng bộ thang điểm (mục 2.3.6)
+
+- Backend `apps/grades/models.py`: `compute_letter` + `compute_gpa_4` chuyển từ thang 5 (A/B/C/D/F) sang **thang 7** (A/B+/B/C+/C/D+/D/F) khớp quy chế phổ biến
+- Backend tests parametrize 8 boundary case (8.50/8.00/7.00/6.50/5.50/5.00/4.00/3.99) — 12/12 pass
+- `GradeSerializer` thêm `course_credits` + `semester_name` để FE tính GPA HK weighted
+- Frontend `pages/student/GradesPage.tsx`: 4 KPI (GPA tích lũy/TC tích lũy/môn đạt/môn chờ) + group theo HK + 9 cột chi tiết
+- Fix bug **GPA không cập nhật khi chỉnh điểm** (TeacherGradesPage `updateRow` chỉ recalc total + letter, bổ sung `calcGpa` mirror backend)
+- Thêm **Compose noti tại `/teacher/notifications`** — GV soạn noti gửi lớp ngay từ trang thông báo (không cần vào ClassDetailPage)
+- Backend `NotificationViewSet.get_queryset` thêm `Q(sender=user)` để GV thấy noti mình đã gửi
+
+### Phase 12 — Dashboards real-data + Admin Reports (FR-ADM-RPT)
+
+- **3 dashboard rewrite** từ mock data sang real API:
+  - `AdminDashboard`: 4 KPI (SV/GV/Lớp HP/Đăng ký) từ `listUsers`/`listClassSections`/`listRegistrations` + tỷ lệ lớp đầy + 5 lối tắt + noti gần đây
+  - `StudentDashboard`: GPA tích lũy weighted by TC + % hoàn thành CTĐT từ `listGrades`+`getMyCurriculum` + greeting theo giờ + môn đăng ký + thông báo
+  - `TeacherDashboard`: count lớp/SV/đăng ký + % nhập điểm từ `listClassSections({teacher})`+`listGrades` + grid 6 lớp link đến detail
+- **Backend endpoint mới** `GET /api/reports/admin-summary/` (`apps/accounts/reports.py`):
+  - Single endpoint trả 7 nhóm thống kê (users/classes/registrations/top_courses/by_major/by_semester/total_majors)
+  - Query DB hiệu quả với `annotate(Count)`, `values(F(...))` — không cần loop trong Python
+  - Filter theo `?semester=<id>`, default = HK đang mở, fallback = HK mới nhất
+- **Frontend `ReportsPage`** (`/admin/reports`) — 6 section:
+  - Mini-stat tài khoản (Tổng/SV/GV/Admin/Khoá)
+  - Lớp HP với progress bar tỷ lệ đầy
+  - Đăng ký với breakdown CONFIRMED/PENDING/CANCELLED
+  - Top 10 môn nhiều đăng ký nhất
+  - Thống kê theo ngành
+  - Bar chart đơn giản đăng ký qua 10 HK gần nhất
+- Bỏ Placeholder entry `reports` khỏi `STUDENT_ROUTES`/`ADMIN_ROUTES` trong App.tsx
+- Backend 31/31 tests pass (accounts + registrations)
+
+### Phase 11 — TKB tự động (FR-STU-TKB) — module SV cuối cùng
+
+- Endpoint `POST /api/auto-schedule/suggest/` (chỉ SV) + 5 file backend mới/sửa:
+  - `apps/registrations/auto_schedule.py` (mới): CSP solver — `PriorityPreset` enum + `Preferences` dataclass + `_backtrack` + 4 sub-scores
+  - `serializers.py`: `AutoScheduleRequestSerializer` + `AutoScheduleCandidateSerializer`
+  - `views.py`: `AutoScheduleSuggestView` + permission check role=STUDENT
+  - `urls.py`: thêm path
+  - `tests_auto_schedule.py` (mới): 13 cases — smoke / conflict / prereq / full / scoring / preset / cap / endpoint
+- Frontend trang `/student/auto` mới (~480 dòng): input panel sticky + results panel với sort/filter + detail modal có ScheduleGrid preview + apply workflow loop `POST /registrations/`
+- Reuse: `_schedules_overlap` logic giống `RegistrationSerializer._schedules_overlap` (line 103-109) — không sửa BR-004 cũ
+- Theo plan trong `doc/plan_tkb.md` — mô hình hóa CSP (Russell & Norvig), Backtracking + Forward Checking + MRV
+- 4 PriorityPreset (BALANCED/TEACHER_FIRST/SESSION_FIRST/COMPACT_FIRST) cho phép SV đổi trọng số 4 sub-scores
+- Sub-score `s_free_day = 100 × (7 − study_days) / 7` — ưu tiên TKB có nhiều ngày nghỉ nguyên trong tuần
+- Endpoint mới `GET /auto-schedule/available-courses/` — backend tự enforce CTĐT + status flags (has_grade/passed/missing_prerequisites/registered) + search + unlearned_only
+- Backend `pytest apps/registrations apps/grades` 19/19 auto_schedule + 14 registrations pass · frontend `tsc --noEmit` clean
+
+### Phase 10 — Tách trang Login (mục 2.1 / FR-GEN-001)
+
+- Trang login chia thành 2 URL riêng để gọn UX + dễ siết bảo mật cho cổng admin sau này
+  - `/login` — Sinh viên + Giáo viên (tab switcher 2 role, branding navy/teal)
+  - `/admin/login` — Quản trị viên (purple gradient, không tab switcher, không 2FA)
+- Helper mới `lib/routes.ts`: `loginPathForRole(role)` + `loginPathForPathname(pathname)`
+- `ProtectedRoute` redirect về cổng đúng dựa `location.pathname.startsWith("/admin")`
+- `AccountMenu.handleLogout` snapshot `loginPathForRole(user?.role)` **trước** khi `logout()` (user null sau đó)
+- Frontend-only enforcement: login sai cổng → `useAuthStore.logout()` + setError có gợi ý URL đúng. Backend `/auth/login/` giữ chung 1 endpoint, không đụng
+- Footer cross-link giữa 2 trang để user dễ chuyển
+
+### Phase 8 — Teacher UI modules (mục 2.4)
+
+- **5/5 module DONE**: Profile, Notifications, Schedule, Classes (+ detail), Grades
+- Backend mới: `?class_section=` filter cho `/grades/`, `student_name` field trong Registration + Grade serializer
+- API service mới: `api/grades.ts` (create/update + auto-compute readonly fields)
+- Highlight: **GradesPage** với inline-edit + auto-preview total/letter ngay khi gõ + batch save
+
+### Phase 9 — Admin validation hardening
+
+- Học kỳ: validate `end_date > start_date` khi tạo và cập nhật; vẫn cho phép thời gian đăng ký nằm trước thời gian học kỳ
+- Lớp học phần/Schedule: validate ngày học nằm trong thời gian học kỳ
+- Lớp học phần/Schedule: chặn trùng phòng và trùng giáo viên khi cùng thứ, giao tiết, giao khoảng ngày
+- Lớp học phần: lưu thông tin lớp + lịch học chính trong cùng transaction; nếu lịch lỗi thì rollback, không còn lưu lớp vào DB
+- Thêm regression tests cho semester date range, registration window trước học kỳ, schedule date range, phòng/GV giao tiết, rollback khi lịch chính lỗi
+- Verify backend: `48/48` pytest pass

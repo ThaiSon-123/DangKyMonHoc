@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { fetchCurrentUser, login } from "@/api/auth";
 import { useAuthStore } from "@/stores/auth";
 import Icon, { type IconName } from "@/components/ui/Icon";
 import Button from "@/components/ui/Button";
+import { extractApiError } from "@/lib/errors";
 
-type Portal = "student" | "teacher" | "admin";
+type Portal = "student" | "teacher";
 
 interface PortalConfig {
   label: string;
@@ -21,7 +22,6 @@ interface PortalConfig {
   accentFrom: string;
   accentVia: string;
   accentTo: string;
-  twoFactor?: boolean;
 }
 
 const PORTAL_CONFIG: Record<Portal, PortalConfig> = {
@@ -65,27 +65,6 @@ const PORTAL_CONFIG: Record<Portal, PortalConfig> = {
     accentVia: "#0f5060",
     accentTo: "#137a8a",
   },
-  admin: {
-    label: "Quản trị viên",
-    eyebrow: "Cổng quản trị",
-    headline: ["Vận hành đăng ký", "toàn trường mượt mà."],
-    blurb:
-      "Quản lý ngành đào tạo, học kỳ, lớp học phần và tài khoản người dùng. Báo cáo thống kê và gửi thông báo cho toàn hệ thống.",
-    idLabel: "Tài khoản quản trị",
-    idPlaceholder: "admin.daotao",
-    icon: "settings",
-    ctaText: "Đăng nhập cổng Quản trị",
-    stats: [
-      ["12,840", "Người dùng"],
-      ["486", "Lớp HP / kỳ"],
-      ["99.97%", "Uptime hệ thống"],
-    ],
-    help: "Truy cập cấp cao — yêu cầu xác thực 2 lớp.",
-    accentFrom: "#1a0e2e",
-    accentVia: "#3d1e6b",
-    accentTo: "#5d2ea3",
-    twoFactor: true,
-  },
 };
 
 export default function Login() {
@@ -109,11 +88,17 @@ export default function Login() {
       setTokens(access, refresh);
       const me = await fetchCurrentUser();
       setUser(me);
-      const dest =
-        me.role === "ADMIN" ? "/admin" : me.role === "TEACHER" ? "/teacher" : "/student";
+      if (me.role === "ADMIN") {
+        useAuthStore.getState().logout();
+        setError(
+          "Tài khoản quản trị vui lòng đăng nhập tại cổng /admin/login.",
+        );
+        return;
+      }
+      const dest = me.role === "TEACHER" ? "/teacher" : "/student";
       navigate(dest, { replace: true });
-    } catch {
-      setError("Tên đăng nhập hoặc mật khẩu không đúng.");
+    } catch (err) {
+      setError(extractApiError(err, "Tên đăng nhập hoặc mật khẩu không đúng."));
     } finally {
       setLoading(false);
     }
@@ -227,7 +212,7 @@ export default function Login() {
 
         {/* Portal tabs */}
         <div className="flex gap-1.5 bg-surface p-1 rounded-md">
-          {(["student", "teacher", "admin"] as Portal[]).map((p) => (
+          {(["student", "teacher"] as Portal[]).map((p) => (
             <button
               key={p}
               type="button"
@@ -277,23 +262,6 @@ export default function Login() {
             </div>
           </label>
 
-          {cfg.twoFactor && (
-            <label className="block">
-              <div className="text-[12.5px] font-medium text-ink mb-1.5">
-                Mã xác thực 2 lớp (OTP){" "}
-                <span className="text-ink-faint font-normal">— bỏ qua ở dev</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-2.5 rounded-md bg-card border border-line">
-                <Icon name="shield" size={15} className="text-ink-faint" />
-                <input
-                  type="text"
-                  placeholder="• • • • • •"
-                  className="flex-1 bg-transparent outline-none text-[13px] text-ink placeholder:text-ink-faint min-w-0"
-                />
-              </div>
-            </label>
-          )}
-
           <div className="flex justify-between items-center mt-0.5">
             <label className="inline-flex items-center gap-2 text-[13px] cursor-pointer">
               <input
@@ -327,25 +295,16 @@ export default function Login() {
           >
             {loading ? "Đang đăng nhập..." : cfg.ctaText}
           </Button>
-
-          <div className="flex items-center gap-2.5 text-ink-faint text-[11.5px]">
-            <div className="flex-1 h-px bg-line" />
-            <span>HOẶC</span>
-            <div className="flex-1 h-px bg-line" />
-          </div>
-
-          <Button
-            type="button"
-            variant="secondary"
-            size="lg"
-            icon="building"
-            className="w-full justify-center"
-          >
-            SSO Tài khoản Nhà trường
-          </Button>
         </form>
 
-        <div className="text-xs text-ink-faint text-center">{cfg.help}</div>
+        <div className="text-xs text-ink-faint text-center space-y-1">
+          <div>{cfg.help}</div>
+          <div>
+            <Link to="/admin/login" className="text-ink-muted hover:text-ink underline">
+              Đăng nhập với tư cách quản trị viên →
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

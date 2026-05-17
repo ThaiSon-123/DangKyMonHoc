@@ -33,11 +33,12 @@ export interface Course {
     required_course_name: string;
     note: string;
   }>;
+  prerequisite_ids?: number[];
   created_at: string;
   updated_at: string;
 }
 
-/** Plan §7.2.9: 1=HK1, 2=HK2, 3=HK hè */
+/** Plan §7.2.9: 1=HK1, 2=HK2, 3=HK3 */
 export type SemesterTerm = 1 | 2 | 3;
 
 export interface Semester {

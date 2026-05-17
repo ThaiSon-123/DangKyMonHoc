@@ -14,3 +14,10 @@ class MajorViewSet(HandleProtectedDeleteMixin, viewsets.ModelViewSet):
     search_fields = ["code", "name", "department"]
     ordering_fields = ["code", "name", "updated_at"]
     object_label_singular = "ngành"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        department = self.request.query_params.get("department")
+        if department:
+            qs = qs.filter(department=department)
+        return qs

@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { fetchCurrentUser } from "@/api/auth";
 import Layout from "@/components/Layout";
 import Login from "@/pages/Login";
+import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 import StudentDashboard from "@/pages/StudentDashboard";
 import TeacherDashboard from "@/pages/TeacherDashboard";
@@ -14,8 +15,28 @@ import CurriculumsPage from "@/pages/admin/CurriculumsPage";
 import CurriculumDetailPage from "@/pages/admin/CurriculumDetailPage";
 import ClassesPage from "@/pages/admin/ClassesPage";
 import ClassDetailPage from "@/pages/admin/ClassDetailPage";
+import AccountsPage from "@/pages/admin/AccountsPage";
+import RegistrationsPage from "@/pages/admin/RegistrationsPage";
+import NotificationsPage from "@/pages/admin/NotificationsPage";
+import AdminProfilePage from "@/pages/admin/ProfilePage";
+import AdminReportsPage from "@/pages/admin/ReportsPage";
+import StudentCurriculumPage from "@/pages/student/CurriculumPage";
+import StudentNotificationsPage from "@/pages/student/NotificationsPage";
+import StudentProfilePage from "@/pages/student/ProfilePage";
+import StudentRegisterPage from "@/pages/student/RegisterPage";
+import StudentSchedulePage from "@/pages/student/SchedulePage";
+import StudentHistoryPage from "@/pages/student/HistoryPage";
+import StudentGradesPage from "@/pages/student/GradesPage";
+import StudentAutoSchedulePage from "@/pages/student/AutoSchedulePage";
+import TeacherProfilePage from "@/pages/teacher/ProfilePage";
+import TeacherNotificationsPage from "@/pages/teacher/NotificationsPage";
+import TeacherSchedulePage from "@/pages/teacher/SchedulePage";
+import TeacherClassesPage from "@/pages/teacher/ClassesPage";
+import TeacherClassDetailPage from "@/pages/teacher/ClassDetailPage";
+import TeacherGradesPage from "@/pages/teacher/GradesPage";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import { useAuthStore } from "@/stores/auth";
+import { ToastHost } from "@/components/ui";
 import type { IconName } from "@/components/ui/Icon";
 
 function RoleHome() {
@@ -35,30 +56,12 @@ interface PlaceholderRoute {
 }
 
 const ADMIN_ROUTES: PlaceholderRoute[] = [
-  { path: "accounts", title: "Quản lý tài khoản", description: "Tạo / cập nhật / khoá tài khoản Sinh viên và Giáo viên.", frId: "FR-ADM-ACC", icon: "users" },
-  { path: "registrations", title: "Quản lý đăng ký", description: "Mở / đóng đợt đăng ký, theo dõi sĩ số, phê duyệt yêu cầu.", frId: "FR-ADM-REG", icon: "doc" },
-  { path: "reports", title: "Báo cáo & thống kê", description: "Thống kê đăng ký theo môn, theo ngành, lớp đầy / còn chỗ.", frId: "FR-ADM-RPT", icon: "chart" },
-  { path: "notifications", title: "Gửi thông báo", description: "Gửi thông báo cho Sinh viên và Giáo viên.", frId: "FR-ADM-NOT", icon: "megaphone" },
   { path: "settings", title: "Cấu hình hệ thống", description: "Giới hạn tín chỉ, thời hạn hủy đăng ký, quy tắc nghiệp vụ.", icon: "settings" },
 ];
 
-const STUDENT_ROUTES: PlaceholderRoute[] = [
-  { path: "register", title: "Đăng ký môn học", description: "Chọn môn, chọn lớp, chọn giáo viên / ngày học mong muốn.", frId: "FR-STU-REG", icon: "plus" },
-  { path: "auto", title: "Tạo TKB tự động", description: "Hệ thống đề xuất nhiều phương án TKB theo ưu tiên của bạn.", frId: "FR-STU-TKB", icon: "sparkle" },
-  { path: "schedule", title: "Thời khóa biểu", description: "Xem TKB theo tuần / học kỳ, xuất file.", frId: "FR-STU-SCH", icon: "calendar" },
-  { path: "curriculum", title: "Chương trình đào tạo", description: "Xem chương trình ngành, tiến độ hoàn thành.", frId: "FR-STU-CUR", icon: "layers" },
-  { path: "history", title: "Lịch sử đăng ký", description: "Các môn đã đăng ký trong các học kỳ trước.", frId: "FR-STU-HIS", icon: "clock" },
-  { path: "notifications", title: "Thông báo", description: "Thông báo mở / đóng đăng ký, đổi lịch, lớp hủy.", frId: "FR-STU-NOT", icon: "bell" },
-  { path: "profile", title: "Hồ sơ cá nhân", description: "Thông tin cá nhân, đổi mật khẩu, liên hệ.", frId: "FR-STU-INF", icon: "user" },
-];
+const STUDENT_ROUTES: PlaceholderRoute[] = [];
 
-const TEACHER_ROUTES: PlaceholderRoute[] = [
-  { path: "schedule", title: "Lịch dạy cá nhân", description: "TKB giảng dạy theo tuần / học kỳ.", frId: "FR-TEA-SCH", icon: "calendar" },
-  { path: "classes", title: "Lớp phụ trách", description: "Danh sách lớp được phân công, sĩ số, danh sách sinh viên.", frId: "FR-TEA-CLS", icon: "clipboard" },
-  { path: "grades", title: "Nhập điểm", description: "Nhập điểm quá trình / giữa kỳ / cuối kỳ cho lớp phụ trách.", frId: "FR-TEA-GRD", icon: "edit" },
-  { path: "notifications", title: "Thông báo", description: "Thông báo từ Admin, gửi thông báo cho lớp.", frId: "FR-TEA-NOT", icon: "bell" },
-  { path: "profile", title: "Hồ sơ cá nhân", description: "Thông tin giảng viên, đổi mật khẩu, liên hệ.", frId: "FR-TEA-INF", icon: "user" },
-];
+const TEACHER_ROUTES: PlaceholderRoute[] = [];
 
 export default function App() {
   const { accessToken, user, setUser, logout } = useAuthStore();
@@ -89,8 +92,10 @@ export default function App() {
   }
 
   return (
+    <>
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/admin/login" element={<AdminLogin />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
@@ -98,6 +103,11 @@ export default function App() {
 
           <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/accounts" element={<AccountsPage />} />
+            <Route path="/admin/registrations" element={<RegistrationsPage />} />
+            <Route path="/admin/notifications" element={<NotificationsPage />} />
+            <Route path="/admin/reports" element={<AdminReportsPage />} />
+            <Route path="/admin/profile" element={<AdminProfilePage />} />
             <Route path="/admin/majors" element={<MajorsPage />} />
             <Route path="/admin/courses" element={<CoursesPage />} />
             <Route path="/admin/semesters" element={<SemestersPage />} />
@@ -116,6 +126,14 @@ export default function App() {
 
           <Route element={<ProtectedRoute allowedRoles={["STUDENT"]} />}>
             <Route path="/student" element={<StudentDashboard />} />
+            <Route path="/student/curriculum" element={<StudentCurriculumPage />} />
+            <Route path="/student/notifications" element={<StudentNotificationsPage />} />
+            <Route path="/student/profile" element={<StudentProfilePage />} />
+            <Route path="/student/register" element={<StudentRegisterPage />} />
+            <Route path="/student/schedule" element={<StudentSchedulePage />} />
+            <Route path="/student/history" element={<StudentHistoryPage />} />
+            <Route path="/student/grades" element={<StudentGradesPage />} />
+            <Route path="/student/auto" element={<StudentAutoSchedulePage />} />
             {STUDENT_ROUTES.map((r) => (
               <Route
                 key={r.path}
@@ -127,6 +145,12 @@ export default function App() {
 
           <Route element={<ProtectedRoute allowedRoles={["TEACHER"]} />}>
             <Route path="/teacher" element={<TeacherDashboard />} />
+            <Route path="/teacher/schedule" element={<TeacherSchedulePage />} />
+            <Route path="/teacher/classes" element={<TeacherClassesPage />} />
+            <Route path="/teacher/classes/:id" element={<TeacherClassDetailPage />} />
+            <Route path="/teacher/grades" element={<TeacherGradesPage />} />
+            <Route path="/teacher/notifications" element={<TeacherNotificationsPage />} />
+            <Route path="/teacher/profile" element={<TeacherProfilePage />} />
             {TEACHER_ROUTES.map((r) => (
               <Route
                 key={r.path}
@@ -140,5 +164,7 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    <ToastHost />
+    </>
   );
 }

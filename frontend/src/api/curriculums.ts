@@ -24,8 +24,14 @@ export async function listCurriculums(params?: {
   major?: number;
   cohort_year?: number;
   page?: number;
+  page_size?: number;
 }): Promise<Paginated<Curriculum>> {
   const res = await api.get<Paginated<Curriculum>>("/curriculums/", { params });
+  return res.data;
+}
+
+export async function getMyCurriculum(): Promise<Curriculum> {
+  const res = await api.get<Curriculum>("/curriculums/my/");
   return res.data;
 }
 

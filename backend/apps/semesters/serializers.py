@@ -1,8 +1,19 @@
+from django.db import transaction
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 from .models import Semester
+from .services import close_class_sections_for_semester
 
 
 class SemesterSerializer(serializers.ModelSerializer):
+    code = serializers.CharField(
+        validators=[
+            UniqueValidator(
+                queryset=Semester.objects.all(),
+                message="Mã học kỳ đã tồn tại.",
+            )
+        ]
+    )
     term_display = serializers.CharField(source="get_term_display", read_only=True)
 
     class Meta:
@@ -15,12 +26,26 @@ class SemesterSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "created_at", "updated_at")
 
     def validate(self, attrs):
-        start = attrs.get("start_date")
-        end = attrs.get("end_date")
+        start = attrs.get("start_date", self.instance.start_date if self.instance else None)
+        end = attrs.get("end_date", self.instance.end_date if self.instance else None)
         if start and end and start >= end:
             raise serializers.ValidationError({"end_date": "Phải sau ngày bắt đầu."})
-        rs = attrs.get("registration_start")
-        re = attrs.get("registration_end")
+
+        rs = attrs.get(
+            "registration_start",
+            self.instance.registration_start if self.instance else None,
+        )
+        re = attrs.get(
+            "registration_end",
+            self.instance.registration_end if self.instance else None,
+        )
         if rs and re and rs >= re:
             raise serializers.ValidationError({"registration_end": "Phải sau lúc bắt đầu đăng ký."})
         return attrs
+
+    def update(self, instance, validated_data):
+        with transaction.atomic():
+            semester = super().update(instance, validated_data)
+            if "is_open" in validated_data and not semester.is_open:
+                close_class_sections_for_semester(semester)
+            return semester

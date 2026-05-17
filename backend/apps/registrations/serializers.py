@@ -2,8 +2,12 @@ from django.conf import settings
 from django.utils import timezone
 from rest_framework import serializers
 
+from apps.classes.models import ClassSection
+from apps.classes.serializers import ClassSectionSerializer, ScheduleSerializer
+from apps.curriculums.models import Curriculum
 from apps.profiles.models import StudentProfile
 from apps.semesters.models import Semester
+from .auto_schedule import PriorityPreset, Preferences
 from .models import Registration
 
 
@@ -15,24 +19,44 @@ class RegistrationSerializer(serializers.ModelSerializer):
         queryset=Semester.objects.all(), required=False, allow_null=True
     )
     student_code = serializers.CharField(source="student.student_code", read_only=True)
+    student_name = serializers.SerializerMethodField()
     class_section_code = serializers.CharField(source="class_section.code", read_only=True)
     course_code = serializers.CharField(source="class_section.course.code", read_only=True)
     course_name = serializers.CharField(source="class_section.course.name", read_only=True)
     course_credits = serializers.IntegerField(source="class_section.course.credits", read_only=True)
     semester_code = serializers.CharField(source="semester.code", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    teacher_name = serializers.SerializerMethodField()
+    teacher_code = serializers.CharField(source="class_section.teacher.teacher_code", read_only=True, default=None)
+    teacher_user_id = serializers.IntegerField(source="class_section.teacher.user_id", read_only=True, default=None)
+    schedules = ScheduleSerializer(source="class_section.schedules", many=True, read_only=True)
+    enrolled_count = serializers.IntegerField(source="class_section.enrolled_count", read_only=True)
+    max_students = serializers.IntegerField(source="class_section.max_students", read_only=True)
+    retake_confirmed = serializers.BooleanField(write_only=True, required=False, default=False)
 
     class Meta:
         model = Registration
         fields = (
-            "id", "student", "student_code",
+            "id", "student", "student_code", "student_name",
             "class_section", "class_section_code", "course_code", "course_name", "course_credits",
             "semester", "semester_code",
             "status", "status_display", "registered_at", "cancelled_at", "cancel_reason",
+            "teacher_name", "teacher_code", "teacher_user_id",
+            "schedules", "enrolled_count", "max_students", "retake_confirmed",
         )
         read_only_fields = ("id", "registered_at", "cancelled_at")
         # Disable auto UniqueTogetherValidator vì nó bắt student field phải có sẵn
         validators = []
+
+    def get_student_name(self, obj) -> str:
+        u = obj.student.user
+        return u.get_full_name() or u.username
+
+    def get_teacher_name(self, obj) -> str | None:
+        teacher = obj.class_section.teacher
+        if not teacher:
+            return None
+        return teacher.user.get_full_name() or teacher.user.username
 
     # ---------- Validation helpers ----------
 
@@ -92,6 +116,44 @@ class RegistrationSerializer(serializers.ModelSerializer):
         if missing:
             raise serializers.ValidationError(
                 {"class_section": f"Thiếu môn tiên quyết: {', '.join(missing)}"}
+            )
+
+    def _get_student_curriculum(self, student):
+        cur = Curriculum.objects.filter(
+            major=student.major,
+            cohort_year=student.enrollment_year,
+            is_active=True,
+        ).first()
+        if cur:
+            return cur
+        return (
+            Curriculum.objects.filter(
+                major=student.major,
+                cohort_year__lte=student.enrollment_year,
+                is_active=True,
+            )
+            .order_by("-cohort_year")
+            .first()
+        )
+
+    def _check_course_in_curriculum(self, student, class_section):
+        curriculum = self._get_student_curriculum(student)
+        if not curriculum:
+            return
+        if not curriculum.curriculum_courses.filter(course=class_section.course).exists():
+            raise serializers.ValidationError(
+                {"class_section": "Môn không có trong chương trình đào tạo."}
+            )
+
+    def _check_retake_confirmation(self, student, class_section, retake_confirmed):
+        has_grade = Registration.objects.filter(
+            student=student,
+            class_section__course=class_section.course,
+            grade__total_score__isnull=False,
+        ).exists()
+        if has_grade and not retake_confirmed:
+            raise serializers.ValidationError(
+                {"class_section": "Môn đã học rồi. Bạn có muốn học lại không?"}
             )
 
     @staticmethod
@@ -162,13 +224,106 @@ class RegistrationSerializer(serializers.ModelSerializer):
                 )
 
             self._check_window_open(semester)
+            self._check_course_in_curriculum(student, class_section)
+            self._check_retake_confirmation(
+                student,
+                class_section,
+                attrs.pop("retake_confirmed", False),
+            )
             self._check_class_not_full(class_section)
             self._check_prerequisites(student, class_section)
             instance_pk = self.instance.pk if self.instance else None
             self._check_schedule_conflict(student, semester, class_section, instance_pk)
 
+        attrs.pop("retake_confirmed", None)
         return attrs
 
     def create(self, validated_data):
         validated_data.setdefault("status", Registration.Status.CONFIRMED)
         return super().create(validated_data)
+
+
+# ───────────────────────── Auto Schedule (FR-STU-TKB) ─────────────────────────
+
+
+class AutoScheduleRequestSerializer(serializers.Serializer):
+    """Input cho POST /api/auto-schedule/suggest/."""
+    semester = serializers.PrimaryKeyRelatedField(queryset=Semester.objects.all())
+    course_ids = serializers.ListField(
+        child=serializers.IntegerField(), min_length=1, max_length=10
+    )
+    avoid_weekdays = serializers.ListField(
+        child=serializers.IntegerField(min_value=0, max_value=6),
+        required=False,
+        default=list,
+    )
+    preferred_sessions = serializers.ListField(
+        child=serializers.ChoiceField(choices=["MORNING", "AFTERNOON", "EVENING"]),
+        required=False,
+        default=list,
+    )
+    preferred_teacher_ids = serializers.ListField(
+        child=serializers.IntegerField(), required=False, default=list
+    )
+    preset = serializers.ChoiceField(
+        choices=[p.value for p in PriorityPreset],
+        default=PriorityPreset.BALANCED.value,
+    )
+    # Hard filter per-course: { "<course_id>": <teacher_id> }
+    course_teacher_constraints = serializers.DictField(
+        child=serializers.IntegerField(),
+        required=False,
+        default=dict,
+    )
+    max_results = serializers.IntegerField(default=50, min_value=1, max_value=200)
+
+    def to_preferences(self) -> Preferences:
+        v = self.validated_data
+        raw_constraints = v.get("course_teacher_constraints", {}) or {}
+        constraints = {int(k): int(t) for k, t in raw_constraints.items()}
+        return Preferences(
+            avoid_weekdays=frozenset(v.get("avoid_weekdays", [])),
+            preferred_sessions=frozenset(v.get("preferred_sessions", [])),
+            preferred_teacher_ids=frozenset(v.get("preferred_teacher_ids", [])),
+            preset=PriorityPreset(v.get("preset", PriorityPreset.BALANCED.value)),
+            course_teacher_constraints=constraints,
+        )
+
+
+class AutoScheduleCandidateSerializer(serializers.Serializer):
+    """1 phương án TKB trả về cho frontend."""
+    class_sections = ClassSectionSerializer(many=True, read_only=True)
+    score = serializers.FloatField()
+    breakdown = serializers.DictField(child=serializers.FloatField())
+    stats = serializers.DictField(child=serializers.IntegerField())
+
+
+# ───────────────────────── Available courses (GET endpoint) ─────────────────────────
+
+
+class AvailableTeacherClassSectionSerializer(serializers.ModelSerializer):
+    """Mini class-section trong nhóm teachers của available courses."""
+    schedules = ScheduleSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ClassSection
+        fields = ("id", "code", "enrolled_count", "max_students", "schedules")
+
+
+class AvailableTeacherSerializer(serializers.Serializer):
+    teacher_id = serializers.IntegerField(allow_null=True)
+    teacher_name = serializers.CharField(allow_null=True)
+    class_sections = AvailableTeacherClassSectionSerializer(many=True, read_only=True)
+
+
+class AvailableCourseSerializer(serializers.Serializer):
+    """1 môn để hiển thị ở UI chọn TKB (đã group teachers + status flags)."""
+    course_id = serializers.IntegerField()
+    course_code = serializers.CharField()
+    course_name = serializers.CharField()
+    credits = serializers.IntegerField()
+    has_grade = serializers.BooleanField()
+    passed = serializers.BooleanField()
+    missing_prerequisites = serializers.ListField(child=serializers.CharField())
+    registered = serializers.BooleanField()
+    teachers = AvailableTeacherSerializer(many=True, read_only=True)

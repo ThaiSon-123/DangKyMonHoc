@@ -16,12 +16,14 @@ Usage:
 from __future__ import annotations
 
 import re
+import unicodedata
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from apps.courses.models import Course
+from apps.curriculums.knowledge_blocks import classify_knowledge_block
 from apps.curriculums.models import Curriculum, CurriculumCourse
 from apps.majors.models import Major
 
@@ -29,6 +31,12 @@ SECTION_RE = re.compile(
     r"H[ọo]c k[ỳy]\s*(\d+)\s*-\s*N[ăa]m\s*h[ọo]c\s*(\d{4})\s*-\s*(\d{4})",
     re.IGNORECASE,
 )
+
+
+def normalize_header(value) -> str:
+    text = unicodedata.normalize("NFD", str(value or ""))
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    return re.sub(r"\s+", " ", text).strip().lower()
 
 
 class Command(BaseCommand):
@@ -53,7 +61,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--knowledge-block", default="MAJOR",
             choices=["GENERAL", "BASIC", "MAJOR", "ELECTIVE", "THESIS"],
-            help="Default knowledge_block cho các môn (default MAJOR).",
+            help="Legacy option; knowledge_block hiện được tự phân loại theo môn.",
         )
         parser.add_argument("--dry-run", action="store_true")
 
@@ -79,6 +87,22 @@ class Command(BaseCommand):
         if not rows:
             raise CommandError("File rỗng.")
 
+        headers = [normalize_header(value) for value in rows[0]]
+
+        def column_index(label: str) -> int:
+            normalized = normalize_header(label)
+            try:
+                return headers.index(normalized)
+            except ValueError:
+                raise CommandError(f"Thiếu cột bắt buộc: {label}")
+
+        code_idx = column_index("Mã MH")
+        name_idx = column_index("Tên môn học")
+        credits_idx = column_index("Số tín chỉ")
+        required_idx = column_index("Môn bắt buộc")
+        theory_idx = column_index("lý thuyết")
+        practice_idx = column_index("thực hành")
+
         # Parse rows
         current_semester_idx = 0  # 1, 2, 3, ...
         academic_year_seen: list[tuple[int, int]] = []  # tracking để tính HK liên tiếp
@@ -101,11 +125,14 @@ class Command(BaseCommand):
                 current_semester_idx = academic_year_seen.index(key) + 1
                 continue
 
-            # Data row — yêu cầu có code (cột 2) và name (cột 3)
-            try:
-                stt, code, name, credits, required, _learned, _passed, theory, practice = row[:9]
-            except ValueError:
-                continue
+            # Data row — yêu cầu có code và name theo header.
+            row_values = list(row)
+            code = row_values[code_idx] if code_idx < len(row_values) else None
+            name = row_values[name_idx] if name_idx < len(row_values) else None
+            credits = row_values[credits_idx] if credits_idx < len(row_values) else None
+            required = row_values[required_idx] if required_idx < len(row_values) else None
+            theory = row_values[theory_idx] if theory_idx < len(row_values) else None
+            practice = row_values[practice_idx] if practice_idx < len(row_values) else None
             if not code or not isinstance(code, str):
                 continue
             code = code.strip()
@@ -194,7 +221,11 @@ class Command(BaseCommand):
                     defaults={
                         "is_required": p["is_required"],
                         "suggested_semester": p["suggested_semester"],
-                        "knowledge_block": opts["knowledge_block"],
+                        "knowledge_block": classify_knowledge_block(
+                            course,
+                            is_required=p["is_required"],
+                            suggested_semester=p["suggested_semester"],
+                        ),
                     },
                 )
                 if link_created:

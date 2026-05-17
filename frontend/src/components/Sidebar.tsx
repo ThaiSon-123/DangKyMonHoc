@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useAuthStore } from "@/stores/auth";
 import type { Role } from "@/types";
+import AccountMenu from "./AccountMenu";
 import Icon, { type IconName } from "./ui/Icon";
 
 interface NavItem {
@@ -31,6 +32,7 @@ const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { to: "/student/schedule", label: "Thời khóa biểu", icon: "calendar" },
     { to: "/student/curriculum", label: "Chương trình đào tạo", icon: "layers" },
     { to: "/student/history", label: "Lịch sử đăng ký", icon: "clock" },
+    { to: "/student/grades", label: "Bảng điểm", icon: "graduation" },
     { to: "/student/notifications", label: "Thông báo", icon: "bell", section: "Khác" },
     { to: "/student/profile", label: "Hồ sơ", icon: "user" },
   ],
@@ -54,9 +56,6 @@ export default function Sidebar() {
   const { user } = useAuthStore();
   const navItems = user ? NAV_BY_ROLE[user.role] : [];
   const roleLabel = user ? ROLE_LABEL[user.role] : "";
-  const initials = user
-    ? `${user.last_name?.[0] ?? user.username[0]}${user.first_name?.[0] ?? ""}`.toUpperCase()
-    : "?";
 
   return (
     <aside className="w-60 bg-sidebar text-sidebar-text flex flex-col border-r border-white/5">
@@ -103,19 +102,7 @@ export default function Sidebar() {
       {/* User footer */}
       {user && (
         <div className="p-3 border-t border-white/5 flex-shrink-0">
-          <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-md bg-white/5">
-            <div className="w-[30px] h-[30px] rounded-full bg-gradient-to-br from-slate-500 to-slate-900 grid place-items-center text-white font-semibold text-xs">
-              {initials}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-[12.5px] text-white font-medium leading-tight truncate">
-                {user.last_name} {user.first_name || user.username}
-              </div>
-              <div className="text-[11px] text-slate-500 font-mono truncate">
-                {user.email || user.username}
-              </div>
-            </div>
-          </div>
+          <AccountMenu placement="sidebar" />
         </div>
       )}
     </aside>

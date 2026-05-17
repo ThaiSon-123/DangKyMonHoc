@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from .knowledge_blocks import classify_knowledge_block
 from .models import Curriculum, CurriculumCourse
 
 
@@ -15,6 +16,24 @@ class CurriculumCourseSerializer(serializers.ModelSerializer):
             "knowledge_block", "knowledge_block_display", "is_required", "suggested_semester",
         )
         read_only_fields = ("id",)
+
+    def validate(self, attrs):
+        course = attrs.get("course") or (self.instance.course if self.instance else None)
+        is_required = attrs.get(
+            "is_required",
+            self.instance.is_required if self.instance else True,
+        )
+        suggested_semester = attrs.get(
+            "suggested_semester",
+            self.instance.suggested_semester if self.instance else 1,
+        )
+        if course:
+            attrs["knowledge_block"] = classify_knowledge_block(
+                course,
+                is_required=is_required,
+                suggested_semester=suggested_semester,
+            )
+        return attrs
 
 
 class CurriculumSerializer(serializers.ModelSerializer):

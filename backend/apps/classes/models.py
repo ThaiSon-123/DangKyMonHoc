@@ -55,6 +55,14 @@ class ClassSection(models.Model):
     def clean(self):
         """Plan §7.2: lớp ở trạng thái OPEN bắt buộc phải có giáo viên."""
         super().clean()
+        if (
+            self.status == self.Status.OPEN
+            and self.semester_id
+            and not self.semester.is_open
+        ):
+            raise ValidationError(
+                {"status": "Khong the mo lop hoc phan trong hoc ky da dong."}
+            )
         if self.status == self.Status.OPEN and self.teacher_id is None:
             raise ValidationError(
                 {"teacher": "Lớp ở trạng thái 'Đang mở' phải có giáo viên phụ trách."}
@@ -138,6 +146,20 @@ class Schedule(models.Model):
                     )
                 }
             )
+        if self.start_date and self.end_date and self.start_date > self.end_date:
+            raise ValidationError(
+                {"end_date": "Ngày kết thúc học phải sau hoặc bằng ngày bắt đầu học."}
+            )
+        if self.class_section_id:
+            semester = self.class_section.semester
+            if self.start_date and self.start_date < semester.start_date:
+                raise ValidationError(
+                    {"start_date": "Ngày bắt đầu học phải nằm trong thời gian học kỳ."}
+                )
+            if self.end_date and self.end_date > semester.end_date:
+                raise ValidationError(
+                    {"end_date": "Ngày kết thúc học phải nằm trong thời gian học kỳ."}
+                )
 
     def save(self, *args, **kwargs):
         self.full_clean()

@@ -3,7 +3,7 @@
 Theo plan §7.2.9 — chốt term là số nguyên 1/2/3.
 - SPRING → 1 (HK1)
 - FALL   → 2 (HK2)
-- SUMMER → 3 (HK hè)
+- SUMMER → 3 (HK3)
 """
 from django.db import migrations, models
 
@@ -46,8 +46,8 @@ class Migration(migrations.Migration):
             model_name="semester",
             name="term",
             field=models.PositiveSmallIntegerField(
-                choices=[(1, "Học kỳ 1"), (2, "Học kỳ 2"), (3, "Học kỳ hè")],
-                help_text="1=HK1, 2=HK2, 3=HK hè (plan §7.2.9).",
+                choices=[(1, "Học kỳ 1"), (2, "Học kỳ 2"), (3, "Học kỳ 3")],
+                help_text="1=HK1, 2=HK2, 3=HK3 (plan §7.2.9).",
             ),
         ),
     ]

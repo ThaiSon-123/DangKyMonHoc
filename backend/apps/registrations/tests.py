@@ -7,9 +7,13 @@ import pytest
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from apps.accounts.models import Role, User
 from apps.classes.models import ClassSection, Schedule
 from apps.courses.models import Prerequisite
+from apps.curriculums.models import Curriculum, CurriculumCourse
 from apps.grades.models import Grade
+from apps.majors.models import Major
+from apps.profiles.models import StudentProfile
 from apps.registrations.models import Registration
 
 
@@ -55,6 +59,100 @@ def test_br003_reject_after_registration_end(api, student_profile, open_semester
     res = api.post("/api/registrations/", {"class_section": cs.id}, format="json")
     assert res.status_code == 400
     assert "quá thời gian đăng ký" in str(res.data)
+
+
+def test_reject_course_outside_student_curriculum(
+    api, student_profile, course_factory, class_section_factory
+):
+    in_curriculum = course_factory(code="CUR101")
+    outside = course_factory(code="OUT101")
+    curriculum = Curriculum.objects.create(
+        major=student_profile.major,
+        code="CNTT-2021",
+        name="CNTT 2021",
+        cohort_year=student_profile.enrollment_year,
+        is_active=True,
+    )
+    CurriculumCourse.objects.create(curriculum=curriculum, course=in_curriculum)
+    cs = class_section_factory(outside)
+
+    res = api.post("/api/registrations/", {"class_section": cs.id}, format="json")
+
+    assert res.status_code == 400
+    assert "chương trình đào tạo" in str(res.data)
+
+
+def test_reject_graded_course_without_retake_confirmation(
+    api, student_profile, open_semester, course_factory, class_section_factory
+):
+    course = course_factory(code="RET101")
+    curriculum = Curriculum.objects.create(
+        major=student_profile.major,
+        code="CNTT-2021",
+        name="CNTT 2021",
+        cohort_year=student_profile.enrollment_year,
+        is_active=True,
+    )
+    CurriculumCourse.objects.create(curriculum=curriculum, course=course)
+    old_cs = class_section_factory(
+        course, weekday=2, session=Schedule.Session.AFTERNOON, start_period=6
+    )
+    old_reg = Registration.objects.create(
+        student=student_profile,
+        class_section=old_cs,
+        semester=open_semester,
+        status=Registration.Status.CONFIRMED,
+    )
+    Grade.objects.create(
+        registration=old_reg,
+        process_score=Decimal("6"),
+        midterm_score=Decimal("6"),
+        final_score=Decimal("6"),
+    )
+    new_cs = class_section_factory(course, weekday=3, start_period=1)
+
+    res = api.post("/api/registrations/", {"class_section": new_cs.id}, format="json")
+
+    assert res.status_code == 400
+    assert "Môn đã học rồi" in str(res.data)
+
+
+def test_allow_graded_course_with_retake_confirmation(
+    api, student_profile, open_semester, course_factory, class_section_factory
+):
+    course = course_factory(code="RET102")
+    curriculum = Curriculum.objects.create(
+        major=student_profile.major,
+        code="CNTT-2021-B",
+        name="CNTT 2021",
+        cohort_year=student_profile.enrollment_year,
+        is_active=True,
+    )
+    CurriculumCourse.objects.create(curriculum=curriculum, course=course)
+    old_cs = class_section_factory(
+        course, weekday=2, session=Schedule.Session.AFTERNOON, start_period=6
+    )
+    old_reg = Registration.objects.create(
+        student=student_profile,
+        class_section=old_cs,
+        semester=open_semester,
+        status=Registration.Status.CONFIRMED,
+    )
+    Grade.objects.create(
+        registration=old_reg,
+        process_score=Decimal("6"),
+        midterm_score=Decimal("6"),
+        final_score=Decimal("6"),
+    )
+    new_cs = class_section_factory(course, weekday=3, start_period=1)
+
+    res = api.post(
+        "/api/registrations/",
+        {"class_section": new_cs.id, "retake_confirmed": True},
+        format="json",
+    )
+
+    assert res.status_code == 201, res.data
 
 
 # ---------- BR-005: lớp đầy ----------
@@ -248,3 +346,43 @@ def test_br006_admin_can_force_cancel_after_deadline(
         {"cancel_reason": "admin force"}, format="json"
     )
     assert res.status_code == 200
+
+
+def test_admin_can_filter_registrations_by_department_and_major(
+    admin_api, student_profile, open_semester, course_factory, class_section_factory
+):
+    cntt = student_profile.major
+    cntt.department = "Khoa CNTT"
+    cntt.save(update_fields=["department"])
+    kinh_te = Major.objects.create(code="REGKT", name="Kinh te", department="Khoa Kinh te")
+    other_user = User.objects.create_user(username="sv_reg_kt", password="pass", role=Role.STUDENT)
+    other_student = StudentProfile.objects.create(
+        user=other_user,
+        student_code="SV-REG-KT",
+        major=kinh_te,
+        enrollment_year=2021,
+    )
+    cntt_class = class_section_factory(course_factory(code="REG101"))
+    kt_class = class_section_factory(
+        course_factory(code="REG102"),
+        weekday=1,
+        start_period=1,
+    )
+    Registration.objects.create(
+        student=student_profile,
+        class_section=cntt_class,
+        semester=open_semester,
+        status=Registration.Status.CONFIRMED,
+    )
+    Registration.objects.create(
+        student=other_student,
+        class_section=kt_class,
+        semester=open_semester,
+        status=Registration.Status.CONFIRMED,
+    )
+
+    by_department = admin_api.get("/api/registrations/", {"department": "Khoa CNTT"})
+    by_major = admin_api.get("/api/registrations/", {"major": cntt.id})
+
+    assert [r["student_code"] for r in by_department.data["results"]] == [student_profile.student_code]
+    assert [r["student_code"] for r in by_major.data["results"]] == [student_profile.student_code]

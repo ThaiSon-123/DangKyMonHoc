@@ -6,14 +6,23 @@ from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
+from apps.profiles.models import StudentProfile
+from apps.semesters.models import Semester
+from .auto_schedule import AutoScheduleError, build_available_courses, suggest_schedules
 from .models import Registration
-from .serializers import RegistrationSerializer
+from .serializers import (
+    AutoScheduleCandidateSerializer,
+    AutoScheduleRequestSerializer,
+    AvailableCourseSerializer,
+    RegistrationSerializer,
+)
 
 
 class RegistrationViewSet(viewsets.ModelViewSet):
     queryset = Registration.objects.select_related(
-        "student__user", "class_section__course", "semester"
+        "student__user", "student__major", "class_section__course", "semester"
     ).prefetch_related("class_section__schedules")
     serializer_class = RegistrationSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -33,6 +42,12 @@ class RegistrationViewSet(viewsets.ModelViewSet):
             if value:
                 key = f"{field}{'_id' if field != 'status' else ''}"
                 qs = qs.filter(**{key: value})
+        department = params.get("department")
+        if department:
+            qs = qs.filter(student__major__department=department)
+        major = params.get("major")
+        if major:
+            qs = qs.filter(student__major_id=major)
         return qs
 
     # ---------- BR-006: thời hạn hủy đăng ký ----------
@@ -78,3 +93,81 @@ class RegistrationViewSet(viewsets.ModelViewSet):
         registration.cancel_reason = request.data.get("cancel_reason", "Hủy bởi người dùng")
         registration.save(update_fields=["status", "cancelled_at", "cancel_reason"])
         return Response(RegistrationSerializer(registration).data)
+
+
+class AvailableCoursesView(APIView):
+    """GET /api/auto-schedule/available-courses/?semester=<id>&search=&unlearned_only=
+
+    Trả list môn có lớp HP OPEN còn slot, thuộc CTĐT của SV.
+    Group theo course → teacher → class_sections.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if getattr(request.user, "role", None) != "STUDENT":
+            raise PermissionDenied("Chỉ sinh viên được dùng chức năng này.")
+        try:
+            student = request.user.student_profile
+        except StudentProfile.DoesNotExist:
+            raise PermissionDenied("Tài khoản chưa có StudentProfile. Liên hệ Admin.")
+
+        semester_id = request.query_params.get("semester")
+        if not semester_id:
+            return Response({"detail": "Thiếu query param `semester`."}, status=400)
+        try:
+            semester = Semester.objects.get(pk=int(semester_id))
+        except (Semester.DoesNotExist, ValueError):
+            return Response({"detail": "Học kỳ không tồn tại."}, status=400)
+
+        search = request.query_params.get("search", "") or ""
+        unlearned_only = request.query_params.get("unlearned_only", "").lower() in (
+            "true", "1", "yes",
+        )
+
+        data = build_available_courses(
+            student=student,
+            semester=semester,
+            search=search,
+            unlearned_only=unlearned_only,
+        )
+        serializer = AvailableCourseSerializer(data, many=True)
+        return Response({"count": len(data), "results": serializer.data})
+
+
+class AutoScheduleSuggestView(APIView):
+    """POST /api/auto-schedule/suggest/ — FR-STU-TKB.
+
+    Trả tất cả phương án TKB không trùng lịch + score theo preferences.
+    Chỉ SV được dùng (cần student_profile).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if getattr(request.user, "role", None) != "STUDENT":
+            raise PermissionDenied("Chỉ sinh viên được dùng chức năng này.")
+        try:
+            student = request.user.student_profile
+        except StudentProfile.DoesNotExist:
+            raise PermissionDenied(
+                "Tài khoản chưa có StudentProfile. Liên hệ Admin."
+            )
+
+        ser = AutoScheduleRequestSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        try:
+            candidates = suggest_schedules(
+                student=student,
+                semester=ser.validated_data["semester"],
+                course_ids=ser.validated_data["course_ids"],
+                prefs=ser.to_preferences(),
+                max_results=ser.validated_data.get("max_results", 50),
+            )
+        except AutoScheduleError as e:
+            payload = {"detail": str(e)}
+            if e.details:
+                payload["details"] = e.details
+            return Response(payload, status=status.HTTP_400_BAD_REQUEST)
+
+        data = AutoScheduleCandidateSerializer(candidates, many=True).data
+        return Response({"count": len(data), "results": data})

@@ -4,12 +4,13 @@ export interface User {
   id: number;
   username: string;
   email: string;
-  first_name: string;
-  last_name: string;
+  full_name: string;
   role: Role;
   phone: string;
   is_locked: boolean;
   is_active: boolean;
+  student_major: number | null;
+  teacher_department: string;
 }
 
 export interface LoginResponse {

@@ -8,13 +8,14 @@ interface Props {
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
 }
 
 const SIZE_CLASS = {
   sm: "max-w-md",
   md: "max-w-lg",
   lg: "max-w-2xl",
+  xl: "max-w-6xl",
 };
 
 export default function Modal({
@@ -45,10 +46,10 @@ export default function Modal({
       aria-modal="true"
     >
       <div
-        className={`bg-card rounded-xl border border-line shadow-elevated w-full ${SIZE_CLASS[size]} overflow-hidden`}
+        className={`bg-card rounded-xl border border-line shadow-elevated w-full ${SIZE_CLASS[size]} max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-5 py-3.5 border-b border-line flex items-start gap-3">
+        <div className="px-5 py-3.5 border-b border-line flex items-start gap-3 shrink-0">
           <div className="flex-1 min-w-0">
             <div className="text-[15px] font-semibold text-ink">{title}</div>
             {subtitle && <div className="text-[12.5px] text-ink-muted mt-0.5">{subtitle}</div>}
@@ -62,9 +63,9 @@ export default function Modal({
             <Icon name="x" size={18} />
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="p-5 overflow-y-auto overscroll-contain">{children}</div>
         {footer && (
-          <div className="px-5 py-3 border-t border-line bg-cardAlt flex justify-end gap-2">
+          <div className="px-5 py-3 border-t border-line bg-cardAlt flex justify-end gap-2 shrink-0">
             {footer}
           </div>
         )}

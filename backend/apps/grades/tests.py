@@ -1,12 +1,14 @@
 """Tests for BR-007: GV chỉ nhập điểm cho lớp được phân công."""
 
 from datetime import timedelta
+from decimal import Decimal
 
 import pytest
 from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import Role, User
+from apps.grades.models import Grade
 from apps.profiles.models import TeacherProfile
 from apps.registrations.models import Registration
 
@@ -86,6 +88,33 @@ def test_grade_auto_compute_total_and_letter(
     assert res.status_code == 201
     assert float(res.data["total_score"]) == 5.9
     assert res.data["grade_letter"] == "C"
+
+
+@pytest.mark.parametrize(
+    ("total_score", "grade_letter", "gpa_4"),
+    [
+        # Pass: gpa_4 = total × 0.4 (linear, 2 decimal places)
+        ("10.00", "A", "4.00"),
+        ("8.50", "A", "3.40"),
+        ("8.10", "B+", "3.24"),
+        ("8.00", "B+", "3.20"),
+        ("7.49", "B", "3.00"),  # ví dụ: 7.49 × 0.4 = 2.996 → 3.00
+        ("7.00", "B", "2.80"),
+        ("6.50", "C+", "2.60"),
+        ("5.74", "C", "2.30"),  # ví dụ từ screenshot SV
+        ("5.50", "C", "2.20"),
+        ("5.00", "D+", "2.00"),
+        ("4.00", "D", "1.60"),
+        # Fail: F → 0 (môn không tích luỹ dù total dương)
+        ("3.99", "F", "0.00"),
+        ("0.00", "F", "0.00"),
+    ],
+)
+def test_grade_letter_and_gpa_follow_score_table(total_score, grade_letter, gpa_4):
+    grade = Grade(total_score=total_score)
+
+    assert grade.compute_letter() == grade_letter
+    assert grade.compute_gpa_4() == Decimal(gpa_4)
 
 
 def test_grade_update_window_blocks_late_update(
