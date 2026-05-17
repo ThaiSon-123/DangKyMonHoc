@@ -6,6 +6,7 @@ import { getClassSection, notifyClass, type NotifyClassInput } from "@/api/class
 import { CATEGORY_LABELS, type NotiCategory } from "@/api/notifications";
 import { listRegistrations, type Registration } from "@/api/registrations";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import {
 
   SESSION_LABELS,
@@ -28,7 +29,7 @@ export default function TeacherClassDetailPage() {
   const [data, setData] = useState<ClassSection | null>(null);
   const [students, setStudents] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   // Notify modal state
   const [showNotify, setShowNotify] = useState(false);
@@ -39,12 +40,11 @@ export default function TeacherClassDetailPage() {
   });
   const [notifySubmitting, setNotifySubmitting] = useState(false);
   const [notifyError, setNotifyError] = useState<string | null>(null);
-  const [notifySuccess, setNotifySuccess] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!classId) return;
     setLoading(true);
-    setError(null);
+    setLoadFailed(false);
     try {
       const [cs, regs] = await Promise.all([
         getClassSection(classId),
@@ -57,7 +57,8 @@ export default function TeacherClassDetailPage() {
       setData(cs);
       setStudents(regs.results);
     } catch (err) {
-      setError(extractApiError(err, "Không tải được lớp."));
+      setLoadFailed(true);
+      showErrorToast(extractApiError(err, "Không tải được thông tin lớp."));
     } finally {
       setLoading(false);
     }
@@ -74,12 +75,12 @@ export default function TeacherClassDetailPage() {
     setNotifyError(null);
     try {
       const result = await notifyClass(data.id, notifyForm);
-      setNotifySuccess(
+      showSuccessToast(
         `Đã gửi thông báo "${result.notification.title}" tới ${result.recipient_count} sinh viên.`,
+        "Gửi thông báo thành công",
       );
       setShowNotify(false);
       setNotifyForm({ title: "", body: "", category: "CLASS" });
-      setTimeout(() => setNotifySuccess(null), 5000);
     } catch (err) {
       setNotifyError(extractApiError(err, "Không gửi được thông báo."));
     } finally {
@@ -92,7 +93,9 @@ export default function TeacherClassDetailPage() {
   if (!data) {
     return (
       <div className="space-y-3">
-        <div className="text-sm text-danger">{error || "Không tìm thấy lớp."}</div>
+        <div className="text-sm text-danger">
+          {loadFailed ? "Không tải được dữ liệu lớp. Vui lòng thử lại sau." : "Không tìm thấy lớp."}
+        </div>
         <Link to="/teacher/classes" className="text-navy-600 text-sm">
           ← Quay lại danh sách
         </Link>
@@ -182,12 +185,6 @@ export default function TeacherClassDetailPage() {
         </div>
       </div>
 
-      {notifySuccess && (
-        <div className="bg-green-50 border border-green-200 rounded-md px-3 py-2 text-[13px] text-success flex items-start gap-2">
-          <Icon name="check" size={16} className="mt-0.5 flex-shrink-0" />
-          <div>{notifySuccess}</div>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat

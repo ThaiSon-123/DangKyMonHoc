@@ -12,6 +12,7 @@ import { getMyCurriculum } from "@/api/curriculums";
 import { listGrades } from "@/api/grades";
 import { listSemesters } from "@/api/semesters";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { formatRegistrationWindow, pickActiveSemester, type SemesterStatus } from "@/lib/semester";
 import {
   SESSION_LABELS,
@@ -41,13 +42,11 @@ export default function StudentRegisterPage() {
 
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
-  const [error, setError] = useState<string | null>(null);
 
   const [confirmTarget, setConfirmTarget] = useState<ClassSection | null>(null);
   const [retakeTarget, setRetakeTarget] = useState<ClassSection | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
-  const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
 
   const [cancelTarget, setCancelTarget] = useState<Registration | null>(null);
   const [cancelReason, setCancelReason] = useState("");
@@ -59,7 +58,7 @@ export default function StudentRegisterPage() {
         setSemester(result.semester);
         setSemesterStatus(result.status);
       })
-      .catch((err) => setError(extractApiError(err, "Không tải được học kỳ.")));
+      .catch((err) => showErrorToast(extractApiError(err, "Không tải được danh sách học kỳ.")));
   }, []);
 
   useEffect(() => {
@@ -98,7 +97,7 @@ export default function StudentRegisterPage() {
       });
       setRegistrations(data.results);
     } catch (err) {
-      setError(extractApiError(err, "Không tải được đăng ký."));
+      showErrorToast(extractApiError(err, "Không tải được danh sách đăng ký."));
     } finally {
       setRegsLoading(false);
     }
@@ -110,7 +109,6 @@ export default function StudentRegisterPage() {
       return;
     }
     setClassesLoading(true);
-    setError(null);
     try {
       const data = await listClassSections({
         semester: selectedSemester,
@@ -121,7 +119,7 @@ export default function StudentRegisterPage() {
       });
       setClasses(data.results);
     } catch (err) {
-      setError(extractApiError(err, "Không tải được lớp học phần."));
+      showErrorToast(extractApiError(err, "Không tải được danh sách lớp học phần."));
     } finally {
       setClassesLoading(false);
     }
@@ -196,11 +194,10 @@ export default function StudentRegisterPage() {
         class_section: target.id,
         retake_confirmed: retakeConfirmed,
       });
-      setRegisterSuccess(`Đăng ký thành công ${target.code}!`);
+      showSuccessToast(`Đã đăng ký thành công lớp ${target.code}.`, "Đăng ký thành công");
       setConfirmTarget(null);
       setRetakeTarget(null);
       await Promise.all([refreshRegs(), refreshClasses()]);
-      setTimeout(() => setRegisterSuccess(null), 4000);
     } catch (err) {
       const message = extractApiError(err);
       if (message.includes("Môn đã học rồi") && !retakeConfirmed) {
@@ -219,11 +216,12 @@ export default function StudentRegisterPage() {
     setSubmitting(true);
     try {
       await cancelRegistration(cancelTarget.id, cancelReason || "SV tự huỷ");
+      showSuccessToast(`Đã huỷ đăng ký lớp ${cancelTarget.class_section_code}.`, "Huỷ đăng ký thành công");
       setCancelTarget(null);
       setCancelReason("");
       await Promise.all([refreshRegs(), refreshClasses()]);
     } catch (err) {
-      setError(extractApiError(err, "Không huỷ được đăng ký."));
+      showErrorToast(extractApiError(err, "Không huỷ được đăng ký."));
     } finally {
       setSubmitting(false);
     }
@@ -301,7 +299,7 @@ export default function StudentRegisterPage() {
             icon="plus"
             onClick={() => {
               if (!isSemesterOpen) {
-                setError("Ngoài thời gian đăng ký.");
+                showErrorToast("Học kỳ này đang ngoài thời gian đăng ký.");
                 return;
               }
               setConfirmTarget(c);
@@ -447,13 +445,6 @@ export default function StudentRegisterPage() {
         </div>
       )}
 
-      {registerSuccess && (
-        <div className="bg-green-50 border border-green-200 rounded-md px-3 py-2 text-[13px] text-success flex items-start gap-2">
-          <Icon name="check" size={16} className="mt-0.5 flex-shrink-0" />
-          <div>{registerSuccess}</div>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Stat label="Lớp đã đăng ký" value={totalRegistered} icon="check" tone="accent" />
         <Stat label="Tổng tín chỉ" value={totalCredits} icon="book" />
@@ -524,12 +515,6 @@ export default function StudentRegisterPage() {
             </Button>
           </div>
         </div>
-
-        {error && (
-          <div className="text-sm text-danger bg-red-50 border border-red-200 rounded-md px-3 py-2 mb-3">
-            {error}
-          </div>
-        )}
 
         {classesLoading ? (
           <div className="text-ink-muted py-6 text-center">Đang tải...</div>

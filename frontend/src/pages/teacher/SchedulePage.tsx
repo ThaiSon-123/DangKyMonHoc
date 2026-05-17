@@ -5,6 +5,7 @@ import { listClassSections } from "@/api/classes";
 import { getMyTeacherProfile } from "@/api/teachers";
 import { listSemesters } from "@/api/semesters";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast } from "@/lib/toast";
 import {
   WEEKDAY_LABELS,
   type ClassSection,
@@ -20,34 +21,32 @@ interface EnrichedSchedule extends Schedule {
   max_students: number;
 }
 
-function toDateOnly(value: Date | string): Date {
-  if (value instanceof Date) {
-    return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-  }
+function parseDate(value: string): Date {
   const [year, month, day] = value.split("-").map(Number);
   return new Date(year, month - 1, day);
 }
 
-function startOfWeek(date: Date): Date {
-  const next = toDateOnly(date);
-  const day = next.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  next.setDate(next.getDate() + diff);
-  return next;
+function formatDate(value: Date): string {
+  return value.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
 }
 
-function addDays(date: Date, days: number): Date {
-  const next = new Date(date);
+function addDays(value: Date, days: number): Date {
+  const next = new Date(value);
   next.setDate(next.getDate() + days);
   return next;
 }
 
-function formatDate(date: Date): string {
-  return date.toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+function startOfWeek(value: Date): Date {
+  const next = new Date(value);
+  const day = next.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  next.setDate(next.getDate() + diff);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function sameDateOrBefore(left: Date, right: Date): boolean {
+  return left.getTime() <= right.getTime();
 }
 
 export default function TeacherSchedulePage() {
@@ -55,16 +54,16 @@ export default function TeacherSchedulePage() {
   const [selectedSemester, setSelectedSemester] = useState<number | "">("");
   const [classes, setClasses] = useState<ClassSection[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [teacherId, setTeacherId] = useState<number | null>(null);
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
 
   const [selectedEvent, setSelectedEvent] = useState<EnrichedSchedule | null>(null);
+  const [weekStart, setWeekStart] = useState<Date | null>(null);
 
+  // 1. Load teacher profile + semesters
   useEffect(() => {
     getMyTeacherProfile()
       .then((t) => setTeacherId(t.id))
-      .catch((err) => setError(extractApiError(err, "Không tải được hồ sơ.")));
+      .catch((err) => showErrorToast(extractApiError(err, "Không tải được hồ sơ giáo viên.")));
   }, []);
 
   useEffect(() => {
@@ -72,12 +71,15 @@ export default function TeacherSchedulePage() {
       .then((r) => {
         setSemesters(r.results);
         const openSem = r.results.find((s) => s.is_open);
-        setSelectedSemester(openSem?.id ?? r.results[0]?.id ?? "");
+        const initial = openSem ?? r.results[0];
+        setSelectedSemester(initial?.id ?? "");
+        if (initial) setWeekStart(startOfWeek(parseDate(initial.start_date)));
       })
-      .catch((err) => setError(extractApiError(err, "Không tải được học kỳ.")));
+      .catch((err) => showErrorToast(extractApiError(err, "Không tải được danh sách học kỳ.")));
   }, []);
 
-  const refresh = useCallback(async () => {
+  // 2. Khi semester/teacher thay đổi: load class sections
+  const loadSchedule = useCallback(async () => {
     if (!selectedSemester || !teacherId) return;
     setLoading(true);
     try {
@@ -88,26 +90,17 @@ export default function TeacherSchedulePage() {
       });
       setClasses(data.results);
     } catch (err) {
-      setError(extractApiError(err, "Không tải được lớp."));
+      showErrorToast(extractApiError(err, "Không tải được danh sách lớp."));
     } finally {
       setLoading(false);
     }
   }, [selectedSemester, teacherId]);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    loadSchedule();
+  }, [loadSchedule]);
 
-  useEffect(() => {
-    const semester = semesters.find((s) => s.id === selectedSemester);
-    if (!semester) return;
-    const today = toDateOnly(new Date());
-    const semesterStart = toDateOnly(semester.start_date);
-    const semesterEnd = toDateOnly(semester.end_date);
-    const base = today >= semesterStart && today <= semesterEnd ? today : semesterStart;
-    setWeekStart(startOfWeek(base));
-  }, [selectedSemester, semesters]);
-
+  // Flatten schedules
   const schedules: EnrichedSchedule[] = useMemo(() => {
     const flat: EnrichedSchedule[] = [];
     for (const cs of classes) {
@@ -125,28 +118,43 @@ export default function TeacherSchedulePage() {
     return flat;
   }, [classes]);
 
+  const semesterObj = semesters.find((s) => s.id === selectedSemester);
+  const semesterStart = semesterObj ? parseDate(semesterObj.start_date) : null;
+  const semesterEnd = semesterObj ? parseDate(semesterObj.end_date) : null;
+  const weekEnd = weekStart ? addDays(weekStart, 6) : null;
+
+  // Filter schedules trong tuần đang xem (theo start_date/end_date của schedule)
+  const visibleSchedules = useMemo(() => {
+    if (!semesterObj || !weekStart || !weekEnd) return schedules;
+    return schedules.filter((s) => {
+      const scheduleStart = s.start_date ? parseDate(s.start_date) : parseDate(semesterObj.start_date);
+      const scheduleEnd = s.end_date ? parseDate(s.end_date) : parseDate(semesterObj.end_date);
+      return sameDateOrBefore(scheduleStart, weekEnd) && sameDateOrBefore(weekStart, scheduleEnd);
+    });
+  }, [schedules, semesterObj, weekStart, weekEnd]);
+
+  // Convert → ScheduleEvent, colorIndex theo course
   const events: ScheduleEvent[] = useMemo(() => {
     const courseColorMap = new Map<string, number>();
-    let idx = 0;
-    for (const s of schedules) {
+    let nextIdx = 0;
+    for (const s of visibleSchedules) {
       if (!courseColorMap.has(s.course_code)) {
-        courseColorMap.set(s.course_code, idx++);
+        courseColorMap.set(s.course_code, nextIdx++);
       }
     }
-    return schedules.map((s) => ({
+    return visibleSchedules.map((s) => ({
       id: s.id,
       weekday: s.weekday,
       start_period: s.start_period,
       end_period: s.end_period,
-      start_date: s.start_date,
-      end_date: s.end_date,
       title: s.class_section_code,
       subtitle: s.course_name,
       meta: s.room ? `Phòng ${s.room}` : "",
       colorIndex: courseColorMap.get(s.course_code) ?? 0,
     }));
-  }, [schedules]);
+  }, [visibleSchedules]);
 
+  // KPIs
   const totalClasses = classes.length;
   const totalSessions = schedules.length;
   const totalStudents = classes.reduce((s, c) => s + c.enrolled_count, 0);
@@ -154,33 +162,44 @@ export default function TeacherSchedulePage() {
     (s, sch) => s + (sch.end_period - sch.start_period + 1),
     0,
   );
-  const weekEnd = addDays(weekStart, 6);
-  const weekLabel = `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
 
-  function handleEventClick(e: ScheduleEvent) {
-    const sch = schedules.find((s) => s.id === e.id);
+  function handleEventClick(event: ScheduleEvent) {
+    const sch = visibleSchedules.find((s) => s.id === event.id);
     if (sch) setSelectedEvent(sch);
   }
+
+  function handleSemesterChange(value: number | "") {
+    setSelectedSemester(value);
+    const semester = semesters.find((s) => s.id === value);
+    setWeekStart(semester ? startOfWeek(parseDate(semester.start_date)) : null);
+  }
+
+  function moveWeek(delta: number) {
+    if (!weekStart || !semesterStart || !semesterEnd) return;
+    const next = addDays(weekStart, delta * 7);
+    const minWeek = startOfWeek(semesterStart);
+    const maxWeek = startOfWeek(semesterEnd);
+    if (next < minWeek || next > maxWeek) return;
+    setWeekStart(next);
+  }
+
+  const canGoPrev = !!weekStart && !!semesterStart && weekStart > startOfWeek(semesterStart);
+  const canGoNext = !!weekStart && !!semesterEnd && weekStart < startOfWeek(semesterEnd);
 
   return (
     <div className="space-y-5">
       <div className="flex items-start gap-4">
         <div className="flex-1">
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">
-            Lịch dạy cá nhân
+            Thời khóa biểu
           </h1>
-          <p className="mt-1 text-[13.5px] text-ink-muted">
-            TKB giảng dạy của các lớp được phân công. Dùng nút tuần để xem lịch theo từng tuần học.
-          </p>
         </div>
         <select
           value={selectedSemester}
-          onChange={(e) =>
-            setSelectedSemester(e.target.value === "" ? "" : Number(e.target.value))
-          }
+          onChange={(e) => handleSemesterChange(e.target.value === "" ? "" : Number(e.target.value))}
           className="px-3 py-2 rounded-md bg-card border border-line text-[13px] min-w-[250px]"
         >
-          <option value="">- Chọn học kỳ -</option>
+          <option value="">— Chọn học kỳ —</option>
           {semesters.map((s) => (
             <option key={s.id} value={s.id}>
               {s.code} - {s.name}
@@ -197,39 +216,28 @@ export default function TeacherSchedulePage() {
         <Stat label="Tổng SV" value={totalStudents} icon="users" />
       </div>
 
-      {error && (
-        <div className="text-sm text-danger bg-red-50 border border-red-200 rounded-md px-3 py-2">
-          {error}
-        </div>
-      )}
-
       <Card
         title="Lịch dạy theo tuần"
-        subtitle={`Tuần ${weekLabel} · Click buổi dạy để xem chi tiết`}
-        action={
-          <div className="flex items-center gap-1.5">
-            <Button
-              size="sm"
-              variant="ghost"
-              icon="chevronLeft"
-              onClick={() => setWeekStart((d) => addDays(d, -7))}
-              title="Tuần trước"
-            />
-            <Button size="sm" variant="secondary" onClick={() => setWeekStart(startOfWeek(new Date()))}>
-              Hôm nay
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              icon="chevronRight"
-              onClick={() => setWeekStart((d) => addDays(d, 7))}
-              title="Tuần sau"
-            />
-          </div>
+        subtitle={
+          weekStart && weekEnd
+            ? `Tuần ${formatDate(weekStart)} - ${formatDate(weekEnd)}`
+            : "Click vào buổi dạy để xem chi tiết"
         }
       >
+        <div className="flex items-center justify-end gap-2 mb-3">
+          <Button variant="ghost" icon="chevronLeft" onClick={() => moveWeek(-1)} disabled={!canGoPrev}>
+            Tuần trước
+          </Button>
+          <Button variant="ghost" iconRight="chevronRight" onClick={() => moveWeek(1)} disabled={!canGoNext}>
+            Tuần sau
+          </Button>
+        </div>
         {loading ? (
-          <div className="py-10 text-center text-ink-muted">Đang tải...</div>
+          <div className="py-10 text-center text-ink-muted">Đang tải TKB...</div>
+        ) : !selectedSemester ? (
+          <div className="py-10 text-center text-ink-faint">
+            Chọn học kỳ ở góc trên phải để xem TKB.
+          </div>
         ) : events.length === 0 ? (
           <div className="py-10 text-center">
             <div className="w-14 h-14 rounded-xl bg-surface text-ink-faint grid place-items-center mx-auto mb-3">
@@ -241,10 +249,46 @@ export default function TeacherSchedulePage() {
             </p>
           </div>
         ) : (
-          <ScheduleGrid events={events} weekStart={weekStart} onEventClick={handleEventClick} />
+          <ScheduleGrid events={events} onEventClick={handleEventClick} />
         )}
       </Card>
 
+      {/* Danh sách lớp giảng dạy */}
+      {classes.length > 0 && (
+        <Card
+          title="Danh sách lớp giảng dạy"
+          subtitle={`${classes.length} lớp · ${totalStudents} sinh viên`}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {classes.map((c) => (
+              <div
+                key={c.id}
+                className="border border-line rounded-md p-3 flex items-start gap-3"
+              >
+                <div className="w-10 h-10 rounded-md bg-navy-50 text-navy-600 grid place-items-center flex-shrink-0 font-mono text-[11px] font-semibold">
+                  {c.enrolled_count}/{c.max_students}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="font-mono text-[12px] text-ink-muted">
+                      {c.course_code}
+                    </span>
+                    <span className="text-ink-faint">·</span>
+                    <span className="font-mono text-[12px] text-ink-muted">
+                      {c.code}
+                    </span>
+                  </div>
+                  <div className="text-[13px] font-medium text-ink truncate">
+                    {c.course_name}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Modal chi tiết buổi dạy */}
       <Modal
         open={selectedEvent !== null}
         title={selectedEvent ? `${selectedEvent.course_code} - ${selectedEvent.course_name}` : ""}
@@ -263,7 +307,7 @@ export default function TeacherSchedulePage() {
               <InfoItem label="Thứ" value={WEEKDAY_LABELS[selectedEvent.weekday]} />
               <InfoItem
                 label="Tiết"
-                value={`${selectedEvent.start_period} - ${selectedEvent.end_period}`}
+                value={`${selectedEvent.start_period} – ${selectedEvent.end_period}`}
                 mono
               />
               <InfoItem
@@ -281,10 +325,12 @@ export default function TeacherSchedulePage() {
               <div className="bg-surface rounded-md px-3 py-2 text-[12.5px] text-ink-muted">
                 <Icon name="calendar" size={13} className="inline mr-1.5" />
                 Khoảng ngày: <span className="font-mono">{selectedEvent.start_date ?? "?"}</span>{" "}
-                - <span className="font-mono">{selectedEvent.end_date ?? "?"}</span>
+                → <span className="font-mono">{selectedEvent.end_date ?? "?"}</span>
               </div>
             )}
-            <Badge tone="success">Được phân công</Badge>
+            <div className="pt-2 border-t border-line">
+              <Badge tone="accent">Được phân công</Badge>
+            </div>
           </div>
         )}
       </Modal>

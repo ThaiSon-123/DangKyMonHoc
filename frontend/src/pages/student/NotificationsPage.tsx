@@ -14,6 +14,7 @@ import {
 } from "@/api/notifications";
 import { listRegistrations, type Registration } from "@/api/registrations";
 import { extractApiError } from "@/lib/errors";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { PAGE_SIZE } from "@/lib/constants";
 
 const CATEGORY_TONE: Record<NotiCategory, "neutral" | "accent" | "warn" | "success" | "danger"> = {
@@ -53,7 +54,6 @@ export default function StudentNotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [error, setError] = useState<string | null>(null);
   const [viewing, setViewing] = useState<Notification | null>(null);
   const [markingAll, setMarkingAll] = useState(false);
   const [teacherRegistrations, setTeacherRegistrations] = useState<Registration[]>([]);
@@ -80,13 +80,12 @@ export default function StudentNotificationsPage() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const data = await listNotifications({ page });
       setItems(data.results);
       setTotal(data.count);
     } catch (err) {
-      setError(extractApiError(err, "Không tải được thông báo."));
+      showErrorToast(extractApiError(err, "Không tải được danh sách thông báo."));
     } finally {
       setLoading(false);
     }
@@ -119,8 +118,9 @@ export default function StudentNotificationsPage() {
     try {
       await markAllNotificationsRead();
       setItems((arr) => arr.map((x) => ({ ...x, is_read: true })));
+      showSuccessToast("Đã đánh dấu tất cả thông báo là đã đọc.");
     } catch (err) {
-      setError(extractApiError(err, "Không đánh dấu được."));
+      showErrorToast(extractApiError(err, "Không đánh dấu được thông báo."));
     } finally {
       setMarkingAll(false);
     }
@@ -128,7 +128,6 @@ export default function StudentNotificationsPage() {
 
   async function handleSendTeacher() {
     setSending(true);
-    setError(null);
     try {
       await createNotification({
         title: composeTitle.trim(),
@@ -137,13 +136,14 @@ export default function StudentNotificationsPage() {
         audience: "SPECIFIC",
         recipients: teacherUserId ? [teacherUserId] : [],
       });
+      showSuccessToast("Đã gửi thông báo tới giáo viên.", "Gửi thành công");
       setComposeOpen(false);
       setTeacherUserId("");
       setComposeTitle("");
       setComposeBody("");
       await refresh();
     } catch (err) {
-      setError(extractApiError(err, "Không gửi được thông báo."));
+      showErrorToast(extractApiError(err, "Không gửi được thông báo."));
     } finally {
       setSending(false);
     }
@@ -177,12 +177,6 @@ export default function StudentNotificationsPage() {
           )}
         </div>
       </div>
-
-      {error && (
-        <div className="text-sm text-danger bg-red-50 border border-red-200 rounded-md px-3 py-2">
-          {error}
-        </div>
-      )}
 
       {loading ? (
         <div className="text-ink-muted">Đang tải...</div>

@@ -6,6 +6,7 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
+from apps.accounts.reports import AdminReportsView
 from apps.accounts.views import LockedAwareTokenObtainPairView, LockedAwareTokenRefreshView
 
 urlpatterns = [
@@ -26,6 +27,9 @@ urlpatterns = [
     path("api/", include("apps.registrations.urls")),
     path("api/", include("apps.grades.urls")),
     path("api/", include("apps.notifications.urls")),
+
+    # Reports (admin)
+    path("api/reports/admin-summary/", AdminReportsView.as_view(), name="admin-reports-summary"),
 
     # API docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),

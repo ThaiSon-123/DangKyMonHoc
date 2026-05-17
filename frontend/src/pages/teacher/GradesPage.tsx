@@ -46,17 +46,11 @@ function calcLetter(total: number | null): string {
   return "F";
 }
 
-// Mirror backend Grade.compute_gpa_4 (apps/grades/models.py) để preview live khi chỉnh điểm
+// Mirror backend Grade.compute_gpa_4: linear gpa = total × 0.4, F (<4) = 0
 function calcGpa(total: number | null): string | null {
   if (total === null) return null;
-  if (total >= 8.5) return "4.00";
-  if (total >= 8.0) return "3.50";
-  if (total >= 7.0) return "3.00";
-  if (total >= 6.5) return "2.50";
-  if (total >= 5.5) return "2.00";
-  if (total >= 5.0) return "1.50";
-  if (total >= 4.0) return "1.00";
-  return "0.00";
+  if (total < 4) return "0.00";
+  return (total * 0.4).toFixed(2);
 }
 
 export default function TeacherGradesPage() {
