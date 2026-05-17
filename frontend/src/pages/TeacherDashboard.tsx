@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, Stat, Badge, Button } from "@/components/ui";
 import Icon from "@/components/ui/Icon";
@@ -17,13 +17,17 @@ import {
 } from "@/types/domain";
 
 export default function TeacherDashboard() {
-  const [semester, setSemester] = useState<Semester | null>(null);
+  const [semesters, setSemesters] = useState<Semester[]>([]);
+  const [semesterId, setSemesterId] = useState<number | "">("");
+  const [teacherId, setTeacherId] = useState<number | null>(null);
   const [classes, setClasses] = useState<ClassSection[]>([]);
   const [totalRegistrations, setTotalRegistrations] = useState(0);
   const [totalGraded, setTotalGraded] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [classesLoading, setClassesLoading] = useState(false);
 
+  // Load init: teacher profile + semesters + notifications
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -34,54 +38,12 @@ export default function TeacherDashboard() {
           listSemesters({ page_size: 1000 }),
           listNotifications({ page: 1 }),
         ]);
-
-        const open = semestersRes.results.find((s) => s.is_open) ?? null;
         if (cancelled) return;
-        setSemester(open);
+        setTeacherId(teacher.id);
+        setSemesters(semestersRes.results);
         setNotifications(notiRes.results);
-
-        if (!open) {
-          setLoading(false);
-          return;
-        }
-
-        const classRes = await listClassSections({
-          semester: open.id,
-          teacher: teacher.id,
-          page_size: 1000,
-        });
-        if (cancelled) return;
-        setClasses(classRes.results);
-
-        // Load registrations + grades for these classes
-        const classIds = classRes.results.map((c) => c.id);
-        if (classIds.length > 0) {
-          const [regsRes, gradesRes] = await Promise.all([
-            // Đếm tổng registrations (CONFIRMED) qua tất cả lớp HP
-            Promise.all(
-              classIds.map((cid) =>
-                listRegistrations({
-                  class_section: cid,
-                  status: "CONFIRMED",
-                  page_size: 1,
-                }),
-              ),
-            ),
-            Promise.all(
-              classIds.map((cid) =>
-                listGrades({ class_section: cid, page_size: 1000 }),
-              ),
-            ),
-          ]);
-          if (cancelled) return;
-          const sumRegs = regsRes.reduce((s, r) => s + r.count, 0);
-          const sumGraded = gradesRes.reduce(
-            (s, r) => s + r.results.filter((g) => g.total_score !== null).length,
-            0,
-          );
-          setTotalRegistrations(sumRegs);
-          setTotalGraded(sumGraded);
-        }
+        const open = semestersRes.results.find((s) => s.is_open);
+        setSemesterId(open?.id ?? semestersRes.results[0]?.id ?? "");
       } catch (err) {
         if (!cancelled) showErrorToast(extractApiError(err, "Không tải được trang tổng quan."));
       } finally {
@@ -93,12 +55,59 @@ export default function TeacherDashboard() {
     };
   }, []);
 
-  const totalEnrolled = useMemo(
-    () => classes.reduce((s, c) => s + (c.enrolled_count ?? 0), 0),
-    [classes],
-  );
+  // Reload classes + stats khi đổi semester
+  const loadSemesterData = useCallback(async () => {
+    if (!teacherId || !semesterId) {
+      setClasses([]);
+      setTotalRegistrations(0);
+      setTotalGraded(0);
+      return;
+    }
+    setClassesLoading(true);
+    try {
+      const classRes = await listClassSections({
+        semester: Number(semesterId),
+        teacher: teacherId,
+        page_size: 1000,
+      });
+      setClasses(classRes.results);
 
-  const avgPerClass = classes.length > 0 ? Math.round(totalEnrolled / classes.length) : 0;
+      const classIds = classRes.results.map((c) => c.id);
+      if (classIds.length === 0) {
+        setTotalRegistrations(0);
+        setTotalGraded(0);
+        return;
+      }
+
+      const [regsRes, gradesRes] = await Promise.all([
+        Promise.all(
+          classIds.map((cid) =>
+            listRegistrations({ class_section: cid, status: "CONFIRMED", page_size: 1 }),
+          ),
+        ),
+        Promise.all(
+          classIds.map((cid) => listGrades({ class_section: cid, page_size: 1000 })),
+        ),
+      ]);
+      const sumRegs = regsRes.reduce((s, r) => s + r.count, 0);
+      const sumGraded = gradesRes.reduce(
+        (s, r) => s + r.results.filter((g) => g.total_score !== null).length,
+        0,
+      );
+      setTotalRegistrations(sumRegs);
+      setTotalGraded(sumGraded);
+    } catch (err) {
+      showErrorToast(extractApiError(err, "Không tải được dữ liệu học kỳ."));
+    } finally {
+      setClassesLoading(false);
+    }
+  }, [teacherId, semesterId]);
+
+  useEffect(() => {
+    loadSemesterData();
+  }, [loadSemesterData]);
+
+  const selectedSemester = semesters.find((s) => s.id === semesterId);
   const gradingPct = totalRegistrations > 0
     ? Math.round((totalGraded / totalRegistrations) * 100)
     : 0;
@@ -113,6 +122,7 @@ export default function TeacherDashboard() {
   }
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
+  const busy = loading || classesLoading;
 
   return (
     <div className="space-y-5">
@@ -122,16 +132,29 @@ export default function TeacherDashboard() {
             Tổng quan giảng dạy
           </h1>
           <p className="mt-1 text-[13.5px] text-ink-muted">
-            {semester ? (
+            {selectedSemester ? (
               <>
-                Học kỳ: <strong className="text-ink">{semester.code}</strong> · {classes.length} lớp phụ trách
+                Học kỳ: <strong className="text-ink">{selectedSemester.code}</strong> · {classes.length} lớp phụ trách
               </>
             ) : (
-              "Chưa có học kỳ nào đang mở"
+              "Chọn học kỳ để xem dữ liệu"
             )}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            value={semesterId}
+            onChange={(e) => setSemesterId(e.target.value === "" ? "" : Number(e.target.value))}
+            className="px-3 py-2 rounded-md bg-card border border-line text-[13px] min-w-[220px]"
+          >
+            <option value="">— Chọn học kỳ —</option>
+            {semesters.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.code} - {s.name}
+                {s.is_open ? " (đang mở)" : ""}
+              </option>
+            ))}
+          </select>
           <Link to="/teacher/schedule">
             <Button icon="calendar">Lịch dạy</Button>
           </Link>
@@ -146,28 +169,32 @@ export default function TeacherDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat
           label="Lớp phụ trách"
-          value={loading ? "…" : classes.length}
-          hint={semester?.code ?? "—"}
+          value={busy ? "…" : classes.length}
+          hint={selectedSemester?.code ?? "—"}
           icon="clipboard"
           tone="accent"
         />
         <Stat
           label="Tổng sinh viên"
-          value={loading ? "…" : totalEnrolled}
-          hint={`trung bình ${avgPerClass}/lớp`}
+          value={busy ? "…" : totalRegistrations}
+          hint={
+            classes.length > 0
+              ? `trung bình ${Math.round(totalRegistrations / classes.length)}/lớp`
+              : "—"
+          }
           icon="users"
         />
         <Stat
-          label="Đã đăng ký"
-          value={loading ? "…" : totalRegistrations}
-          hint="CONFIRMED toàn bộ lớp"
-          icon="doc"
+          label="Đã nhập điểm"
+          value={busy ? "…" : totalGraded}
+          hint={`${gradingPct}% trên ${totalRegistrations} SV`}
+          icon="chart"
         />
         <Stat
-          label="Đã nhập điểm"
-          value={loading ? "…" : `${gradingPct}%`}
-          hint={`${totalGraded} / ${totalRegistrations} SV`}
-          icon="chart"
+          label="Còn lại"
+          value={busy ? "…" : Math.max(0, totalRegistrations - totalGraded)}
+          hint="chưa nhập điểm"
+          icon="doc"
         />
       </div>
 
@@ -175,18 +202,20 @@ export default function TeacherDashboard() {
         <Card
           className="lg:col-span-2"
           title="Lớp phụ trách"
-          subtitle={semester ? `${semester.code} · ${classes.length} lớp` : "—"}
+          subtitle={selectedSemester ? `${selectedSemester.code} · ${classes.length} lớp` : "—"}
           action={
             <Link to="/teacher/classes" className="text-[12.5px] text-navy-600 hover:underline">
               Xem tất cả →
             </Link>
           }
         >
-          {loading ? (
+          {busy ? (
             <div className="py-6 text-center text-ink-muted">Đang tải...</div>
           ) : classes.length === 0 ? (
             <div className="py-6 text-center text-ink-faint text-[13px]">
-              Chưa có lớp nào được phân công trong học kỳ này.
+              {selectedSemester
+                ? "Chưa có lớp nào được phân công trong học kỳ này."
+                : "Chọn học kỳ ở trên để xem danh sách lớp."}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
