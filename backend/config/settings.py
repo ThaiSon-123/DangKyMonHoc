@@ -33,6 +33,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "config.middleware.ResponseTimeMiddleware",  # đo thời gian xử lý → header X-Response-Time-Ms
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -102,6 +103,15 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "config.pagination.StandardPagination",
     "PAGE_SIZE": 25,
+}
+
+# Cache backend dùng cho rate-limit login (LoginRateThrottle).
+# Local-memory đủ cho dev/single-process; production nên đổi sang Redis.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "dkmh-login-throttle",
+    }
 }
 
 SIMPLE_JWT = {

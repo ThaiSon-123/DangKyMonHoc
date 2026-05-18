@@ -49,6 +49,7 @@ export default function MajorsPage() {
         search: appliedSearch || undefined,
         department: filterDepartment || undefined,
         page,
+        page_size: PAGE_SIZE,
       });
       setItems(data.results);
       setTotal(data.count);

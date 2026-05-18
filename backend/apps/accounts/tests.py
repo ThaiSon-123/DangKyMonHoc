@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
@@ -217,6 +218,50 @@ def test_admin_can_filter_users_by_department(admin_user, db):
 
     assert res.status_code == status.HTTP_200_OK
     assert {u["username"] for u in res.data["results"]} == {"sv_cntt", "gv_cntt"}
+
+
+# ---------- Rate limiting đăng nhập (chống brute-force) ----------
+
+def test_login_rate_limit_blocks_after_5_attempts(db):
+    """Sau 5 lần đăng nhập sai trong 1 phút, IP bị HTTP 429 cho lần thử thứ 6."""
+    cache.clear()
+    User.objects.create_user(username="sv_brute", password="correctpass", role=Role.STUDENT)
+    client = APIClient()
+
+    # 5 lần đầu: sai mật khẩu → 401 (Unauthorized)
+    for i in range(5):
+        res = client.post(
+            "/api/auth/login/",
+            {"username": "sv_brute", "password": f"wrong{i}"},
+        )
+        assert res.status_code == status.HTTP_401_UNAUTHORIZED, f"Lần {i+1} không được phép qua throttle"
+
+    # Lần thứ 6: bị chặn ngay với 429, KHÔNG check mật khẩu nữa
+    res = client.post(
+        "/api/auth/login/",
+        {"username": "sv_brute", "password": "correctpass"},
+    )
+    assert res.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+
+
+def test_login_rate_limit_resets_on_successful_login(db):
+    """Login thành công → counter reset, IP đó dùng được full quota lại."""
+    cache.clear()
+    User.objects.create_user(username="sv_reset", password="goodpass", role=Role.STUDENT)
+    client = APIClient()
+
+    # 3 lần sai
+    for _ in range(3):
+        client.post("/api/auth/login/", {"username": "sv_reset", "password": "wrong"})
+
+    # 1 lần đúng → counter phải reset
+    ok = client.post("/api/auth/login/", {"username": "sv_reset", "password": "goodpass"})
+    assert ok.status_code == status.HTTP_200_OK
+
+    # 5 lần sai tiếp sau khi reset → vẫn cho thử
+    for i in range(5):
+        res = client.post("/api/auth/login/", {"username": "sv_reset", "password": "wrong"})
+        assert res.status_code == status.HTTP_401_UNAUTHORIZED, f"Bị chặn sớm ở lần {i+1}"
 
 
 def test_admin_can_filter_users_by_student_major(admin_user, db):

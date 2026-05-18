@@ -62,7 +62,7 @@ export default function SemestersPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await listSemesters({ page });
+      const data = await listSemesters({ page, page_size: PAGE_SIZE });
       setItems(data.results);
       setTotal(data.count);
     } catch (err) {

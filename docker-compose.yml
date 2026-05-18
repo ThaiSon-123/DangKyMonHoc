@@ -60,6 +60,27 @@ services:
     depends_on:
       - db
 
+  # NFR #25: Sao lưu DB tự động hàng ngày lúc 0h00, giữ 7 bản gần nhất.
+  # Cron chạy `scripts/backup/backup.sh` → pg_dump | gzip → /backups/.
+  # Khôi phục thủ công: docker compose exec backup /usr/local/bin/restore.sh --list
+  backup:
+    build:
+      context: ./scripts/backup
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-dangkymonhoc}
+      BACKUP_RETENTION_DAYS: 7
+    volumes:
+      - db_backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   frontend_node_modules:
+  db_backups:

@@ -91,7 +91,7 @@ export default function AccountsPage() {
     setLoading(true);
     setError(null);
     try {
-      const params: Parameters<typeof listUsers>[0] = { page };
+      const params: Parameters<typeof listUsers>[0] = { page, page_size: PAGE_SIZE };
       if (appliedSearch) params.search = appliedSearch;
       if (filterRole) params.role = filterRole;
       if (filterLocked) params.is_locked = filterLocked === "true";

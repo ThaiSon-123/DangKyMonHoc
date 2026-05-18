@@ -48,7 +48,10 @@ export default function CurriculumsPage() {
     setLoading(true);
     setError(null);
     try {
-      const params: { search?: string; major?: number; page?: number } = { page };
+      const params: { search?: string; major?: number; page?: number; page_size?: number } = {
+        page,
+        page_size: PAGE_SIZE,
+      };
       if (appliedSearch) params.search = appliedSearch;
       if (filterMajor) params.major = filterMajor;
       const data = await listCurriculums(params);

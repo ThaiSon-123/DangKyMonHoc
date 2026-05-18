@@ -6,6 +6,7 @@ from rest_framework.response import Response
 
 from apps.accounts.mixins import HandleProtectedDeleteMixin
 from apps.accounts.permissions import IsAdminOrReadOnly
+from config.pagination import LookupPagination
 from .models import Curriculum, CurriculumCourse
 from .serializers import CurriculumCourseSerializer, CurriculumSerializer
 
@@ -14,6 +15,7 @@ class CurriculumViewSet(HandleProtectedDeleteMixin, viewsets.ModelViewSet):
     queryset = Curriculum.objects.select_related("major").prefetch_related("curriculum_courses__course")
     serializer_class = CurriculumSerializer
     permission_classes = [IsAdminOrReadOnly]
+    pagination_class = LookupPagination  # danh mục dropdown — cho phép >50
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["code", "name"]
     ordering_fields = ["code", "cohort_year"]

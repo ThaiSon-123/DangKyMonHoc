@@ -107,6 +107,7 @@ export default function CoursesPage() {
         major: filterMajor || undefined,
         curriculum: filterCurriculum || undefined,
         page,
+        page_size: PAGE_SIZE,
       });
       setItems(data.results);
       setTotal(data.count);
