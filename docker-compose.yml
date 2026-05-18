@@ -16,6 +16,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   backend:
     build: ./backend
@@ -33,6 +34,14 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # Docker healthcheck — gọi /api/health/ mỗi 30s, fail 3 lần liên tiếp → unhealthy.
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health/',timeout=3).status==200 else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
 
   frontend:
     build:
@@ -48,6 +57,7 @@ services:
       VITE_API_BASE_URL: http://localhost:8000/api
     depends_on:
       - backend
+    restart: unless-stopped
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -59,6 +69,7 @@ services:
       - "5050:80"
     depends_on:
       - db
+    restart: unless-stopped
 
   # NFR #25: Sao lưu DB tự động hàng ngày lúc 0h00, giữ 7 bản gần nhất.
   # Cron chạy `scripts/backup/backup.sh` → pg_dump | gzip → /backups/.

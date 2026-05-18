@@ -6,11 +6,15 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
+from apps.accounts.health import HealthCheckView
 from apps.accounts.reports import AdminReportsView
 from apps.accounts.views import LockedAwareTokenObtainPairView, LockedAwareTokenRefreshView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+
+    # Health check (public) — Docker healthcheck, monitoring
+    path("api/health/", HealthCheckView.as_view(), name="health-check"),
 
     # Auth
     path("api/auth/login/", LockedAwareTokenObtainPairView.as_view(), name="token_obtain_pair"),
