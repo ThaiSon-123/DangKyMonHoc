@@ -233,11 +233,6 @@ export default function TeacherClassDetailPage() {
         title="Danh sách sinh viên"
         subtitle={`${students.length} sinh viên đang đăng ký`}
       >
-        {error && (
-          <div className="text-sm text-danger bg-red-50 border border-red-200 rounded-md px-3 py-2 mb-3">
-            {error}
-          </div>
-        )}
         <Table
           columns={studentColumns}
           rows={students}
