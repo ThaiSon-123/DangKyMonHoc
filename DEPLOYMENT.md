@@ -46,16 +46,53 @@ postgresql://<user>:<password>@<host>.ap-southeast-1.aws.neon.tech/dangkymonhoc?
 
 ### 1.3. (Optional) Import data từ local
 
-Nếu muốn đẩy data local lên Neon:
+> ⚠️ **BỎ QUA bước này nếu anh chưa có data quan trọng ở local.**
+> Render sẽ tự chạy `migrate` để tạo schema rỗng trên Neon — anh có thể tạo data sau qua admin panel hoặc Django shell.
+
+Nếu muốn đẩy data local lên Neon (ví dụ đã seed users/courses để demo):
+
+#### Bước 1: Tạo backup mới nhất
 
 ```bash
-# Export từ local
+# Linux/Mac:
 docker compose exec backup /usr/local/bin/backup.sh
-docker compose cp backup:/backups/dkmh_YYYYMMDD_HHMMSS.sql.gz ./local_backup.sql.gz
 
-# Import vào Neon
-gunzip -c local_backup.sql.gz | psql "<NEON_CONNECTION_STRING>"
+# Windows Git Bash (thêm // để tránh path conversion):
+docker compose exec backup //usr/local/bin/backup.sh
 ```
+
+#### Bước 2: Lấy tên file backup
+
+```bash
+docker compose exec backup sh -c "ls -lt /backups/" | head -3
+```
+
+Copy tên file mới nhất (vd. `dkmh_20260518_140530.sql.gz`).
+
+#### Bước 3: Restore TRỰC TIẾP từ container vào Neon
+
+Container `backup` đã có sẵn `psql` — không cần cài thêm gì ở Windows:
+
+```bash
+docker compose exec backup sh -c "gunzip -c /backups/<TÊN_FILE> | psql '<NEON_CONNECTION_STRING>'"
+```
+
+**Ví dụ cụ thể:**
+
+```bash
+docker compose exec backup sh -c "gunzip -c /backups/dkmh_20260518_143938.sql.gz | psql 'postgresql://neondb_owner:PASSWORD@ep-xxx.ap-southeast-1.aws.neon.tech/dangkymonhoc?sslmode=require'"
+```
+
+⚠️ Connection string PHẢI bọc trong `' '` (nháy đơn) — vì chứa `@`, `&`, `?`.
+
+#### Bước 4: Verify
+
+```bash
+docker compose exec backup sh -c "psql '<NEON_CONNECTION_STRING>' -c 'SELECT COUNT(*) FROM accounts_user;'"
+```
+
+
+Kết quả phải là số user > 0 giống local.
 
 ---
 

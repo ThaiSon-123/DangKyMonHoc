@@ -168,11 +168,15 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
 }
 
-CORS_ALLOWED_ORIGINS = config(
-    "CORS_ALLOWED_ORIGINS",
-    default="http://localhost:5173,http://localhost:3000",
-    cast=Csv(),
-)
+# CORS: nếu env CORS_ALLOWED_ORIGINS = "*" → cho phép mọi origin (dùng cho dev/test).
+# Production nên set danh sách URL cụ thể, vd. "https://app.vercel.app,https://dkmh.id.vn".
+_cors_raw = config("CORS_ALLOWED_ORIGINS", default="http://localhost:5173,http://localhost:3000")
+if _cors_raw.strip() == "*":
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOWED_ORIGINS = []
+else:
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in _cors_raw.split(",") if origin.strip()]
 
 # --- Business rules (plan §5 - các giá trị tạm, có thể override qua env) ---
 REGISTRATION_MIN_CREDITS_PER_SEMESTER = config("REG_MIN_CREDITS", default=1, cast=int)
