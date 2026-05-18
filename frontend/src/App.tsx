@@ -55,9 +55,7 @@ interface PlaceholderRoute {
   icon?: IconName;
 }
 
-const ADMIN_ROUTES: PlaceholderRoute[] = [
-  { path: "settings", title: "Cấu hình hệ thống", description: "Giới hạn tín chỉ, thời hạn hủy đăng ký, quy tắc nghiệp vụ.", icon: "settings" },
-];
+const ADMIN_ROUTES: PlaceholderRoute[] = [];
 
 const STUDENT_ROUTES: PlaceholderRoute[] = [];
 

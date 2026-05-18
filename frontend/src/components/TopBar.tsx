@@ -16,7 +16,6 @@ const BREADCRUMB_MAP: Record<string, string[]> = {
   "/admin/registrations": ["Quản trị", "Vận hành", "Đăng ký"],
   "/admin/reports": ["Quản trị", "Vận hành", "Báo cáo"],
   "/admin/notifications": ["Quản trị", "Vận hành", "Thông báo"],
-  "/admin/settings": ["Quản trị", "Hệ thống", "Cấu hình"],
   "/admin/profile": ["Quản trị", "Hồ sơ"],
   "/student": ["Sinh viên", "Trang chủ"],
   "/student/register": ["Sinh viên", "Học tập", "Đăng ký môn"],
