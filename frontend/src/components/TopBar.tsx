@@ -1,4 +1,5 @@
 import { useLocation } from "react-router-dom";
+import { useUIStore } from "@/stores/ui";
 import AccountMenu from "./AccountMenu";
 import NotificationBell from "./NotificationBell";
 import Icon from "./ui/Icon";
@@ -35,6 +36,7 @@ const BREADCRUMB_MAP: Record<string, string[]> = {
 
 export default function TopBar() {
   const location = useLocation();
+  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   let breadcrumbs = BREADCRUMB_MAP[location.pathname] ?? ["Trang"];
   // Fallback prefix matching cho route con (vd. /admin/curriculum/123)
   if (breadcrumbs[0] === "Trang") {
@@ -47,31 +49,44 @@ export default function TopBar() {
     }
   }
   return (
-    <header className="h-14 bg-card border-b border-line flex items-center pl-3 pr-5 gap-4 flex-shrink-0">
+    <header className="h-14 bg-card border-b border-line flex items-center pl-2 pr-2 md:pl-3 md:pr-5 gap-2 md:gap-4 flex-shrink-0">
       <button
         type="button"
-        className="w-8 h-8 rounded-md text-ink-muted hover:bg-surface grid place-items-center"
-        aria-label="Menu"
+        onClick={toggleSidebar}
+        className="md:hidden w-9 h-9 rounded-md text-ink-muted hover:bg-surface grid place-items-center flex-shrink-0"
+        aria-label="Mở menu"
       >
-        <Icon name="menu" size={18} />
+        <Icon name="menu" size={20} />
       </button>
 
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 text-[13px] flex-1 min-w-0">
-        {breadcrumbs.map((b, i) => (
-          <div key={i} className="flex items-center gap-1.5">
-            {i > 0 && <Icon name="chevronRight" size={14} className="text-ink-faint" />}
-            <span
-              className={
-                i === breadcrumbs.length - 1
-                  ? "text-ink font-semibold whitespace-nowrap"
-                  : "text-ink-muted font-medium whitespace-nowrap"
-              }
+      {/* Breadcrumb — chỉ hiện trang hiện tại trên mobile */}
+      <div className="flex items-center gap-1.5 text-[13px] flex-1 min-w-0 overflow-hidden">
+        {breadcrumbs.map((b, i) => {
+          const isLast = i === breadcrumbs.length - 1;
+          return (
+            <div
+              key={i}
+              className={`items-center gap-1.5 ${isLast ? "flex min-w-0" : "hidden md:flex"}`}
             >
-              {b}
-            </span>
-          </div>
-        ))}
+              {i > 0 && (
+                <Icon
+                  name="chevronRight"
+                  size={14}
+                  className="text-ink-faint flex-shrink-0 hidden md:inline-block"
+                />
+              )}
+              <span
+                className={
+                  isLast
+                    ? "text-ink font-semibold truncate"
+                    : "text-ink-muted font-medium whitespace-nowrap"
+                }
+              >
+                {b}
+              </span>
+            </div>
+          );
+        })}
       </div>
 
       <NotificationBell />

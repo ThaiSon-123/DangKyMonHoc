@@ -150,7 +150,7 @@ export default function TeacherClassDetailPage() {
         </Link>
       </div>
 
-      <div className="flex items-start gap-4">
+      <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-2.5">
             <span className="font-mono text-[13px] text-ink-muted">{data.code}</span>

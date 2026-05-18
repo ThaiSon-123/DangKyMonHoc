@@ -179,7 +179,7 @@ export default function MajorsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start gap-4">
+      <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-4">
         <div className="flex-1">
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">
             Ngành đào tạo

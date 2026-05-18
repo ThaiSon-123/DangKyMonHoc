@@ -84,7 +84,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 z-30 w-[360px] rounded-xl border border-line bg-card shadow-elevated">
+        <div className="fixed right-2 top-[56px] md:absolute md:right-0 md:top-full md:mt-2 z-30 w-[calc(100vw-1rem)] md:w-[360px] rounded-xl border border-line bg-card shadow-elevated">
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <div className="flex items-center gap-2 text-[15px] font-semibold text-ink">
               <Icon name="bell" size={18} className="text-navy-600" />
