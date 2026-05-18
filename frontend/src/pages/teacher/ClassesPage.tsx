@@ -156,10 +156,6 @@ export default function TeacherClassesPage() {
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">
             Lớp phụ trách
           </h1>
-          <p className="mt-1 text-[13.5px] text-ink-muted">
-            Danh sách các lớp học phần bạn được phân công giảng dạy. Click mã lớp để xem chi tiết
-            sinh viên.
-          </p>
         </div>
         <select
           value={selectedSemester}

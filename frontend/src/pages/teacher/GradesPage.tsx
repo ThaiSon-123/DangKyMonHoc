@@ -6,8 +6,10 @@ import { listClassSections } from "@/api/classes";
 import { getMyTeacherProfile } from "@/api/teachers";
 import { listRegistrations, type Registration } from "@/api/registrations";
 import { createGrade, listGrades, updateGrade, type Grade } from "@/api/grades";
+import { listSemesters } from "@/api/semesters";
 import { extractApiError } from "@/lib/errors";
-import type { ClassSection } from "@/types/domain";
+import { showErrorToast } from "@/lib/toast";
+import type { ClassSection, Semester } from "@/types/domain";
 
 interface GradeRow {
   registration_id: number;
@@ -57,34 +59,76 @@ export default function TeacherGradesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const preselectedClassId = searchParams.get("class");
 
+  const [semesters, setSemesters] = useState<Semester[]>([]);
+  const [selectedSemester, setSelectedSemester] = useState<number | "">("");
+  const [teacherId, setTeacherId] = useState<number | null>(null);
   const [classes, setClasses] = useState<ClassSection[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<number | "">(
     preselectedClassId ? Number(preselectedClassId) : "",
   );
   const [rows, setRows] = useState<GradeRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Load lớp phụ trách
+  // Load init: teacher + semesters
   useEffect(() => {
-    async function load() {
+    (async () => {
       try {
-        const teacher = await getMyTeacherProfile();
+        const [teacher, semestersRes] = await Promise.all([
+          getMyTeacherProfile(),
+          listSemesters({ page_size: 1000 }),
+        ]);
+        setTeacherId(teacher.id);
+        setSemesters(semestersRes.results);
+        const open = semestersRes.results.find((s) => s.is_open);
+        setSelectedSemester(open?.id ?? semestersRes.results[0]?.id ?? "");
+      } catch (err) {
+        showErrorToast(extractApiError(err, "Không tải được dữ liệu khởi tạo."));
+      }
+    })();
+  }, []);
+
+  // Load lớp khi đổi semester
+  useEffect(() => {
+    if (!teacherId || !selectedSemester) {
+      setClasses([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
         const data = await listClassSections({
-          teacher: teacher.id,
+          teacher: teacherId,
+          semester: Number(selectedSemester),
           page_size: 1000,
         });
+        if (cancelled) return;
         setClasses(data.results);
-        if (!selectedClassId && data.results.length > 0) {
-          setSelectedClassId(data.results[0].id);
-        }
       } catch (err) {
-        setError(extractApiError(err, "Không tải được danh sách lớp."));
+        if (!cancelled) showErrorToast(extractApiError(err, "Không tải được danh sách lớp."));
       }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [teacherId, selectedSemester]);
+
+  // Auto-select first class when classes thay đổi (nếu lớp hiện tại không còn trong list)
+  useEffect(() => {
+    if (classes.length === 0) {
+      if (selectedClassId !== "") {
+        setSelectedClassId("");
+        setSearchParams({});
+      }
+      return;
     }
-    load();
+    const stillExists = selectedClassId && classes.some((c) => c.id === selectedClassId);
+    if (!stillExists) {
+      const first = classes[0];
+      setSelectedClassId(first.id);
+      setSearchParams({ class: String(first.id) });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [classes]);
 
   // Load registrations + grades của lớp được chọn
   const refresh = useCallback(async () => {
@@ -93,7 +137,6 @@ export default function TeacherGradesPage() {
       return;
     }
     setLoading(true);
-    setError(null);
     try {
       const [regsData, gradesData] = await Promise.all([
         listRegistrations({
@@ -132,7 +175,7 @@ export default function TeacherGradesPage() {
       });
       setRows(newRows);
     } catch (err) {
-      setError(extractApiError(err, "Không tải được điểm."));
+      showErrorToast(extractApiError(err, "Không tải được bảng điểm lớp."));
     } finally {
       setLoading(false);
     }
@@ -355,31 +398,43 @@ export default function TeacherGradesPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start gap-4">
-        <div className="flex-1">
+      <div className="flex items-start gap-3 flex-wrap">
+        <div className="flex-1 min-w-0">
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">Nhập điểm</h1>
-          <p className="mt-1 text-[13.5px] text-ink-muted">
-            Công thức: <strong>Tổng = QT × 10% + GK × 40% + CK × 50%</strong> (BR-009). Điểm chữ
-            và GPA-4 tự tính. Phải nhập trong vòng 2 tuần sau kết thúc môn (BR-008).
-          </p>
         </div>
-        <select
-          value={selectedClassId}
-          onChange={(e) => {
-            const v = e.target.value === "" ? "" : Number(e.target.value);
-            setSelectedClassId(v);
-            if (v) setSearchParams({ class: String(v) });
-            else setSearchParams({});
-          }}
-          className="px-3 py-2 rounded-md bg-card border border-line text-[13px] min-w-[300px]"
-        >
-          <option value="">— Chọn lớp —</option>
-          {classes.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.code} · {c.course_code} - {c.course_name}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            value={selectedSemester}
+            onChange={(e) =>
+              setSelectedSemester(e.target.value === "" ? "" : Number(e.target.value))
+            }
+            className="px-3 py-2 rounded-md bg-card border border-line text-[13px] min-w-[200px]"
+          >
+            <option value="">— Học kỳ —</option>
+            {semesters.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.code} {s.is_open ? "(đang mở)" : ""}
+              </option>
+            ))}
+          </select>
+          <select
+            value={selectedClassId}
+            onChange={(e) => {
+              const v = e.target.value === "" ? "" : Number(e.target.value);
+              setSelectedClassId(v);
+              if (v) setSearchParams({ class: String(v) });
+              else setSearchParams({});
+            }}
+            className="px-3 py-2 rounded-md bg-card border border-line text-[13px] min-w-[300px]"
+          >
+            <option value="">— Chọn lớp —</option>
+            {classes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.code} · {c.course_code} - {c.course_name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {selectedClass && (
@@ -404,12 +459,6 @@ export default function TeacherGradesPage() {
             icon="chart"
           />
           <Stat label="GPA TB lớp" value={avgGpa} hint="thang 4" icon="graduation" />
-        </div>
-      )}
-
-      {error && (
-        <div className="text-sm text-danger bg-red-50 border border-red-200 rounded-md px-3 py-2">
-          {error}
         </div>
       )}
 

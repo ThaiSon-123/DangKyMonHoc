@@ -154,11 +154,10 @@ export default function TeacherSchedulePage() {
     }));
   }, [visibleSchedules]);
 
-  // KPIs
+  // KPIs — tính theo tuần đang hiển thị (visibleSchedules), không phải toàn HK
   const totalClasses = classes.length;
-  const totalSessions = schedules.length;
-  const totalStudents = classes.reduce((s, c) => s + c.enrolled_count, 0);
-  const periodsPerWeek = schedules.reduce(
+  const sessionsThisWeek = visibleSchedules.length;
+  const periodsThisWeek = visibleSchedules.reduce(
     (s, sch) => s + (sch.end_period - sch.start_period + 1),
     0,
   );
@@ -209,11 +208,20 @@ export default function TeacherSchedulePage() {
         </select>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Stat label="Lớp phụ trách" value={totalClasses} icon="clipboard" tone="accent" />
-        <Stat label="Buổi học / tuần" value={totalSessions} icon="calendar" />
-        <Stat label="Tiết / tuần" value={periodsPerWeek} icon="clock" />
-        <Stat label="Tổng SV" value={totalStudents} icon="users" />
+        <Stat
+          label="Buổi dạy / tuần"
+          value={sessionsThisWeek}
+          hint="trong tuần đang xem"
+          icon="calendar"
+        />
+        <Stat
+          label="Tiết / tuần"
+          value={periodsThisWeek}
+          hint="trong tuần đang xem"
+          icon="clock"
+        />
       </div>
 
       <Card
@@ -257,7 +265,7 @@ export default function TeacherSchedulePage() {
       {classes.length > 0 && (
         <Card
           title="Danh sách lớp giảng dạy"
-          subtitle={`${classes.length} lớp · ${totalStudents} sinh viên`}
+          subtitle={`${classes.length} lớp`}
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {classes.map((c) => (
