@@ -1,0 +1,36 @@
+# Render Blueprint — auto-config khi import repo vào Render dashboard.
+# https://render.com/docs/blueprint-spec
+#
+# Sau khi push file này lên GitHub:
+#   1. Vào https://dashboard.render.com/blueprints
+#   2. Click "New Blueprint Instance" → chọn repo này
+#   3. Render đọc file này và tự tạo service.
+
+services:
+  - type: web
+    name: dkmh-api
+    env: python
+    region: singapore
+    plan: free
+    rootDir: backend
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+      python manage.py migrate --noinput
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60
+    healthCheckPath: /api/health/
+    autoDeploy: true
+    envVars:
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true   # Render tự sinh random secret
+      - key: DJANGO_ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: DATABASE_URL
+        sync: false           # Phải nhập tay sau khi tạo Neon DB
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false           # Phải nhập tay khi biết URL Vercel
+      - key: PYTHON_VERSION
+        value: "3.12.4"
