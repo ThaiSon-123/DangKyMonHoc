@@ -130,7 +130,7 @@ export default function StudentDashboard() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start gap-4 flex-wrap">
+      <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-4">
         <div className="flex-1 min-w-0">
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">
             {greeting}{user?.full_name ? `, ${user.full_name.split(" ").slice(-1)[0]}` : ""}

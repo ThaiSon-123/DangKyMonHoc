@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -239,8 +240,38 @@ class RegistrationSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        """Tạo Registration trong 1 DB transaction nguyên tử.
+
+        Lock hàng ClassSection bằng SELECT ... FOR UPDATE để 2 request đồng thời
+        không thể cùng vượt qua check slot và gây overbook. Re-check sĩ số sau
+        khi lock để chặn race condition cuối cùng. Bất kỳ exception nào trong
+        block atomic sẽ rollback toàn bộ — không tạo Registration, không update
+        enrolled_count (signal post_save không chạy).
+        """
         validated_data.setdefault("status", Registration.Status.CONFIRMED)
-        return super().create(validated_data)
+        class_section = validated_data["class_section"]
+        student = validated_data["student"]
+
+        with transaction.atomic():
+            # Bước 1: lock row ClassSection để serialize các registration đồng thời
+            locked_cs = ClassSection.objects.select_for_update().get(pk=class_section.pk)
+
+            # Bước 2: re-check slot sau khi lock (defense-in-depth)
+            if locked_cs.enrolled_count >= locked_cs.max_students:
+                raise serializers.ValidationError(
+                    {"class_section": f"Lớp {locked_cs.code} vừa đầy ({locked_cs.enrolled_count}/{locked_cs.max_students})."}
+                )
+
+            # Bước 3: re-check trùng đăng ký (chống double-submit)
+            if Registration.objects.filter(student=student, class_section=locked_cs).exists():
+                raise serializers.ValidationError(
+                    {"class_section": "Đã có đăng ký cho lớp này rồi."}
+                )
+
+            # Bước 4: tạo Registration (signal post_save sẽ update enrolled_count)
+            registration = super().create(validated_data)
+
+        return registration
 
 
 # ───────────────────────── Auto Schedule (FR-STU-TKB) ─────────────────────────

@@ -167,6 +167,37 @@ def test_br005_reject_when_class_full(api, student_profile, course_factory, clas
     assert "đã đầy" in str(res.data)
 
 
+def test_atomic_rollback_when_slot_just_filled(
+    api, student_profile, course_factory, class_section_factory, open_semester,
+):
+    """Atomic guard: lớp đầy ngay trong transaction → rollback, không tạo Registration."""
+    course = course_factory()
+    cs = class_section_factory(course, max_students=1)
+    # Lớp ban đầu trống (enrolled_count=0) → vượt qua serializer.validate()
+    # nhưng trong create() sau khi lock row, enrolled_count vẫn bằng max_students
+    # nếu có 1 reg khác chen vào — giả lập bằng cách tạo trước 1 reg CONFIRMED.
+    other_sv = StudentProfile.objects.create(
+        user=User.objects.create_user(
+            username="sv-race", password="x", role=Role.STUDENT, full_name="SV Race"
+        ),
+        student_code="SV-RACE",
+        major=student_profile.major,
+        enrollment_year=student_profile.enrollment_year,
+    )
+    Registration.objects.create(
+        student=other_sv, class_section=cs, semester=open_semester,
+        status=Registration.Status.CONFIRMED,
+    )
+    # Sau khi tạo, signal đã update enrolled_count=1=max_students → đầy
+    cs.refresh_from_db()
+    assert cs.enrolled_count == 1
+
+    res = api.post("/api/registrations/", {"class_section": cs.id}, format="json")
+    assert res.status_code == 400
+    # Không có Registration mới cho student_profile (rollback thành công)
+    assert not Registration.objects.filter(student=student_profile, class_section=cs).exists()
+
+
 # ---------- BR-002: môn tiên quyết ----------
 
 def test_br002_reject_when_prerequisite_not_passed(

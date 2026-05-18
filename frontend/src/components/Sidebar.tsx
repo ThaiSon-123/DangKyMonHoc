@@ -1,5 +1,7 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import { useAuthStore } from "@/stores/auth";
+import { useUIStore } from "@/stores/ui";
 import type { Role } from "@/types";
 import AccountMenu from "./AccountMenu";
 import Icon, { type IconName } from "./ui/Icon";
@@ -54,57 +56,84 @@ const ROLE_LABEL: Record<Role, string> = {
 
 export default function Sidebar() {
   const { user } = useAuthStore();
+  const { sidebarOpen, closeSidebar } = useUIStore();
+  const location = useLocation();
   const navItems = user ? NAV_BY_ROLE[user.role] : [];
   const roleLabel = user ? ROLE_LABEL[user.role] : "";
 
+  useEffect(() => {
+    closeSidebar();
+  }, [location.pathname, closeSidebar]);
+
   return (
-    <aside className="w-60 bg-sidebar text-sidebar-text flex flex-col border-r border-white/5">
-      {/* Logo */}
-      <div className="h-14 flex items-center gap-2.5 px-4 border-b border-white/5 flex-shrink-0">
-        <div className="w-[30px] h-[30px] rounded-lg bg-navy-600 text-white grid place-items-center font-bold text-[13px] font-mono tracking-tight">
-          ĐK
-        </div>
-        <div className="min-w-0">
-          <div className="text-[13px] font-semibold text-white leading-tight">ĐKMH</div>
-          <div className="text-[10.5px] text-slate-400 tracking-wider uppercase">
-            {roleLabel}
-          </div>
-        </div>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 overflow-auto py-3 px-3 flex flex-col gap-0.5">
-        {navItems.map((item) => (
-          <div key={item.to}>
-            {item.section && (
-              <div className="pt-3.5 px-2 pb-1.5 text-[10.5px] uppercase text-slate-500 tracking-wider font-semibold">
-                {item.section}
-              </div>
-            )}
-            <NavLink
-              to={item.to}
-              end={item.to === "/admin" || item.to === "/student" || item.to === "/teacher"}
-              className={({ isActive }) =>
-                `flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] transition-colors ${
-                  isActive
-                    ? "bg-navy-600 text-white font-semibold"
-                    : "text-sidebar-text font-medium hover:bg-white/5"
-                }`
-              }
-            >
-              <Icon name={item.icon} size={18} />
-              <span className="truncate">{item.label}</span>
-            </NavLink>
-          </div>
-        ))}
-      </nav>
-
-      {/* User footer */}
-      {user && (
-        <div className="p-3 border-t border-white/5 flex-shrink-0">
-          <AccountMenu placement="sidebar" />
-        </div>
+    <>
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-30 bg-slate-900/50 backdrop-blur-sm"
+          onClick={closeSidebar}
+          aria-hidden="true"
+        />
       )}
-    </aside>
+      <aside
+        className={`fixed md:static top-0 left-0 z-40 h-full w-60 bg-sidebar text-sidebar-text flex flex-col border-r border-white/5 transition-transform duration-200 ease-out md:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {/* Logo */}
+        <div className="h-14 flex items-center gap-2.5 px-4 border-b border-white/5 flex-shrink-0">
+          <div className="w-[30px] h-[30px] rounded-lg bg-navy-600 text-white grid place-items-center font-bold text-[13px] font-mono tracking-tight">
+            ĐK
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-semibold text-white leading-tight">ĐKMH</div>
+            <div className="text-[10.5px] text-slate-400 tracking-wider uppercase">
+              {roleLabel}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={closeSidebar}
+            className="md:hidden w-8 h-8 rounded-md text-slate-300 hover:bg-white/5 grid place-items-center"
+            aria-label="Đóng menu"
+          >
+            <Icon name="x" size={18} />
+          </button>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 overflow-auto py-3 px-3 flex flex-col gap-0.5">
+          {navItems.map((item) => (
+            <div key={item.to}>
+              {item.section && (
+                <div className="pt-3.5 px-2 pb-1.5 text-[10.5px] uppercase text-slate-500 tracking-wider font-semibold">
+                  {item.section}
+                </div>
+              )}
+              <NavLink
+                to={item.to}
+                end={item.to === "/admin" || item.to === "/student" || item.to === "/teacher"}
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] transition-colors ${
+                    isActive
+                      ? "bg-navy-600 text-white font-semibold"
+                      : "text-sidebar-text font-medium hover:bg-white/5"
+                  }`
+                }
+              >
+                <Icon name={item.icon} size={18} />
+                <span className="truncate">{item.label}</span>
+              </NavLink>
+            </div>
+          ))}
+        </nav>
+
+        {/* User footer */}
+        {user && (
+          <div className="p-3 border-t border-white/5 flex-shrink-0">
+            <AccountMenu placement="sidebar" />
+          </div>
+        )}
+      </aside>
+    </>
   );
 }

@@ -122,7 +122,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start gap-4 flex-wrap">
+      <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-4">
         <div className="flex-1 min-w-0">
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">
             Tổng quan vận hành
@@ -131,7 +131,7 @@ export default function AdminDashboard() {
             Học kỳ hiện tại: <strong className="text-ink">{semesterLabel}</strong>
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Link to="/admin/reports">
             <Button icon="chart">Báo cáo chi tiết</Button>
           </Link>

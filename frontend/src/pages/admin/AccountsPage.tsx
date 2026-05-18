@@ -91,7 +91,7 @@ export default function AccountsPage() {
     setLoading(true);
     setError(null);
     try {
-      const params: Parameters<typeof listUsers>[0] = { page };
+      const params: Parameters<typeof listUsers>[0] = { page, page_size: PAGE_SIZE };
       if (appliedSearch) params.search = appliedSearch;
       if (filterRole) params.role = filterRole;
       if (filterLocked) params.is_locked = filterLocked === "true";
@@ -319,7 +319,7 @@ export default function AccountsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start gap-4">
+      <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-4">
         <div className="flex-1">
           <h1 className="m-0 text-[22px] font-semibold tracking-tight text-ink">
             Quản lý tài khoản
