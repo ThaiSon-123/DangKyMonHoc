@@ -6,6 +6,8 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from config.pagination import LookupPagination
+
 from .mixins import HandleProtectedDeleteMixin
 from .permissions import IsAdminRole
 from .serializers import (
@@ -14,12 +16,21 @@ from .serializers import (
     UserCreateSerializer,
     UserSerializer,
 )
+from .throttling import LoginRateThrottle, reset_login_throttle
 
 User = get_user_model()
 
 
 class LockedAwareTokenObtainPairView(TokenObtainPairView):
     serializer_class = LockedAwareTokenObtainPairSerializer
+    throttle_classes = [LoginRateThrottle]
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            # Login thành công → xoá counter để IP đó dùng được full quota lại
+            reset_login_throttle(request)
+        return response
 
 
 class LockedAwareTokenRefreshView(TokenRefreshView):
@@ -29,6 +40,7 @@ class LockedAwareTokenRefreshView(TokenRefreshView):
 class UserViewSet(HandleProtectedDeleteMixin, viewsets.ModelViewSet):
     queryset = User.objects.all().order_by("id")
     permission_classes = [IsAdminRole]
+    pagination_class = LookupPagination  # cho phép fetch danh sách GV/SV cho dropdown
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["username", "email", "full_name"]
     ordering_fields = ["username", "email", "role", "full_name", "date_joined"]

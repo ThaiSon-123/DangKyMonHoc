@@ -2,6 +2,7 @@ from rest_framework import filters, viewsets
 
 from apps.accounts.mixins import HandleProtectedDeleteMixin
 from apps.accounts.permissions import IsAdminOrReadOnly
+from config.pagination import LookupPagination
 from .models import Course, Prerequisite
 from .serializers import CourseSerializer, PrerequisiteSerializer
 
@@ -10,6 +11,7 @@ class CourseViewSet(HandleProtectedDeleteMixin, viewsets.ModelViewSet):
     queryset = Course.objects.all().prefetch_related("prerequisite_links__required_course")
     serializer_class = CourseSerializer
     permission_classes = [IsAdminOrReadOnly]
+    pagination_class = LookupPagination  # danh mục dropdown — cho phép >50
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["code", "name"]
     ordering_fields = ["code", "name", "credits"]

@@ -82,8 +82,10 @@ export default function AccountMenu({ placement }: Props) {
 
       {open && (
         <div
-          className={`absolute z-30 w-[320px] rounded-xl border border-line bg-card p-3 shadow-elevated ${
-            placement === "topbar" ? "right-0 top-full mt-2" : "left-0 bottom-full mb-2"
+          className={`z-30 rounded-xl border border-line bg-card p-3 shadow-elevated ${
+            placement === "topbar"
+              ? "fixed right-2 top-[56px] w-[calc(100vw-1rem)] md:absolute md:right-0 md:top-full md:mt-2 md:w-[320px]"
+              : "absolute left-0 bottom-full mb-2 w-[min(320px,calc(100vw-1rem))]"
           }`}
           role="menu"
         >

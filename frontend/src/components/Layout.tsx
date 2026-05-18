@@ -1,4 +1,5 @@
 import { Outlet } from "react-router-dom";
+import IdleLogoutGuard from "./IdleLogoutGuard";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 
@@ -8,10 +9,11 @@ export default function Layout() {
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar />
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-4 md:p-6">
           <Outlet />
         </main>
       </div>
+      <IdleLogoutGuard />
     </div>
   );
 }
