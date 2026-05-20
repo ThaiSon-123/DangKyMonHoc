@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Badge, Button, Card, Modal, Stat, Table, type Column } from "@/components/ui";
+import { Badge, Button, Card, Modal, Pagination, Stat, Table, type Column } from "@/components/ui";
 import Icon from "@/components/ui/Icon";
-import { listClassSections } from "@/api/classes";
+import { listAvailableCourses, type AvailableCourse } from "@/api/autoSchedule";
 import {
   cancelRegistration,
   createRegistration,
@@ -9,11 +9,10 @@ import {
   type Registration,
 } from "@/api/registrations";
 import { getMyCurriculum } from "@/api/curriculums";
-import { listGrades } from "@/api/grades";
 import { listSemesters } from "@/api/semesters";
 import { extractApiError } from "@/lib/errors";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
-import { formatRegistrationWindow, pickActiveSemester, type SemesterStatus } from "@/lib/semester";
+import { formatRegistrationWindow, pickActiveSemester, semesterLabel, type SemesterStatus } from "@/lib/semester";
 import {
   SESSION_LABELS,
   WEEKDAY_LABELS,
@@ -23,6 +22,13 @@ import {
   type Semester,
 } from "@/types/domain";
 
+type RegisterClassSection = ClassSection & {
+  has_grade: boolean;
+  passed: boolean;
+  missing_prerequisites: string[];
+  course_registered: boolean;
+};
+
 export default function StudentRegisterPage() {
   // Auto-pick active hoặc upcoming semester (theo now). Không cho user chọn.
   const [semester, setSemester] = useState<Semester | null>(null);
@@ -30,10 +36,12 @@ export default function StudentRegisterPage() {
   const selectedSemester = semester?.id ?? "";
   const [curriculum, setCurriculum] = useState<Curriculum | null>(null);
   const [filterCurriculum, setFilterCurriculum] = useState(true);
-  const [filterUnlearned, setFilterUnlearned] = useState(true);
-  const [learnedCourseIds, setLearnedCourseIds] = useState<Set<number>>(new Set());
+  const [filterUnlearned, setFilterUnlearned] = useState(false);
+  const [filterCurriculumSemester, setFilterCurriculumSemester] = useState<number | "">("");
+  const [page, setPage] = useState(1);
+  const COURSES_PER_PAGE = 10;
 
-  const [classes, setClasses] = useState<ClassSection[]>([]);
+  const [availableCourses, setAvailableCourses] = useState<AvailableCourse[]>([]);
   const [classesLoading, setClassesLoading] = useState(false);
   const [expandedCourses, setExpandedCourses] = useState<Set<number>>(new Set());
 
@@ -43,8 +51,8 @@ export default function StudentRegisterPage() {
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
 
-  const [confirmTarget, setConfirmTarget] = useState<ClassSection | null>(null);
-  const [retakeTarget, setRetakeTarget] = useState<ClassSection | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<RegisterClassSection | null>(null);
+  const [retakeTarget, setRetakeTarget] = useState<RegisterClassSection | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
 
@@ -65,23 +73,6 @@ export default function StudentRegisterPage() {
     getMyCurriculum()
       .then(setCurriculum)
       .catch(() => setCurriculum(null));
-  }, []);
-
-  // Load grades → extract course_id mà SV đã có điểm (bất kể đậu/rớt)
-  useEffect(() => {
-    listGrades({ page_size: 1000 })
-      .then((r) => {
-        const ids = new Set<number>();
-        for (const g of r.results) {
-          if (g.total_score !== null && g.total_score !== "") {
-            ids.add(g.course);
-          }
-        }
-        setLearnedCourseIds(ids);
-      })
-      .catch(() => {
-        // không có grade → bỏ qua
-      });
   }, []);
 
   const refreshRegs = useCallback(async () => {
@@ -105,25 +96,24 @@ export default function StudentRegisterPage() {
 
   const refreshClasses = useCallback(async () => {
     if (!selectedSemester) {
-      setClasses([]);
+      setAvailableCourses([]);
       return;
     }
     setClassesLoading(true);
     try {
-      const data = await listClassSections({
-        semester: selectedSemester,
-        status: "OPEN",
+      const data = await listAvailableCourses({
+        semester: Number(selectedSemester),
         search: appliedSearch || undefined,
-        curriculum: filterCurriculum ? curriculum?.id : undefined,
-        page_size: 1000,
+        unlearned_only: filterUnlearned,
+        curriculum_semester: filterCurriculumSemester || undefined,
       });
-      setClasses(data.results);
+      setAvailableCourses(data.results);
     } catch (err) {
       showErrorToast(extractApiError(err, "Không tải được danh sách lớp học phần."));
     } finally {
       setClassesLoading(false);
     }
-  }, [selectedSemester, appliedSearch, filterCurriculum, curriculum?.id]);
+  }, [selectedSemester, appliedSearch, filterUnlearned, filterCurriculumSemester]);
 
   useEffect(() => {
     refreshRegs();
@@ -151,30 +141,67 @@ export default function StudentRegisterPage() {
       course_code: string;
       course_name: string;
       course_credits: number;
-      is_learned: boolean;
-      sections: ClassSection[];
+      has_grade: boolean;
+      passed: boolean;
+      missing_prerequisites: string[];
+      registered: boolean;
+      sections: RegisterClassSection[];
     }
-    const map = new Map<number, Group>();
-    for (const cs of classes) {
-      if (filterUnlearned && learnedCourseIds.has(cs.course)) continue;
-      let g = map.get(cs.course);
-      if (!g) {
-        g = {
-          course_id: cs.course,
-          course_code: cs.course_code,
-          course_name: cs.course_name,
-          course_credits: cs.course_credits,
-          is_learned: learnedCourseIds.has(cs.course),
-          sections: [],
-        };
-        map.set(cs.course, g);
-      }
-      g.sections.push(cs);
-    }
-    return Array.from(map.values()).sort((a, b) => a.course_code.localeCompare(b.course_code));
-  }, [classes, filterUnlearned, learnedCourseIds]);
+    return availableCourses
+      .map<Group>((course) => ({
+        course_id: course.course_id,
+        course_code: course.course_code,
+        course_name: course.course_name,
+        course_credits: course.credits,
+        has_grade: course.has_grade,
+        passed: course.passed,
+        missing_prerequisites: course.missing_prerequisites,
+        registered: course.registered,
+        sections: course.teachers.flatMap((teacher) =>
+          teacher.class_sections.map((section) => ({
+            id: section.id,
+            code: section.code,
+            course: course.course_id,
+            course_code: course.course_code,
+            course_name: course.course_name,
+            course_credits: course.credits,
+            semester: Number(selectedSemester),
+            semester_code: semester?.code ?? "",
+            teacher: teacher.teacher_id,
+            teacher_code: null,
+            teacher_name: teacher.teacher_name,
+            periods_per_session: 5,
+            max_students: section.max_students,
+            enrolled_count: section.enrolled_count,
+            is_full: section.enrolled_count >= section.max_students,
+            status: "OPEN" as const,
+            status_display: "Đang mở",
+            note: "",
+            schedules: section.schedules,
+            created_at: "",
+            updated_at: "",
+            has_grade: course.has_grade,
+            passed: course.passed,
+            missing_prerequisites: course.missing_prerequisites,
+            course_registered: course.registered,
+          })),
+        ),
+      }))
+      .sort((a, b) => a.course_code.localeCompare(b.course_code));
+  }, [availableCourses, selectedSemester, semester?.code]);
 
   const totalSectionsAfterFilter = courseGroups.reduce((s, g) => s + g.sections.length, 0);
+
+  // Reset page về 1 mỗi khi filter đổi → tránh page out-of-range
+  useEffect(() => {
+    setPage(1);
+  }, [appliedSearch, filterCurriculum, filterUnlearned, filterCurriculumSemester]);
+
+  // Slice courseGroups theo trang
+  const pagedCourseGroups = useMemo(() => {
+    const start = (page - 1) * COURSES_PER_PAGE;
+    return courseGroups.slice(start, start + COURSES_PER_PAGE);
+  }, [courseGroups, page]);
 
   const registeredClassIds = useMemo(
     () =>
@@ -186,7 +213,7 @@ export default function StudentRegisterPage() {
     [registrations],
   );
 
-  async function submitRegistration(target: ClassSection, retakeConfirmed = false) {
+  async function submitRegistration(target: RegisterClassSection, retakeConfirmed = false) {
     setSubmitting(true);
     setRegisterError(null);
     try {
@@ -248,7 +275,7 @@ export default function StudentRegisterPage() {
   const semesterObj = semester;
   const isSemesterOpen = semesterStatus === "active";
 
-  const classColumns: Column<ClassSection>[] = [
+  const classColumns: Column<RegisterClassSection>[] = [
     { key: "code", label: "Mã lớp", mono: true, width: "120px" },
     {
       key: "teacher",
@@ -291,6 +318,13 @@ export default function StudentRegisterPage() {
         const isRegistered = registeredClassIds.has(c.id);
         if (isRegistered) {
           return <Badge tone="success">Đã đăng ký</Badge>;
+        }
+        if (c.missing_prerequisites.length > 0) {
+          return (
+            <Badge tone="warn" className="whitespace-nowrap">
+              Thiếu tiên quyết
+            </Badge>
+          );
         }
         return (
           <Button
@@ -485,14 +519,35 @@ export default function StudentRegisterPage() {
             />
             Chỉ môn chưa học
           </label>
-          {(appliedSearch || !filterCurriculum || !filterUnlearned) && (
+          <select
+            value={filterCurriculumSemester}
+            onChange={(e) => {
+              const v = e.target.value;
+              setFilterCurriculumSemester(v === "" ? "" : Number(v));
+              setPage(1);
+            }}
+            className="px-3 py-1.5 rounded-md bg-surface border border-line text-[13px] outline-none cursor-pointer"
+            title="Lọc theo học kỳ gợi ý trong CTĐT"
+          >
+            <option value="">Mọi học kỳ CTĐT</option>
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+              <option key={n} value={n}>
+                {curriculum?.cohort_year
+                  ? semesterLabel(n, curriculum.cohort_year)
+                  : `Học kỳ ${n} (CTĐT)`}
+              </option>
+            ))}
+          </select>
+          {(appliedSearch || !filterCurriculum || filterUnlearned || filterCurriculumSemester !== "") && (
             <Button
               variant="ghost"
               onClick={() => {
                 setSearch("");
                 setAppliedSearch("");
                 setFilterCurriculum(true);
-                setFilterUnlearned(true);
+                setFilterUnlearned(false);
+                setFilterCurriculumSemester("");
+                setPage(1);
               }}
             >
               Đặt lại filter
@@ -526,7 +581,7 @@ export default function StudentRegisterPage() {
           </div>
         ) : (
           <div className="space-y-1.5">
-            {courseGroups.map((g) => {
+            {pagedCourseGroups.map((g) => {
               const isExpanded = expandedCourses.has(g.course_id);
               return (
                 <div key={g.course_id} className="border border-line rounded-md bg-card overflow-hidden">
@@ -546,7 +601,11 @@ export default function StudentRegisterPage() {
                     <span className="flex-1 truncate text-[13px] font-medium text-ink">
                       {g.course_name}
                     </span>
-                    {g.is_learned && <Badge tone="neutral">Đã học</Badge>}
+                    {g.has_grade && <Badge tone="neutral">Đã học</Badge>}
+                    {g.missing_prerequisites.length > 0 && (
+                      <Badge tone="warn">Thiếu tiên quyết: {g.missing_prerequisites.join(", ")}</Badge>
+                    )}
+                    {g.registered && <Badge tone="success">Đã đăng ký</Badge>}
                     <Badge tone="accent">{g.course_credits} TC</Badge>
                     <span className="text-[11.5px] text-ink-muted w-16 text-right">
                       {g.sections.length} lớp
@@ -567,6 +626,14 @@ export default function StudentRegisterPage() {
               );
             })}
           </div>
+        )}
+        {!classesLoading && courseGroups.length > 0 && (
+          <Pagination
+            page={page}
+            pageSize={COURSES_PER_PAGE}
+            total={courseGroups.length}
+            onChange={setPage}
+          />
         )}
       </Card>
 

@@ -353,6 +353,7 @@ class AvailableCourseSerializer(serializers.Serializer):
     course_code = serializers.CharField()
     course_name = serializers.CharField()
     credits = serializers.IntegerField()
+    suggested_semester = serializers.IntegerField(allow_null=True)
     has_grade = serializers.BooleanField()
     passed = serializers.BooleanField()
     missing_prerequisites = serializers.ListField(child=serializers.CharField())

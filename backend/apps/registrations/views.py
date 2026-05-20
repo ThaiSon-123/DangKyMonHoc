@@ -96,10 +96,16 @@ class RegistrationViewSet(viewsets.ModelViewSet):
 
 
 class AvailableCoursesView(APIView):
-    """GET /api/auto-schedule/available-courses/?semester=<id>&search=&unlearned_only=
+    """GET /api/auto-schedule/available-courses/?semester=<id>&search=&unlearned_only=&curriculum_semester=
 
     Trả list môn có lớp HP OPEN còn slot, thuộc CTĐT của SV.
     Group theo course → teacher → class_sections.
+
+    Query params:
+      • semester (required): ID học kỳ đăng ký
+      • search (optional): tìm theo mã/tên môn/lớp/GV
+      • unlearned_only (optional): chỉ môn chưa có điểm
+      • curriculum_semester (optional, 1-8): chỉ môn có suggested_semester=N trong CTĐT
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -123,12 +129,23 @@ class AvailableCoursesView(APIView):
         unlearned_only = request.query_params.get("unlearned_only", "").lower() in (
             "true", "1", "yes",
         )
+        # Parse curriculum_semester: 1-8 hoặc None
+        curriculum_semester = None
+        cs_param = request.query_params.get("curriculum_semester")
+        if cs_param:
+            try:
+                cs_int = int(cs_param)
+                if 1 <= cs_int <= 8:
+                    curriculum_semester = cs_int
+            except ValueError:
+                pass
 
         data = build_available_courses(
             student=student,
             semester=semester,
             search=search,
             unlearned_only=unlearned_only,
+            curriculum_semester=curriculum_semester,
         )
         serializer = AvailableCourseSerializer(data, many=True)
         return Response({"count": len(data), "results": serializer.data})

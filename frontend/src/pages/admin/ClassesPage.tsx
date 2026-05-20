@@ -94,7 +94,7 @@ export default function ClassesPage() {
     setLoading(true);
     setError(null);
     try {
-      const params: Parameters<typeof listClassSections>[0] = { page };
+      const params: Parameters<typeof listClassSections>[0] = { page, page_size: PAGE_SIZE };
       if (appliedSearch) params.search = appliedSearch;
       if (filterSemester) params.semester = filterSemester;
       if (filterStatus) params.status = filterStatus;

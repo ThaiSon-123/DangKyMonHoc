@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from apps.accounts.permissions import IsAdminOrReadOnly
 from apps.notifications.models import Notification
 from apps.notifications.serializers import NotificationSerializer
+from config.pagination import LookupPagination
 from .models import ClassSection, Schedule
 from .serializers import ClassSectionSerializer, ScheduleSerializer
 
@@ -17,6 +18,9 @@ class ClassSectionViewSet(viewsets.ModelViewSet):
     queryset = ClassSection.objects.select_related("course", "semester", "teacher__user").prefetch_related("schedules")
     serializer_class = ClassSectionSerializer
     permission_classes = [IsAdminOrReadOnly]
+    # Trang đăng ký môn cần load toàn bộ lớp HP của 1 học kỳ (~500 records)
+    # để group theo môn → dùng LookupPagination (max 1000) thay vì 50 mặc định.
+    pagination_class = LookupPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["code", "course__code", "course__name", "schedules__room"]
     ordering_fields = ["code", "enrolled_count", "max_students"]
@@ -37,6 +41,21 @@ class ClassSectionViewSet(viewsets.ModelViewSet):
         curriculum = params.get("curriculum")
         if curriculum:
             qs = qs.filter(course__curriculum_links__curriculum_id=curriculum)
+        # Filter theo học kỳ gợi ý trong CTĐT (1-8): chỉ lấy môn nằm ở học kỳ đó
+        curriculum_semester = params.get("curriculum_semester")
+        if curriculum_semester:
+            try:
+                sem_int = int(curriculum_semester)
+                if 1 <= sem_int <= 8:
+                    qs = qs.filter(course__curriculum_links__suggested_semester=sem_int)
+                    if curriculum:
+                        # Khi kết hợp curriculum + curriculum_semester, dùng cùng 1 join để khớp đúng cặp
+                        qs = qs.filter(
+                            course__curriculum_links__curriculum_id=curriculum,
+                            course__curriculum_links__suggested_semester=sem_int,
+                        )
+            except (TypeError, ValueError):
+                pass
         return qs.distinct()
 
     @action(

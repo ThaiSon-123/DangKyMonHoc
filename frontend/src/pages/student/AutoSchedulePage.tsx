@@ -5,6 +5,7 @@ import { Badge, Button, Card, Modal, ScheduleGrid, type ScheduleEvent } from "@/
 import Icon from "@/components/ui/Icon";
 import { api } from "@/api/client";
 import { listSemesters } from "@/api/semesters";
+import { getMyCurriculum } from "@/api/curriculums";
 import {
   SESSION_OPTIONS,
   listAvailableCourses,
@@ -15,7 +16,7 @@ import {
 } from "@/api/autoSchedule";
 import { extractApiError } from "@/lib/errors";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
-import { formatRegistrationWindow, pickActiveSemester, type SemesterStatus } from "@/lib/semester";
+import { formatRegistrationWindow, pickActiveSemester, semesterLabel, type SemesterStatus } from "@/lib/semester";
 import { useAuthStore } from "@/stores/auth";
 import {
   WEEKDAY_LABELS,
@@ -203,6 +204,8 @@ export default function StudentAutoSchedulePage() {
   // Filter UI
   const [searchTerm, setSearchTerm] = useState("");
   const [filterUnlearned, setFilterUnlearned] = useState(false);
+  const [filterCurriculumSemester, setFilterCurriculumSemester] = useState<number | "">("");
+  const [cohortYear, setCohortYear] = useState<number | null>(null);
 
   // Preferences
   const [avoidWeekdays, setAvoidWeekdays] = useState<Set<number>>(new Set());
@@ -236,6 +239,11 @@ export default function StudentAutoSchedulePage() {
       .catch((err) => {
         showErrorToast(extractApiError(err, "Không tải được danh sách học kỳ."));
       });
+
+    // Lấy CTĐT để biết cohort_year → mapping học kỳ CTĐT sang năm học thực tế
+    getMyCurriculum()
+      .then((c) => setCohortYear(c.cohort_year))
+      .catch(() => setCohortYear(null));
   }, []);
 
   // Load available courses khi semester/search/filter thay đổi (debounce search)
@@ -251,6 +259,7 @@ export default function StudentAutoSchedulePage() {
         semester: Number(semesterId),
         search: searchTerm,
         unlearned_only: filterUnlearned,
+        curriculum_semester: filterCurriculumSemester || undefined,
       })
         .then((r) => {
           if (!cancelled) setAvailableCourses(r.results);
@@ -268,7 +277,7 @@ export default function StudentAutoSchedulePage() {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [semesterId, searchTerm, filterUnlearned]);
+  }, [semesterId, searchTerm, filterUnlearned, filterCurriculumSemester]);
 
   useEffect(() => {
     if (!savedPlansStorageKey) {
@@ -512,6 +521,9 @@ export default function StudentAutoSchedulePage() {
           setSearchTerm={setSearchTerm}
           filterUnlearned={filterUnlearned}
           setFilterUnlearned={setFilterUnlearned}
+          filterCurriculumSemester={filterCurriculumSemester}
+          setFilterCurriculumSemester={setFilterCurriculumSemester}
+          cohortYear={cohortYear}
           avoidWeekdays={avoidWeekdays}
           setAvoidWeekdays={setAvoidWeekdays}
           preferredSessions={preferredSessions}
@@ -866,6 +878,9 @@ interface FormViewProps {
   setSearchTerm: (v: string) => void;
   filterUnlearned: boolean;
   setFilterUnlearned: (v: boolean) => void;
+  filterCurriculumSemester: number | "";
+  setFilterCurriculumSemester: (v: number | "") => void;
+  cohortYear: number | null;
   avoidWeekdays: Set<number>;
   setAvoidWeekdays: (s: Set<number>) => void;
   preferredSessions: Set<Session>;
@@ -891,6 +906,8 @@ function FormView(props: FormViewProps) {
     expandedCourse, setExpandedCourse,
     searchTerm, setSearchTerm,
     filterUnlearned, setFilterUnlearned,
+    filterCurriculumSemester, setFilterCurriculumSemester,
+    cohortYear,
     avoidWeekdays, setAvoidWeekdays,
     preferredSessions, setPreferredSessions,
     optimizeFreeDays, setOptimizeFreeDays,
@@ -954,6 +971,22 @@ function FormView(props: FormViewProps) {
                 />
                 Chỉ môn chưa học
               </label>
+              <select
+                value={filterCurriculumSemester}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setFilterCurriculumSemester(v === "" ? "" : Number(v));
+                }}
+                className="px-3 py-2 rounded-md bg-card border border-line text-[12.5px] outline-none cursor-pointer hover:border-navy-400"
+                title="Lọc theo học kỳ gợi ý trong CTĐT"
+              >
+                <option value="">Mọi học kỳ CTĐT</option>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                  <option key={n} value={n}>
+                    {cohortYear ? semesterLabel(n, cohortYear) : `Học kỳ ${n} (CTĐT)`}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
