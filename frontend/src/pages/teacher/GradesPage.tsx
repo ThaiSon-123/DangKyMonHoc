@@ -266,7 +266,7 @@ export default function TeacherGradesPage() {
   const gradedCount = rows.filter((r) => r.total_score !== null).length;
   const passedCount = rows.filter((r) => {
     const t = parseFloat(r.total_score ?? "");
-    return !Number.isNaN(t) && t >= 4;
+    return !Number.isNaN(t) && t >= 5;
   }).length;
   const avgGpa = useMemo(() => {
     const grades = rows.map((r) => parseFloat(r.gpa_4 ?? "")).filter((x) => !Number.isNaN(x));
@@ -453,7 +453,7 @@ export default function TeacherGradesPage() {
             icon="check"
           />
           <Stat
-            label="Đạt (≥ 4)"
+            label="Đạt (≥ 5)"
             value={passedCount}
             hint={`${gradedCount - passedCount} không đạt`}
             icon="chart"

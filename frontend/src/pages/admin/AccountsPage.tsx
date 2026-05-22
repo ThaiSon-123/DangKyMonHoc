@@ -166,6 +166,11 @@ export default function AccountsPage() {
           return;
         }
         await updateUser(editing.id, {
+          username: form.username,
+          // Gửi password chỉ khi admin nhập (≥8 ký tự) — bỏ trống = không đổi
+          ...(form.password && form.password.length >= 8
+            ? { password: form.password }
+            : {}),
           email: form.email,
           full_name: form.full_name,
           role: form.role,
@@ -441,7 +446,7 @@ export default function AccountsPage() {
         title={editing ? `Sửa tài khoản: ${editing.username}` : "Thêm tài khoản"}
         subtitle={
           editing
-            ? "Không đổi được username và mật khẩu ở đây"
+            ? "Có thể đổi tên đăng nhập và reset mật khẩu cho người dùng"
             : "Chỉ tạo được role Sinh viên hoặc Giáo viên"
         }
         onClose={() => setShowForm(false)}
@@ -464,9 +469,8 @@ export default function AccountsPage() {
               required
               value={form.username}
               onChange={(e) => setForm({ ...form, username: e.target.value })}
-              disabled={!!editing}
               placeholder="sv001"
-              className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] font-mono focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none disabled:bg-surface disabled:text-ink-muted"
+              className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] font-mono focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
             />
           </div>
           <div className="col-span-1">
@@ -496,23 +500,27 @@ export default function AccountsPage() {
               )}
             </select>
           </div>
-          {!editing && (
-            <div className="col-span-2">
-              <Label>Mật khẩu *</Label>
-              <input
-                required
-                type="password"
-                minLength={8}
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                placeholder="Tối thiểu 8 ký tự"
-                className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
-              />
-              <div className="text-[11.5px] text-ink-faint mt-1">
-                Hash bằng PBKDF2-SHA256 (Django default). Mật khẩu plaintext không lưu vào DB.
-              </div>
+          <div className="col-span-2">
+            <Label>{editing ? "Mật khẩu mới (tùy chọn)" : "Mật khẩu *"}</Label>
+            <input
+              required={!editing}
+              type="password"
+              minLength={editing ? undefined : 8}
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              placeholder={
+                editing
+                  ? "Để trống nếu không muốn đổi mật khẩu"
+                  : "Tối thiểu 8 ký tự"
+              }
+              className="w-full px-3 py-2 rounded-md bg-card border border-line text-[13px] focus:border-navy-400 focus:ring-2 focus:ring-navy-50 outline-none"
+            />
+            <div className="text-[11.5px] text-ink-faint mt-1">
+              {editing
+                ? "Để trống = giữ nguyên mật khẩu cũ. Nhập mới ≥ 8 ký tự để reset."
+                : "Hash bằng PBKDF2-SHA256 (Django default). Mật khẩu plaintext không lưu vào DB."}
             </div>
-          )}
+          </div>
           {form.role === "STUDENT" && (
             <div className="col-span-2">
               <Label>Ngành học *</Label>

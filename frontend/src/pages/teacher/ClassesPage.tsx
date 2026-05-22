@@ -115,13 +115,6 @@ export default function TeacherClassesPage() {
       ),
     },
     {
-      key: "schedules",
-      label: "Lịch",
-      align: "center",
-      width: "80px",
-      render: (cs) => <Badge tone="accent">{cs.schedules.length} buổi</Badge>,
-    },
-    {
       key: "status",
       label: "Trạng thái",
       width: "110px",

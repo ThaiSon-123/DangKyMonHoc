@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Badge, Card } from "@/components/ui";
 import Icon from "@/components/ui/Icon";
+import ChangePasswordCard from "@/components/ChangePasswordCard";
 import { getMyTeacherProfile } from "@/api/teachers";
 import { extractApiError } from "@/lib/errors";
 import { getInitials } from "@/lib/names";
@@ -122,8 +123,11 @@ export default function TeacherProfilePage() {
         </div>
       </Card>
 
+      {/* Đổi mật khẩu */}
+      <ChangePasswordCard />
+
       <p className="text-[11.5px] text-ink-faint">
-        Để cập nhật thông tin (email, số điện thoại, mật khẩu...), liên hệ phòng tổ chức cán bộ.
+        Để cập nhật thông tin (email, số điện thoại, họ tên...), liên hệ phòng tổ chức cán bộ.
       </p>
     </div>
   );

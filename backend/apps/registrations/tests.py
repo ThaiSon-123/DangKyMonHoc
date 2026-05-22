@@ -220,7 +220,7 @@ def test_br002_allow_when_prerequisite_passed(
     main_course = course_factory(code="CS200", name="Advanced")
     Prerequisite.objects.create(course=main_course, required_course=prereq_course)
 
-    # SV đã pass CS100 (CONFIRMED + total_score >= 4.0)
+    # SV đã pass CS100 (CONFIRMED + total_score >= GRADE_PASSING_SCORE = 5.0)
     prereq_cs = class_section_factory(
         prereq_course, weekday=2, session=Schedule.Session.AFTERNOON, start_period=6
     )

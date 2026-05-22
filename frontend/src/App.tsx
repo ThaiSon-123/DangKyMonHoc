@@ -4,6 +4,7 @@ import { fetchCurrentUser } from "@/api/auth";
 import Layout from "@/components/Layout";
 import Login from "@/pages/Login";
 import AdminLogin from "@/pages/AdminLogin";
+import ForgotPassword from "@/pages/ForgotPassword";
 import AdminDashboard from "@/pages/AdminDashboard";
 import StudentDashboard from "@/pages/StudentDashboard";
 import TeacherDashboard from "@/pages/TeacherDashboard";
@@ -94,6 +95,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>

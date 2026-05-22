@@ -109,6 +109,11 @@ class UserSerializer(UserProfileFieldsMixin, serializers.ModelSerializer):
         write_only=True,
     )
     teacher_department = serializers.CharField(required=False, allow_blank=True)
+    # Admin có thể reset password của SV/GV qua PATCH (tuỳ chọn, để trống = không đổi)
+    password = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, min_length=8,
+        style={"input_type": "password"},
+    )
 
     class Meta:
         model = User
@@ -121,15 +126,39 @@ class UserSerializer(UserProfileFieldsMixin, serializers.ModelSerializer):
             "phone",
             "is_locked",
             "is_active",
+            "password",
             "student_major",
             "teacher_department",
         )
         read_only_fields = ("id",)
 
+    def validate_username(self, value: str) -> str:
+        """Username phải unique khi đổi."""
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Tên đăng nhập không được để trống.")
+        qs = User.objects.filter(username__iexact=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("Tên đăng nhập đã tồn tại.")
+        return value
+
+    def validate_password(self, value: str) -> str:
+        if not value:
+            return value  # bỏ qua nếu admin không nhập (giữ password cũ)
+        # Cho phép admin reset password mà không cần qua password_validators
+        # (admin biết mình đang làm gì); min_length=8 đã check ở field.
+        return value
+
     def update(self, instance, validated_data):
         student_major = validated_data.pop("student_major", None)
         teacher_department = validated_data.pop("teacher_department", None)
+        new_password = validated_data.pop("password", None)
         user = super().update(instance, validated_data)
+        if new_password:
+            user.set_password(new_password)
+            user.save(update_fields=["password"])
         self._sync_profile(user, student_major, teacher_department)
         return user
 
