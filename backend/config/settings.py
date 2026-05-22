@@ -153,6 +153,26 @@ CACHES = {
     }
 }
 
+# ──────────────────────── Email (cho quên mật khẩu) ────────────────────────
+# Dev mặc định: console backend → email in ra log thay vì gửi thật.
+# Production: set EMAIL_BACKEND=smtp + EMAIL_HOST + EMAIL_HOST_USER + EMAIL_HOST_PASSWORD.
+# Gmail SMTP: EMAIL_HOST=smtp.gmail.com EMAIL_PORT=587 EMAIL_USE_TLS=True
+#             EMAIL_HOST_USER=<gmail của anh>
+#             EMAIL_HOST_PASSWORD=<App Password 16 ký tự, KHÔNG phải mật khẩu Gmail>
+EMAIL_BACKEND = config(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend",
+)
+EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com")
+EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
+EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
+DEFAULT_FROM_EMAIL = config(
+    "DEFAULT_FROM_EMAIL",
+    default="ĐKMH <noreply@dkmh.local>",
+)
+
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
@@ -182,4 +202,4 @@ REGISTRATION_CANCEL_GRACE_DAYS = config("REG_CANCEL_GRACE_DAYS", default=14, cas
 # Số ngày sau khi học kỳ kết thúc, GV vẫn được cập nhật điểm
 GRADE_UPDATE_GRACE_DAYS = config("GRADE_UPDATE_GRACE_DAYS", default=30, cast=int)
 # Điểm tối thiểu để coi 1 môn là PASSED (dùng cho check tiên quyết)
-GRADE_PASSING_SCORE = config("GRADE_PASSING_SCORE", default=4.0, cast=float)
+GRADE_PASSING_SCORE = config("GRADE_PASSING_SCORE", default=5.0, cast=float)

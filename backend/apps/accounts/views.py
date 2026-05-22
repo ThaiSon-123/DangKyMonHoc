@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db.models import Q
-from rest_framework import filters, permissions, viewsets
+from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -89,3 +89,66 @@ class UserViewSet(HandleProtectedDeleteMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated])
     def me(self, request):
         return Response(UserSerializer(request.user).data)
+
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="change-password",
+        permission_classes=[permissions.IsAuthenticated],
+    )
+    def change_password(self, request):
+        """POST /api/accounts/users/change-password/ — SV/GV/Admin tự đổi mật khẩu.
+
+        Body: {old_password, new_password}
+        - Verify old_password đúng với mật khẩu hiện tại.
+        - new_password ≥ 8 ký tự, pass Django password validators.
+        - Sau khi đổi → access token cũ vẫn dùng được tới khi hết hạn (15 phút).
+        """
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError
+
+        old_password = (request.data.get("old_password") or "").strip()
+        new_password = (request.data.get("new_password") or "").strip()
+
+        if not old_password:
+            return Response(
+                {"detail": "Vui lòng nhập mật khẩu hiện tại."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not new_password:
+            return Response(
+                {"detail": "Vui lòng nhập mật khẩu mới."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if len(new_password) < 8:
+            return Response(
+                {"detail": "Mật khẩu mới phải có tối thiểu 8 ký tự."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not request.user.check_password(old_password):
+            return Response(
+                {"detail": "Mật khẩu hiện tại không đúng."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if old_password == new_password:
+            return Response(
+                {"detail": "Mật khẩu mới không được trùng với mật khẩu cũ."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate strength qua Django validators
+        try:
+            validate_password(new_password, user=request.user)
+        except ValidationError as exc:
+            return Response(
+                {"detail": " ".join(exc.messages)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        request.user.set_password(new_password)
+        request.user.save(update_fields=["password"])
+
+        return Response(
+            {"detail": "Đổi mật khẩu thành công. Lần đăng nhập tiếp theo hãy dùng mật khẩu mới."},
+            status=status.HTTP_200_OK,
+        )

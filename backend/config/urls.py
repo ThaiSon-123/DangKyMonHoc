@@ -7,6 +7,7 @@ from drf_spectacular.views import (
 )
 
 from apps.accounts.health import HealthCheckView
+from apps.accounts.password_reset import ForgotPasswordView, ResetPasswordView
 from apps.accounts.reports import AdminReportsView
 from apps.accounts.views import LockedAwareTokenObtainPairView, LockedAwareTokenRefreshView
 
@@ -19,6 +20,8 @@ urlpatterns = [
     # Auth
     path("api/auth/login/", LockedAwareTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/refresh/", LockedAwareTokenRefreshView.as_view(), name="token_refresh"),
+    path("api/auth/forgot-password/", ForgotPasswordView.as_view(), name="forgot-password"),
+    path("api/auth/reset-password/", ResetPasswordView.as_view(), name="reset-password"),
 
     # Domain APIs
     path("api/accounts/", include("apps.accounts.urls")),

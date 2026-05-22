@@ -14,6 +14,8 @@ export type UserCreateInput = {
 };
 
 export type UserUpdateInput = {
+  username?: string;
+  password?: string;       // Để trống = không đổi
   email?: string;
   full_name?: string;
   role?: Role;

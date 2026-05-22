@@ -1,5 +1,6 @@
 import { Badge, Card } from "@/components/ui";
 import Icon from "@/components/ui/Icon";
+import ChangePasswordCard from "@/components/ChangePasswordCard";
 import { getInitials } from "@/lib/names";
 import { useAuthStore } from "@/stores/auth";
 
@@ -65,6 +66,9 @@ export default function AdminProfilePage() {
             </InfoRow>
           </div>
         </Card>
+
+        {/* Đổi mật khẩu */}
+        <ChangePasswordCard />
       </div>
     </div>
   );

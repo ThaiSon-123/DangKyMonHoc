@@ -270,12 +270,13 @@ export default function Login() {
               />
               <span>Ghi nhớ thiết bị này</span>
             </label>
-            <a
-              className="text-[12.5px] font-medium cursor-pointer"
+            <Link
+              to="/forgot-password"
+              className="text-[12.5px] font-medium cursor-pointer hover:underline"
               style={{ color: accentColor }}
             >
               Quên mật khẩu?
-            </a>
+            </Link>
           </div>
 
           {error && (

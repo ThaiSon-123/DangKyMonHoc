@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Badge, Card, Stat } from "@/components/ui";
 import Icon from "@/components/ui/Icon";
+import ChangePasswordCard from "@/components/ChangePasswordCard";
 import { getMyStudentProfile, type StudentProfile } from "@/api/students";
 import { extractApiError } from "@/lib/errors";
 import { getInitials } from "@/lib/names";
@@ -175,8 +176,11 @@ export default function StudentProfilePage() {
         />
       </div>
 
+      {/* Đổi mật khẩu */}
+      <ChangePasswordCard />
+
       <p className="text-[11.5px] text-ink-faint">
-        Để cập nhật thông tin (email, số điện thoại, mật khẩu...), liên hệ phòng đào tạo. Một số
+        Để cập nhật thông tin (email, số điện thoại, họ tên...), liên hệ phòng đào tạo. Một số
         trường (ngành, khóa, MSSV) chỉ Admin có thể sửa để đảm bảo tính nhất quán dữ liệu.
       </p>
     </div>

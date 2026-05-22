@@ -51,4 +51,6 @@ def test_student_profile_me_returns_realtime_gpa_and_completed_credits(
 
     assert res.status_code == 200, res.data
     assert res.data["gpa"] == "4.89"
-    assert res.data["completed_credits"] == 5
+    # passing_score = 5.0 → chỉ môn 1 (điểm 8) đậu → 3 credits.
+    # Môn 2 (điểm 4) và môn 3 (điểm 3) đều < 5 → không tích luỹ.
+    assert res.data["completed_credits"] == 3
