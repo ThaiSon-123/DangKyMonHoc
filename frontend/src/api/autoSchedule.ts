@@ -53,6 +53,7 @@ export interface AvailableCourse {
   course_code: string;
   course_name: string;
   credits: number;
+  suggested_semester: number | null;
   has_grade: boolean;
   passed: boolean;
   missing_prerequisites: string[];
@@ -69,6 +70,7 @@ export async function listAvailableCourses(params: {
   semester: number;
   search?: string;
   unlearned_only?: boolean;
+  curriculum_semester?: number;
 }): Promise<AvailableCoursesResponse> {
   const res = await api.get<AvailableCoursesResponse>(
     "/auto-schedule/available-courses/",
@@ -77,6 +79,7 @@ export async function listAvailableCourses(params: {
         semester: params.semester,
         search: params.search || undefined,
         unlearned_only: params.unlearned_only ? "true" : undefined,
+        curriculum_semester: params.curriculum_semester || undefined,
       },
     },
   );

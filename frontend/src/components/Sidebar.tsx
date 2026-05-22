@@ -25,7 +25,6 @@ const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { to: "/admin/registrations", label: "Đăng ký", icon: "doc", section: "Vận hành" },
     { to: "/admin/reports", label: "Báo cáo", icon: "chart" },
     { to: "/admin/notifications", label: "Thông báo", icon: "megaphone" },
-    { to: "/admin/settings", label: "Cấu hình", icon: "settings", section: "Hệ thống" },
   ],
   STUDENT: [
     { to: "/student", label: "Trang chủ", icon: "home" },

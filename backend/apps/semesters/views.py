@@ -8,7 +8,7 @@ from apps.accounts.permissions import IsAdminOrReadOnly, IsAdminRole
 from config.pagination import LookupPagination
 from .models import Semester
 from .serializers import SemesterSerializer
-from .services import close_class_sections_for_semester
+from .services import close_class_sections_for_semester, open_class_sections_for_semester
 
 
 class SemesterViewSet(HandleProtectedDeleteMixin, viewsets.ModelViewSet):
@@ -24,8 +24,10 @@ class SemesterViewSet(HandleProtectedDeleteMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], permission_classes=[IsAdminRole])
     def open(self, request, pk=None):
         semester = self.get_object()
-        semester.is_open = True
-        semester.save(update_fields=["is_open", "updated_at"])
+        with transaction.atomic():
+            semester.is_open = True
+            semester.save(update_fields=["is_open", "updated_at"])
+            open_class_sections_for_semester(semester)
         return Response(SemesterSerializer(semester).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminRole])

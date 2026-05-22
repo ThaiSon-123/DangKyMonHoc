@@ -356,14 +356,32 @@ def build_available_courses(
     semester,
     search: str = "",
     unlearned_only: bool = False,
+    curriculum_semester: int | None = None,
 ) -> list[dict]:
     """Trả list dict course để hiển thị ở UI chọn môn.
 
     Hard filter: thuộc CTĐT + có lớp HP OPEN còn slot trong semester.
+    Optional: curriculum_semester → chỉ lấy môn có suggested_semester=N trong CTĐT.
     """
     curriculum_ids = get_curriculum_course_ids(student)
     if not curriculum_ids:
         return []  # SV chưa match CTĐT → list rỗng
+
+    # Map course_id → suggested_semester trong CTĐT của SV (để FE hiển thị)
+    cur = get_student_curriculum(student)
+    suggested_by_course: dict[int, int] = {}
+    if cur:
+        for cc in cur.curriculum_courses.all():
+            suggested_by_course[cc.course_id] = cc.suggested_semester
+
+    # Lọc theo suggested_semester nếu có
+    if curriculum_semester:
+        curriculum_ids = {
+            cid for cid, sem in suggested_by_course.items()
+            if sem == curriculum_semester
+        }
+        if not curriculum_ids:
+            return []
 
     learned_ids = get_learned_course_ids(student)
     passed_ids = get_passed_course_ids(student)
@@ -406,6 +424,7 @@ def build_available_courses(
                 "course_code": course.code,
                 "course_name": course.name,
                 "credits": course.credits,
+                "suggested_semester": suggested_by_course.get(course.id),
                 "has_grade": course.id in learned_ids,
                 "passed": course.id in passed_ids,
                 "missing_prerequisites": get_missing_prerequisite_codes(course, passed_ids),
