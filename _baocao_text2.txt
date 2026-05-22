@@ -1,0 +1,1109 @@
+TRƯỜNG ĐẠI HỌC THỦ DẦU MỘT
+VIỆN CÔNG NGHỆ SỐ
+BÁO CÁO
+TIỂU LUẬN HỌC PHẦN
+TRÍ TUỆ NHÂN TẠO
+XÂY DỰNG HỆ THỐNG ĐĂNG KÝ MÔN HỌC
+Nhóm thực hiện: MSSV: Lớp:
+Võ Thái Sơn2324801030030 D23KTPM01
+Đinh Sỹ Vinh2324801030109 D23KTPM01
+Trần Vĩ Hùng2324801030011 D23KTPM01
+GVHD: ThS. Võ Thị Diễm Hương
+Học kỳ II năm học 2025-2026
+TP. HCM, tháng    05/2026
+TRƯỜNG ĐẠI HỌC THỦ DẦU MỘT
+VIỆN CÔNG NGHỆ SỐ
+BÁO CÁO
+TIỂU LUẬN HỌC PHẦN
+TRÍ TUỆ NHÂN TẠO
+XÂY DỰNG HỆ THỐNG ĐĂNG KÝ MÔN HỌC
+Nhóm thực hiện: MSSV: Lớp:
+Võ Thái Sơn2324801030030 D23KTPM01
+Đinh Sỹ Vinh2324801030109 D23KTPM01
+Trần Vĩ Hùng2324801030011 D23KTPM01
+GVHD: ThS. Võ Thị Diễm Hương
+Học kỳ II năm học 2025-2026
+TP. HCM, tháng    05/2026
+MỤC LỤC
+MỤC LỤC3
+BẢNG PHÂN CÔNG CỦA NHÓM6
+DANH MỤC HÌNH7
+DANH MỤC BẢNG8
+DANH SÁCH CÁC KÝ TỰ, CHỮ VIẾT TẮT9
+MỞ ĐẦU10
+CHƯƠNG 1. TỔNG QUAN VỀ TRÍ TUỆ NHÂN TẠO12
+1.1. Khái niệm trí tuệ nhân tạo12
+1.2. Các nhánh chính của trí tuệ nhân tạo12
+1.3. AI trong bài toán lập lịch13
+1.4. Bài toán thỏa mãn ràng buộc13
+1.5. Vai trò của hàm đánh giá trong AI13
+1.6. Ý nghĩa của AI đối với hệ thống đăng ký môn học14
+CHƯƠNG 2. THÀNH TỰU NỔI BẬT CỦA AI VÀ XU HƯỚNG PHÁT TRIỂN TRONG TƯƠNG LAI GẦN15
+2.1. Sự phát triển mạnh mẽ của AI hiện tại15
+2.2. AI tạo sinh15
+2.3. AI trong nhận dạng hình ảnh và xử lý tự nhiên15
+2.4. AI trong khoa học và y học16
+2.5. AI trong giáo dục16
+2.6. Xu hướng phát triển AI trong tương lai gần17
+CHƯƠNG 3. CƠ SỞ LÝ THUYẾT VỀ CÁC GIẢI THUẬT ÁP DỤNG18
+3.1. Tổng quan về tìm kiếm và tối ưu ràng buộc18
+3.2. Bài toán thỏa mãn ràng buộc CSP19
+3.2.1. Khái niệm và ý tưởng của CSP19
+3.2.2. Các thành phần cơ bản của CSP19
+3.2.3. Ràng buộc cứng và ràng buộc mềm20
+3.3. Thuật toán Backtracking21
+3.3.1. Ý tưởng của thuật toán Backtracking21
+3.3.2. Quy trình hoạt động21
+3.3.3. Ưu điểm và hạn chế22
+3.4. Heuristic MRV23
+3.4.1. Ý tưởng của MRV23
+3.4.2. Vai trò của MRV trong bài toán đăng ký môn học24
+3.5. Hàm chấm điểm trọng số Weighted scoring24
+3.6. Rule-based validation và transaction/locking trong đăng ký thủ công26
+3.7. So sánh các kỹ thuật áp dụng trong project28
+CHƯƠNG 4. PHÂN TÍCH VÀ LỰA CHỌN THUẬT TOÁN29
+4.1. Lịch sử bài toán đăng ký môn học29
+4.2. Các giải pháp đã có29
+4.2.1. Đăng ký môn học thủ công29
+4.2.2. Hệ thống đăng ký môn học trực tuyến cơ bản30
+4.2.3. Hệ thống có kiểm tra trùng lịch và điều kiện tiên quyết30
+4.2.4. Hệ thống gợi ý thời khóa biểu tự động31
+4.3. Phân tích bài toán32
+4.3.1. Mô tả bài toán Input / Output / Ràng buộc32
+4.3.2. Phân tích tác nhân và chức năng theo vai trò33
+4.3.3. Mô hình hóa bài toán tạo thời khóa biểu tự động34
+4.3.4. Mô hình hóa chức năng đăng ký môn học thủ công35
+4.4. Phương pháp đánh giá và lựa chọn thuật toán36
+4.4.1. Tiêu chí đánh giá36
+4.4.2. So sánh các phương pháp37
+4.4.3. Lý do chọn CSP + MRV + Backtracking + Weighted scoring38
+4.4.4. Lý do chọn Rule-based validation + transaction/locking38
+CHƯƠNG 5. XÂY DỰNG GIẢI PHÁP VÀ ĐÁNH GIÁ KẾT QUẢ40
+5.1. Kiến trúc tổng thể hệ thống40
+5.2. Công nghệ sử dụng41
+5.3. Xây dựng chức năng đăng ký môn học thủ công42
+5.4. Xây dựng chức năng tạo thời khóa biểu tự động44
+5.4.1. Quy trình tạo thời khóa biểu tự động44
+5.4.2. Cài đặt thuật toán CSP + MRV + Backtracking45
+5.4.3. Cài đặt hàm chấm điểm Weighted scoring47
+5.5. Hiển thị kết quả đề xuất thời khóa biểu48
+5.5.1. Giao diện / demo hệ thống48
+5.5.2. Kết quả phương án thời khóa biểu được đề xuất49
+5.5.3. Kết quả đăng ký môn tự động theo phương án đã chọn51
+5.6. Đánh giá và so sánh kết quả51
+5.6.1. Tiêu chí đánh giá51
+5.6.2. So sánh đăng ký thủ công và tạo thời khóa biểu tự động52
+5.6.3. Nhận xét và đánh giá tổng thể52
+KẾT LUẬN54
+TÀI LIỆU THAM KHẢO56
+BẢNG PHÂN CÔNG CỦA NHÓM
+STT
+Tên thành viên
+Nội dung công việc
+Kết quả
+1
+Võ Thái Sơn
+Cài đặt thuật toán CSP + Backtracking + MRV + Weighted scoring cho chức năng tạo thời khóa biểu tự động. Cài đặt Rule-based validation + Atomic transaction cho đăng ký môn học thủ công (kiểm tra trùng lịch, môn tiên quyết, sĩ số lớp, ràng buộc học kỳ). Xây dựng toàn bộ Backend (Django + DRF + PostgreSQL) và Frontend (React + Vite) cho 3 vai trò (Admin / Sinh viên / Giáo viên).
+100%
+2
+Đinh Sỹ Vinh
+Nghiên cứu cơ sở lý thuyết về bài toán thỏa mãn ràng buộc CSP, heuristic MRV và thuật toán Backtracking. Phân tích các ràng buộc cứng – mềm trong bài toán đăng ký môn học (trùng lịch, môn tiên quyết, sĩ số, học kỳ gợi ý). Thiết kế bộ test case cho thuật toán auto-schedule (môn ít/nhiều, lịch chồng chéo, sĩ số đầy). Vẽ sơ đồ luồng thuật toán Backtracking + MRV. Viết báo cáo Word: Mở đầu, Chương 1 (Tổng quan AI), Chương 2 (Thành tựu AI), Chương 3 (Cơ sở lý thuyết). 
+100%
+3
+Trần Vĩ Hùng
+Nghiên cứu hàm chấm điểm Weighted scoring và 5 chế độ ưu tiên (Auto / Balanced / Teacher-first / Session-first / Compact-first). Phân tích cơ chế Rule-based validation và Transaction/Locking trong đăng ký thủ công. So sánh đăng ký thủ công và TKB tự động qua các tiêu chí (tốc độ, độ chính xác, trải nghiệm SV). Vẽ sơ đồ kiến trúc hệ thống, chụp screenshot minh hoạ các chức năng. Viết báo cáo Word: Chương 4 (Phân tích &amp; lựa chọn thuật toán), Chương 5 (Xây dựng giải pháp + đánh giá kết quả), Kết luận.
+100%
+DANH MỤC HÌNH
+Hình 1 : Kiến trúc tổng thể hệ thống40
+Hình 2 . Kiểm tra ràng buộc học kì42
+Hình 3 : Xem môn tiên quyết43
+Hình 4 : Kiểm tra trùng lịch43
+Hình 5 : Kiểm tra sĩ số lớp44
+Hình 6 : Giao diện tạo thời khóa biểu tự động48
+Hình 7 : Kết quả phương án tạo thời khóa biểu tự động được đề xuất50
+Hình 8 : Kết quả đăng ký môn tự động theo phương án đã chọn51
+DANH MỤC BẢNG
+Bảng 1 : Các chế độ ưu tiên trong hệ thống25
+Bảng 2 : So sánh kỹ thuật áp dụng trong project28
+Bảng 3 : So sánh các phương án lựa chọn thuật toán37
+Bảng 4 : So sánh đăng ký thủ công và tạo thời khóa biểu tự động51
+DANH SÁCH CÁC KÝ TỰ, CHỮ VIẾT TẮT
+Từ viết tắt
+Tiếng Anh
+Tiếng Việt / Ý nghĩa
+AI
+Artificial Intelligence
+Trí tuệ nhân tạo
+CSP
+Constraint Satisfaction Problem
+Bài toán thỏa mãn ràng buộc
+MRV
+Minimum Remaining Values
+Heuristic chọn biến có ít giá trị còn lại nhất
+TKB
+Timetable
+Thời khóa biểu
+ĐKMH
+Course Registration
+Đăng ký môn học
+API
+Application Programming Interface
+Giao diện lập trình ứng dụng
+JWT
+JSON Web Token
+Cơ chế xác thực bằng token
+GPA
+Grade Point Average
+Điểm trung bình
+SV
+Student
+Sinh viên
+GV
+Teacher
+Giáo viên
+QTV
+Administrator
+Quản trị viên
+MỞ ĐẦU
+Kỷ nguyên số hóa đang tạo ra những chuyển biến sâu sắc, mang tính toàn diện trong mọi khía cạnh của đời sống kinh tế, văn hóa và xã hội. Trong bối cảnh đó, hệ thống giáo dục đại học cũng đang trải qua một cuộc cách mạng mang tính kiến tạo, chuyển dịch mạnh mẽ từ các mô hình quản lý truyền thống sang các hệ sinh thái công nghệ thông minh. Quá trình chuyển đổi từ hình thức đào tạo theo niên chế sang hệ thống đào tạo theo học chế tín chỉ đã mang lại sự linh hoạt tối đa cho người học, trao cho sinh viên quyền tự chủ trong việc thiết kế lộ trình học tập, lựa chọn môn học, thời gian, và thậm chí là giảng viên phù hợp với năng lực và định hướng cá nhân. Tuy nhiên, sự tự do và linh hoạt này đồng thời cũng đặt ra những thách thức khổng lồ về mặt quản trị học vụ đối với các cơ sở giáo dục đại học. Việc tổ chức các lớp học phần, sắp xếp thời khóa biểu giảng dạy, quản lý không gian phòng học vật lý, phân bổ nguồn nhân lực giảng viên, và đặc biệt là xử lý hàng chục nghìn lượt truy cập và đăng ký môn học của sinh viên trong một khoảng thời gian cực kỳ ngắn ngủi đòi hỏi sự can thiệp và hỗ trợ mạnh mẽ của các công nghệ phần mềm tiên tiến.
+Nếu thiếu đi các nền tảng kiến trúc công nghệ vững chắc, quá trình đăng ký môn học rất dễ rơi vào tình trạng hỗn loạn. Các hệ thống máy chủ có thể bị quá tải và sập nguồn do số lượng yêu cầu (requests) gia tăng đột biến, dữ liệu có thể bị xung đột dẫn đến tình trạng một sinh viên đăng ký thành công hai môn học trùng lịch, hoặc số lượng ghi danh vượt quá sức chứa vật lý của một phòng học. Những sự cố này không chỉ trực tiếp gây ảnh hưởng tiêu cực đến chất lượng đào tạo, làm gián đoạn kế hoạch giảng dạy của nhà trường mà còn tạo ra những trải nghiệm vô cùng căng thẳng và áp lực cho người học trong mỗi dịp đầu học kỳ. Nhận thức được tầm quan trọng của vấn đề này, việc xây dựng và phát triển một hệ thống quản lý đăng ký môn học thông minh, bền bỉ và có khả năng giải quyết các ràng buộc học thuật phức tạp đã trở thành một nhu cầu cấp bách.
+Sự phát triển vượt bậc của khoa học máy tính trong những thập kỷ gần đây, đặc biệt là những bước tiến mang tính đột phá của các thuật toán thông minh trong lĩnh vực trí tuệ nhân tạo, đã cung cấp những nền tảng lý thuyết vững chắc và các công cụ điện toán mạnh mẽ để giải quyết những bài toán tối ưu hóa tổ hợp khổng lồ này. Những hệ thống quản lý hiện đại ngày nay không chỉ đơn thuần đóng vai trò như những kho lưu trữ cơ sở dữ liệu tĩnh, chờ đợi người dùng thao tác và truy xuất thông tin một cách thụ động. Thay vào đó, chúng đang dần tiến hóa để trở thành những hệ chuyên gia có khả năng tự động tính toán, phát hiện và cảnh báo xung đột, đồng thời đề xuất các phương án tối ưu dựa trên hàng loạt các hệ thống ràng buộc vô cùng khắt khe về mặt thời gian, không gian và các quy chế đào tạo tín chỉ.
+Điểm nhấn của nghiên cứu nằm ở việc ứng dụng mô hình Bài toán thỏa mãn ràng buộc (Constraint Satisfaction Problem - CSP), heuristic MRV, thuật toán Backtracking, cơ chế cắt nhánh sớm và hàm chấm điểm trọng số (Weighted scoring) để tự động tạo các phương án thời khóa biểu hợp lệ, không trùng lịch và phù hợp với tiêu chí ưu tiên của sinh viên.
+CHƯƠNG 1. TỔNG QUAN VỀ TRÍ TUỆ NHÂN TẠO
+Khái niệm trí tuệ nhân tạo
+Trí tuệ nhân tạo, hay Artificial Intelligence, là lĩnh vực nghiên cứu và xây dựng các hệ thống máy tính có khả năng thực hiện những nhiệm vụ thường cần đến trí thông minh của con người. Những nhiệm vụ này có thể bao gồm nhận thức, suy luận, học hỏi, lập kế hoạch, ra quyết định, xử lý ngôn ngữ tự nhiên, nhận dạng hình ảnh và giải quyết vấn đề.
+Trong thực tế, trí tuệ nhân tạo không chỉ là một công nghệ đơn lẻ mà là tập hợp nhiều phương pháp, thuật toán và mô hình khác nhau. Một hệ thống AI có thể được xây dựng dựa trên luật, dựa trên dữ liệu hoặc kết hợp cả hai. Với sự phát triển của dữ liệu lớn, năng lực tính toán và các mô hình học máy hiện đại, AI đã trở thành một trong những lĩnh vực quan trọng nhất của khoa học máy tính hiện nay.
+Trong phạm vi đề tài này, trí tuệ nhân tạo được tiếp cận theo hướng giải quyết bài toán lập lịch và gợi ý phương án tối ưu. Cụ thể, hệ thống đăng ký môn học sử dụng các ràng buộc nghiệp vụ để loại bỏ phương án không hợp lệ, sau đó chấm điểm các phương án còn lại để đưa ra thời khóa biểu phù hợp cho sinh viên.
+Các nhánh chính của trí tuệ nhân tạo
+Trí tuệ nhân tạo gồm nhiều nhánh khác nhau. Một số nhánh phổ biến gồm:
+Học máy là nhánh của AI cho phép hệ thống học từ dữ liệu để cải thiện hiệu quả thực hiện nhiệm vụ mà không cần lập trình tường minh cho từng trường hợp. Ví dụ, hệ thống có thể học từ lịch sử đăng ký môn học của sinh viên để gợi ý các môn thường được chọn cùng nhau.
+Học sâu là một nhánh của học máy sử dụng mạng nơ-ron nhiều lớp để xử lý dữ liệu phức tạp như hình ảnh, âm thanh, văn bản hoặc ngôn ngữ tự nhiên.
+Xử lý ngôn ngữ tự nhiên giúp máy tính hiểu, phân tích và sinh ngôn ngữ con người. Công nghệ này được ứng dụng trong chatbot, dịch máy, trợ lý ảo và hệ thống hỏi đáp.
+Hệ chuyên gia là hệ thống mô phỏng quá trình suy luận của chuyên gia trong một lĩnh vực cụ thể. Hệ chuyên gia thường sử dụng tập luật nếu-thì để đưa ra kết luận.
+Tìm kiếm và tối ưu hóa là nhóm kỹ thuật quan trọng trong AI, được dùng để tìm lời giải tốt nhất hoặc gần tốt nhất trong không gian lời giải lớn. Đây là hướng tiếp cận phù hợp với bài toán tạo thời khóa biểu tự động.
+AI trong bài toán lập lịch
+Bài toán lập lịch là một trong những bài toán kinh điển của trí tuệ nhân tạo và tối ưu hóa. Trong môi trường đại học, lập lịch có thể xuất hiện ở nhiều dạng như xếp lịch học, xếp lịch thi, phân công giảng viên, phân phòng học hoặc tạo thời khóa biểu cá nhân cho sinh viên.
+Đặc điểm của bài toán lập lịch là có nhiều đối tượng cần sắp xếp và nhiều ràng buộc cần thỏa mãn. Ví dụ, một lớp học phần phải có giáo viên, phòng học, thời gian học, sĩ số tối đa và trạng thái mở lớp. Sinh viên khi đăng ký môn học cũng phải thỏa mãn các điều kiện như không trùng lịch, môn thuộc chương trình đào tạo, lớp còn chỗ, đã học qua môn tiên quyết và học kỳ đang trong thời gian đăng ký.
+Trong đề tài này, bài toán tạo thời khóa biểu tự động được xem như một bài toán lựa chọn tổ hợp. Với mỗi môn sinh viên muốn học, hệ thống cần chọn một lớp học phần phù hợp. Nếu sinh viên chọn nhiều môn, hệ thống phải xét các tổ hợp lớp học phần của các môn đó. Tổ hợp nào bị trùng lịch hoặc vi phạm ràng buộc sẽ bị loại bỏ. Các tổ hợp hợp lệ được chấm điểm để tìm ra phương án tốt hơn.
+Bài toán thỏa mãn ràng buộc
+Bài toán thỏa mãn ràng buộc, hay CSP, là dạng bài toán trong đó cần tìm giá trị cho các biến sao cho tất cả các ràng buộc đều được thỏa mãn. Một bài toán CSP thường gồm ba thành phần chính: tập biến, miền giá trị của từng biến và tập ràng buộc.
+- Trong bài toán đăng ký môn học:
+Biến có thể là các môn học mà sinh viên muốn đăng ký.
+Miền giá trị của mỗi biến là danh sách các lớp học phần đang mở của môn đó.
+Ràng buộc bao gồm: không trùng lịch, lớp còn chỗ, học kỳ đang mở, môn thuộc chương trình đào tạo, không thiếu môn tiên quyết, không đăng ký trùng lớp và nếu chọn giáo viên cụ thể thì chỉ xét các lớp do giáo viên đó phụ trách.
+Cách mô hình hóa này giúp hệ thống giải quyết bài toán có hệ thống hơn. Thay vì để sinh viên tự thử từng lớp và tự phát hiện lỗi, hệ thống có thể tự động kiểm tra hàng loạt phương án và trả về các thời khóa biểu khả thi.
+Vai trò của hàm đánh giá trong AI
+Sau khi hệ thống tìm được các phương án hợp lệ, vấn đề tiếp theo là xác định phương án nào tốt hơn. Đây là lúc cần sử dụng hàm đánh giá. Hàm đánh giá là một công thức hoặc quy tắc dùng để chấm điểm từng phương án dựa trên các tiêu chí đã xác định.
+Trong đề tài này, các tiêu chí đánh giá có thể gồm:
+Thời khóa biểu tránh được những ngày sinh viên không muốn học.
+Thời khóa biểu phù hợp với ca học ưu tiên, chẳng hạn ưu tiên học buổi sáng hoặc buổi chiều.
+Thời khóa biểu có giáo viên phù hợp với lựa chọn của sinh viên.
+Thời khóa biểu gọn, có nhiều ngày nghỉ trong tuần.
+Theo mô tả chức năng, hệ thống có thể chấm điểm theo nhiều chế độ như cân bằng, ưu tiên giáo viên, ưu tiên ca học hoặc ưu tiên thời khóa biểu gọn. Chế độ cân bằng chia đều trọng số cho các tiêu chí, trong khi các chế độ ưu tiên sẽ tăng trọng số cho tiêu chí tương ứng .
+Ý nghĩa của AI đối với hệ thống đăng ký môn học
+Việc ứng dụng AI vào hệ thống đăng ký môn học mang lại nhiều lợi ích. Trước hết, hệ thống giúp giảm thời gian chọn lớp cho sinh viên. Thay vì phải tự so sánh nhiều lớp học phần, sinh viên chỉ cần chọn môn muốn học và cấu hình ưu tiên, hệ thống sẽ tự tìm các phương án hợp lệ.
+Thứ hai, hệ thống giúp giảm lỗi đăng ký. Các lỗi phổ biến như trùng lịch, lớp đầy, thiếu tiên quyết hoặc đăng ký môn ngoài chương trình đào tạo được kiểm tra tự động trước khi lưu đăng ký.
+Thứ ba, hệ thống hỗ trợ cá nhân hóa. Mỗi sinh viên có thể có nhu cầu khác nhau: người muốn học buổi sáng, người muốn nghỉ một số ngày trong tuần, người muốn chọn giáo viên cụ thể. Hệ thống AI có thể dùng các tiêu chí này để gợi ý phương án phù hợp hơn.
+Thứ tư, hệ thống hỗ trợ công tác quản lý đào tạo. Khi dữ liệu đăng ký, lớp học phần, lịch học và sĩ số được quản lý tập trung, nhà trường có thể thống kê nhu cầu học tập, phát hiện lớp đầy, lớp ít sinh viên hoặc môn có nhu cầu cao.
+CHƯƠNG 2. THÀNH TỰU NỔI BẬT CỦA AI VÀ XU HƯỚNG PHÁT TRIỂN TRONG TƯƠNG LAI GẦN
+2.1. Sự phát triển mạnh mẽ của AI hiện tại
+Trong những năm gần đây, trí tuệ nhân tạo phát triển rất nhanh nhờ ba yếu tố chính: dữ liệu lớn, phần cứng tính toán mạnh và thuật toán học sâu. Các mô hình AI hiện đại có thể xử lý lượng dữ liệu khổng lồ và thực hiện nhiều nhiệm vụ phức tạp như sinh văn bản, tạo hình ảnh, viết mã lập trình, phân tích dữ liệu, hỗ trợ nghiên cứu khoa học và tự động hóa quy trình nghiệp vụ.
+Theo Stanford AI Index 2025, mức sử dụng AI trong doanh nghiệp tăng mạnh: năm 2024 có 78% tổ chức được khảo sát cho biết có sử dụng AI, tăng từ 55% của năm trước; riêng AI tạo sinh thu hút 33,9 tỷ USD đầu tư tư nhân toàn cầu, tăng 18,7% so với năm 2023 . Điều này cho thấy AI không còn chỉ là lĩnh vực nghiên cứu mà đã trở thành công nghệ được ứng dụng rộng rãi trong sản xuất, giáo dục, y tế, tài chính, thương mại và quản trị.
+2.2. AI tạo sinh
+AI tạo sinh là một trong những thành tựu nổi bật nhất của AI hiện đại. Công nghệ này cho phép máy tính tạo ra nội dung mới như văn bản, hình ảnh, âm thanh, video, mã nguồn và thiết kế. Các mô hình ngôn ngữ lớn có khả năng trò chuyện tự nhiên, tóm tắt tài liệu, trả lời câu hỏi, hỗ trợ lập trình và soạn thảo văn bản.
+Trong giáo dục, AI tạo sinh có thể hỗ trợ sinh viên học tập, giải thích kiến thức, tạo đề cương, kiểm tra lỗi lập luận và gợi ý tài liệu tham khảo. Đối với giảng viên, AI có thể hỗ trợ tạo câu hỏi trắc nghiệm, xây dựng bài giảng, phân tích kết quả học tập và cá nhân hóa nội dung học.
+Tuy nhiên, AI tạo sinh cũng đặt ra nhiều thách thức như nguy cơ sao chép, phụ thuộc vào công cụ, thông tin sai lệch và vấn đề đạo đức học thuật. Vì vậy, khi sử dụng AI trong học tập và báo cáo, sinh viên cần hiểu rõ nội dung, tự kiểm chứng thông tin và ghi nguồn tham khảo phù hợp.
+2.3. AI trong nhận dạng hình ảnh và xử lý tự nhiên
+Nhận dạng hình ảnh và xử lý ngôn ngữ tự nhiên là hai lĩnh vực đạt nhiều thành tựu lớn. Trong nhận dạng hình ảnh, AI có thể phát hiện khuôn mặt, phân loại vật thể, phân tích ảnh y khoa, nhận diện biển số xe và hỗ trợ hệ thống giám sát thông minh.
+Trong xử lý ngôn ngữ tự nhiên, AI có thể dịch máy, tóm tắt văn bản, phân tích cảm xúc, trả lời câu hỏi và hỗ trợ giao tiếp giữa con người với máy tính. Sự phát triển của các mô hình ngôn ngữ lớn giúp máy tính hiểu ngữ cảnh tốt hơn, tạo ra câu trả lời tự nhiên hơn và xử lý được nhiều loại tác vụ phức tạp hơn.
+Đối với hệ thống đăng ký môn học, xử lý ngôn ngữ tự nhiên có thể được mở rộng trong tương lai để xây dựng chatbot tư vấn học vụ. Sinh viên có thể hỏi: “Em nên đăng ký môn nào học kỳ này?”, “Môn này có tiên quyết không?”, “Lịch học nào không trùng với thứ Hai?” và hệ thống có thể trả lời dựa trên dữ liệu đào tạo.
+2.4. AI trong khoa học và y học
+AI không chỉ được ứng dụng trong công nghệ thông tin mà còn tạo ra ảnh hưởng lớn trong khoa học tự nhiên và y học. Một ví dụ tiêu biểu là AlphaFold, hệ thống AI dự đoán cấu trúc protein. Theo Nobel Prize, AlphaFold2 có thể dự đoán cấu trúc của gần như toàn bộ khoảng 200 triệu protein mà các nhà nghiên cứu đã xác định, và đã được hơn hai triệu người ở 190 quốc gia sử dụng .
+Năm 2024, Nobel Vật lý được trao cho John J. Hopfield và Geoffrey Hinton vì những phát hiện và phát minh nền tảng cho học máy bằng mạng nơ-ron nhân tạo . Cũng trong năm 2024, Nobel Hóa học ghi nhận vai trò của các công trình liên quan đến thiết kế protein tính toán và dự đoán cấu trúc protein, trong đó có AlphaFold . Những sự kiện này cho thấy AI ngày càng có vai trò quan trọng trong nghiên cứu khoa học hiện đại.
+2.5. AI trong giáo dục
+Trong giáo dục, AI có thể được ứng dụng ở nhiều cấp độ. Ở cấp độ người học, AI hỗ trợ cá nhân hóa lộ trình học tập, gợi ý tài liệu, chấm bài tự động, phát hiện lỗ hổng kiến thức và tạo trợ lý học tập ảo. Ở cấp độ nhà trường, AI hỗ trợ phân tích dữ liệu học tập, dự báo nguy cơ sinh viên bỏ học, tối ưu hóa lịch học, phân bổ phòng học và cải thiện dịch vụ đào tạo.
+Đề tài hệ thống đăng ký môn học thuộc nhóm ứng dụng AI trong quản lý giáo dục. Thay vì chỉ cung cấp danh sách lớp để sinh viên tự chọn, hệ thống có thể phân tích ràng buộc và tạo phương án thời khóa biểu. Đây là hướng ứng dụng thiết thực vì gắn trực tiếp với nhu cầu của sinh viên trong mỗi học kỳ.
+2.6. Xu hướng phát triển AI trong tương lai gần
+Trong tương lai gần, AI có xu hướng phát triển theo các hướng sau:
+Thứ nhất là AI cá nhân hóa. Các hệ thống AI sẽ ngày càng hiểu rõ nhu cầu, lịch sử và sở thích của từng người dùng để đưa ra gợi ý phù hợp hơn. Trong đề tài này, hệ thống có thể học từ lịch sử đăng ký của sinh viên để gợi ý môn học phù hợp với tiến độ học tập.
+Thứ hai là AI kết hợp dữ liệu và luật nghiệp vụ. Nhiều bài toán thực tế không thể chỉ dựa vào dữ liệu mà còn cần tuân thủ quy định. Đăng ký môn học là ví dụ điển hình vì hệ thống phải tuân thủ các ràng buộc như tiên quyết, sĩ số, học kỳ, lịch học và quyền người dùng.
+Thứ ba là AI giải thích được. Người dùng không chỉ cần kết quả mà còn cần biết vì sao hệ thống đề xuất phương án đó. Với hệ thống đăng ký môn học, mỗi phương án thời khóa biểu nên có phần giải thích như: không trùng lịch, có 2 ngày nghỉ, phù hợp ca học ưu tiên và có giáo viên được chọn.
+Thứ tư là AI an toàn và có trách nhiệm. Khi AI được ứng dụng vào giáo dục, hệ thống cần đảm bảo minh bạch, công bằng, bảo mật dữ liệu và không đưa ra gợi ý gây bất lợi cho người học.
+CHƯƠNG 3. CƠ SỞ LÝ THUYẾT VỀ CÁC GIẢI THUẬT ÁP DỤNG
+3.1. Tổng quan về tìm kiếm và tối ưu ràng buộc
+Trong nhiều hệ thống phần mềm, đặc biệt là các hệ thống liên quan đến lập lịch, phân công tài nguyên hoặc lựa chọn phương án, bài toán không chỉ là lưu trữ và hiển thị dữ liệu. Hệ thống còn phải tìm ra một phương án thỏa mãn nhiều điều kiện khác nhau. Các điều kiện này có thể là điều kiện bắt buộc như không được trùng lịch, lớp học phải còn chỗ, sinh viên phải đạt môn tiên quyết; hoặc điều kiện ưu tiên như muốn học buổi sáng, muốn tránh học thứ bảy, muốn học với một giáo viên cụ thể.
+Bài toán tạo thời khóa biểu tự động trong hệ thống đăng ký môn học là một bài toán điển hình của tìm kiếm có ràng buộc. Sinh viên chọn một danh sách môn học cần đăng ký. Mỗi môn học có nhiều lớp học phần khác nhau. Mỗi lớp học phần lại có lịch học, giáo viên, sĩ số và trạng thái mở lớp. Nhiệm vụ của hệ thống là chọn đúng một lớp học phần cho mỗi môn sao cho toàn bộ phương án không vi phạm các ràng buộc nghiệp vụ.
+Nếu xét theo hướng duyệt vét cạn, hệ thống có thể thử tất cả tổ hợp lớp học phần. Ví dụ, nếu sinh viên chọn 5 môn, mỗi môn có 4 lớp học phần, tổng số tổ hợp có thể là:
+4 x 4 x 4 x 4 x 4 = 1024 tổ hợp
+Với số lượng môn và lớp lớn hơn, số tổ hợp tăng rất nhanh. Vì vậy, cần áp dụng các kỹ thuật tìm kiếm thông minh hơn để giảm số nhánh phải duyệt. Trong project này, bài toán được mô hình hóa theo hướng CSP (Constraint Satisfaction Problem), sau đó giải bằng Backtracking kết hợp heuristic MRV (Minimum Remaining Values). Các phương án hợp lệ tiếp tục được chấm điểm bằng hàm Weighted scoring để sắp xếp theo mức độ phù hợp với ưu tiên của sinh viên.
+Nhóm kỹ thuật được áp dụng trong project gồm:
+CSP để mô hình hóa bài toán thành biến, miền giá trị và ràng buộc.
+Backtracking để tìm các phương án gán lớp học phần cho từng môn.
+MRV để chọn môn khó xếp trước, giúp phát hiện lỗi sớm.
+Kiểm tra xung đột lịch sớm để cắt bỏ nhánh không hợp lệ.
+Weighted scoring để đánh giá các phương án hợp lệ theo các tiêu chí mềm.
+Các kỹ thuật này không thuộc nhóm học máy hay học sâu. Đây là hướng giải quyết thuộc nhóm tìm kiếm trạng thái và tối ưu ràng buộc, phù hợp với các bài toán có luật nghiệp vụ rõ ràng và dữ liệu đầu vào có cấu trúc.
+3.2. Bài toán thỏa mãn ràng buộc CSP
+3.2.1. Khái niệm và ý tưởng của CSP
+CSP, viết tắt của Constraint Satisfaction Problem, là bài toán tìm giá trị cho một tập các biến sao cho toàn bộ các ràng buộc giữa các biến được thỏa mãn. Một lời giải của CSP không nhất thiết là lời giải có điểm số cao nhất theo nghĩa tối ưu số học, mà trước hết là một phép gán hợp lệ, không vi phạm các điều kiện bắt buộc.
+Trong bài toán đăng ký môn học, hệ thống cần chọn lớp học phần cho từng môn. Có thể xem mỗi môn học sinh viên chọn là một biến. Tập lớp học phần đang mở của môn đó là miền giá trị. Khi chọn một lớp học phần cho môn, ta đã gán một giá trị cho biến. Một phương án thời khóa biểu hợp lệ là một tập phép gán trong đó mỗi môn có đúng một lớp học phần và các lớp được chọn không xung đột với nhau.
+Ví dụ:
+Sinh viên chọn 3 môn:
+- Môn A có các lớp A01, A02
+- Môn B có các lớp B01, B02, B03
+- Môn C có các lớp C01, C02
+Một phương án có thể là:
+A -&gt; A01
+B -&gt; B03
+C -&gt; C02
+Phương án trên chỉ được chấp nhận nếu A01, B03 và C02 không trùng lịch, các lớp còn chỗ, các môn thuộc chương trình đào tạo, sinh viên không thiếu môn tiên quyết và các điều kiện khác đều hợp lệ.
+Ý tưởng chính của CSP là tách bài toán thành ba phần rõ ràng:
+Cần quyết định cái gì: các biến.
+Mỗi biến có thể nhận giá trị nào: miền giá trị.
+Khi nào một phép gán được xem là hợp lệ: ràng buộc.
+3.2.2. Các thành phần cơ bản của CSP
+Một bài toán CSP thường có ba thành phần chính:
+Biến: Biến là các đối tượng cần được gán giá trị. Trong project, biến là các môn học mà sinh viên chọn ở màn hình tạo thời khóa biểu tự động. Danh sách này được gửi lên backend qua trường course_ids của request POST /api/auto-schedule/suggest/.
+Miền giá trị: Miền giá trị là tập các giá trị khả dĩ của từng biến. Với mỗi môn học, miền giá trị là danh sách lớp học phần thỏa điều kiện ban đầu: đúng học kỳ, đang mở, chưa đầy và nếu sinh viên khóa giáo viên cho môn đó thì chỉ lấy các lớp do giáo viên được chọn phụ trách. Trong code, việc tạo miền giá trị được thực hiện bởi hàm build_domain(course, semester_id, teacher_id).
+Ràng buộc: Ràng buộc là các điều kiện mà phép gán phải thỏa mãn. Trong project, ràng buộc bao gồm:
+Môn học phải thuộc chương trình đào tạo của sinh viên.
+Sinh viên chưa có điểm của môn đó.
+Nếu môn có tiên quyết, sinh viên phải đạt môn tiên quyết.
+Lớp học phần phải có trạng thái OPEN.
+Lớp học phần chưa đạt sĩ số tối đa.
+Lịch học của lớp mới không được trùng với lịch sinh viên đã đăng ký.
+Các lớp trong cùng phương án không được trùng lịch nhau.
+Assignment: Assignment là trạng thái gán tạm thời trong quá trình tìm kiếm. Trong thuật toán backtracking, assignment được biểu diễn bằng danh sách selected, tức các lớp học phần đã được chọn cho những môn đã xét.
+Lời giải: Lời giải là một assignment hoàn chỉnh, trong đó tất cả môn học đã được gán lớp học phần và không vi phạm ràng buộc. Project lưu các lời giải vào danh sách feasible, sau đó chuyển từng lời giải thành Candidate để chấm điểm.
+3.2.3. Ràng buộc cứng và ràng buộc mềm
+Trong bài toán đăng ký môn học, không phải ràng buộc nào cũng có cùng mức độ bắt buộc. Project phân biệt hai nhóm: ràng buộc cứng và ràng buộc mềm.
+Ràng buộc cứng là các điều kiện bắt buộc. Nếu vi phạm, phương án bị loại ngay và không được đưa vào danh sách gợi ý. Một số ràng buộc cứng trong project:
+Học kỳ phải được mở.
+Không được tạo phương án cho học kỳ đã quá hạn đăng ký.
+Môn học phải thuộc chương trình đào tạo của sinh viên.
+Môn học chưa có điểm trong lịch sử học tập của sinh viên.
+Sinh viên phải đạt các môn tiên quyết nếu môn có yêu cầu.
+Lớp học phần phải đang mở và chưa đầy.
+Lớp học phần không được trùng lịch với các lớp sinh viên đã đăng ký.
+Các lớp trong cùng phương án không được trùng lịch với nhau.
+Nếu sinh viên chọn giáo viên cụ thể cho một môn, domain của môn đó chỉ gồm lớp của giáo viên được chọn.
+Ràng buộc mềm là các tiêu chí ưu tiên. Nếu không đạt hoàn toàn, phương án vẫn có thể hợp lệ nhưng điểm số sẽ thấp hơn. Project đang sử dụng các ràng buộc mềm sau:
+Tránh các ngày sinh viên không muốn học.
+Ưu tiên ca học mong muốn: sáng, chiều hoặc tối.
+Ưu tiên giáo viên theo danh sách giáo viên yêu thích.
+Ưu tiên thời khóa biểu gọn, có nhiều ngày nghỉ trong tuần.
+Việc tách ràng buộc cứng và ràng buộc mềm giúp hệ thống vừa đảm bảo tính đúng đắn nghiệp vụ, vừa có khả năng sắp xếp các phương án theo mức độ phù hợp cá nhân. Đây là điểm quan trọng vì trong thực tế, không phải lúc nào hệ thống cũng tìm được một phương án thỏa toàn bộ mong muốn của sinh viên. Khi đó, scoring giúp đưa phương án tương đối tốt hơn lên trước.
+3.3. Thuật toán Backtracking
+3.3.1. Ý tưởng của thuật toán Backtracking
+Backtracking là thuật toán tìm kiếm theo chiều sâu, xây dựng lời giải từng bước. Ở mỗi bước, thuật toán chọn một giá trị cho biến hiện tại, kiểm tra xem lựa chọn này có còn hợp lệ hay không. Nếu hợp lệ, thuật toán tiếp tục xử lý biến tiếp theo. Nếu không hợp lệ hoặc đi đến ngõ cụt, thuật toán quay lui để thử lựa chọn khác.
+Trong bài toán tạo thời khóa biểu, Backtracking hoạt động như sau:
+Chọn một môn học chưa được xếp.
+Duyệt từng lớp học phần trong domain của môn đó.
+Kiểm tra lịch của lớp đang xét có trùng với các lịch đã chọn hay không.
+Nếu không trùng, thêm lớp vào phương án tạm.
+Tiếp tục xếp môn tiếp theo.
+Nếu xếp đủ tất cả môn, lưu lại phương án hợp lệ.
+Nếu không thể đi tiếp, bỏ lựa chọn hiện tại và thử lớp khác.
+Điểm mạnh của Backtracking là đơn giản, dễ cài đặt và phù hợp với CSP có số biến vừa phải. Trong project, sinh viên chỉ được chọn tối đa 10 môn khi gửi request tạo thời khóa biểu, nhờ đó không gian tìm kiếm được giới hạn ở mức phù hợp cho hệ thống demo và nghiệp vụ thực tế.
+3.3.2. Quy trình hoạt động
+Quy trình Backtracking trong project có thể mô tả bằng giả mã:
+function BACKTRACK(index):
+   if đã chọn đủ lớp cho tất cả môn:
+      lưu phương án hiện tại vào danh sách feasible
+        return
+    course = courses_ordered[index]
+    for class_section in domain[course]:
+       if class_section trùng lịch với used_schedules:
+           bỏ qua class_section
+        chọn class_section
+       thêm lịch của class_section vào used_schedules
+        BACKTRACK(index + 1)
+        bỏ chọn class_section
+       xoá lịch của class_section khỏi used_schedules
+Trong project, hàm _backtrack() nhận các tham số chính:
+courses_ordered: danh sách môn đã được sắp xếp theo MRV.
+domains: dictionary ánh xạ course_id sang danh sách lớp học phần.
+schedules_cache: cache lịch học của từng lớp học phần.
+selected: các lớp học phần đã chọn trong nhánh hiện tại.
+used_schedules: lịch đã được sử dụng, bao gồm cả lịch sinh viên đã đăng ký trước đó.
+feasible: danh sách phương án hợp lệ tìm được.
+max_results: giới hạn số phương án trả về.
+Điều kiện dừng gồm hai trường hợp:
+Nếu số phương án đã đạt max_results, thuật toán dừng để tránh duyệt quá nhiều.
+Nếu tất cả môn đã được gán lớp học phần, phương án hiện tại được xem là hợp lệ và đưa vào danh sách kết quả.
+Điểm cắt nhánh quan trọng nằm ở kiểm tra trùng lịch. Khi một lớp học phần bị trùng với lịch đã có, thuật toán không tiếp tục mở rộng nhánh đó. Nhờ vậy, nhiều tổ hợp sai bị loại ngay từ sớm.
+3.3.3. Ưu điểm và hạn chế
+Ưu điểm:
+Dễ hiểu và dễ giải thích trong báo cáo.
+Cài đặt trực tiếp theo mô hình CSP.
+Đảm bảo tìm được các phương án hợp lệ trong không gian tìm kiếm được duyệt.
+Có thể kết hợp với heuristic như MRV để tăng hiệu quả.
+Dễ bổ sung ràng buộc mới, ví dụ tránh phòng học xa hoặc tránh học buổi tối.
+Hạn chế:
+Độ phức tạp tăng nhanh khi số môn và số lớp học phần tăng.
+Trong trường hợp xấu nhất, thuật toán vẫn có thể phải duyệt gần như toàn bộ tổ hợp.
+Nếu đặt max_results, hệ thống có thể dừng trước khi duyệt hết toàn bộ không gian tìm kiếm.
+Backtracking cơ bản chưa tối ưu toàn cục theo nghĩa toán học nếu không duyệt toàn bộ phương án trước khi chấm điểm.
+Độ phức tạp xấu nhất:
+O(|D1| x |D2| x ... x |Dn|)
+Trong đó Di là domain của môn thứ i. Nếu mỗi môn có trung bình d lớp học phần và có n môn, độ phức tạp xấu nhất có thể viết gần đúng là:
+O(d^n)
+Do đó, project sử dụng thêm MRV và kiểm tra xung đột sớm để giảm số nhánh phải xét trong thực tế.
+3.4. Heuristic MRV
+3.4.1. Ý tưởng của MRV
+MRV, viết tắt của Minimum Remaining Values, là heuristic chọn biến có ít giá trị khả dĩ nhất để xử lý trước. Trong CSP, nếu một biến có domain nhỏ, biến đó thường khó gán hơn. Xử lý biến khó trước giúp thuật toán phát hiện ngõ cụt sớm.
+Ví dụ:
+Môn A có 1 lớp hợp lệ
+Môn B có 5 lớp hợp lệ
+Môn C có 2 lớp hợp lệ
+Thứ tự MRV: A -&gt; C -&gt; B
+Nếu môn A chỉ có một lớp và lớp đó trùng lịch với môn khác, thuật toán sẽ phát hiện nhanh thay vì mất thời gian thử nhiều tổ hợp của các môn dễ hơn.
+Trong code, MRV được thể hiện bằng việc sắp xếp danh sách môn theo kích thước domain:
+Courses_ordered = sorted(courses, key=lambda c: len(domains[c.id]))
+Sau khi sắp xếp, Backtracking sẽ xử lý các môn có ít lớp học phần hợp lệ trước.
+3.4.2. Vai trò của MRV trong bài toán đăng ký môn học
+Trong hệ thống đăng ký môn học, không phải môn nào cũng có số lượng lớp học phần giống nhau. Một môn đại cương có thể có nhiều lớp, nhiều giáo viên, nhiều khung giờ. Ngược lại, một môn chuyên ngành có thể chỉ có một hoặc hai lớp. Nếu chọn môn có nhiều lớp trước, thuật toán có thể tạo ra nhiều nhánh nhưng về sau mới phát hiện môn ít lớp không thể ghép được.
+MRV giúp ưu tiên xử lý các môn khó:
+Môn có ít lớp học phần.
+Môn bị giới hạn bởi giáo viên sinh viên đã chọn.
+Môn chỉ có lớp ở một vài khung giờ nhất định.
+Môn dễ trùng lịch với lịch đã đăng ký.
+Trong project, MRV đặc biệt hữu ích vì domain được lọc khá mạnh trước khi tìm kiếm: lọc học kỳ, trạng thái lớp, sĩ số, chương trình đào tạo và giáo viên nếu có. Sau khi lọc, một số môn có thể chỉ còn rất ít lựa chọn. Việc đưa các môn này lên đầu giúp giảm đáng kể số nhánh phải duyệt.
+MRV không làm thay đổi tập lời giải hợp lệ. Nó chỉ thay đổi thứ tự duyệt để tăng hiệu quả. Vì vậy, đây là một heuristic an toàn trong bối cảnh bài toán CSP của project.
+3.5. Hàm chấm điểm trọng số Weighted scoring
+Sau khi Backtracking tìm được các phương án không vi phạm ràng buộc cứng, hệ thống cần sắp xếp các phương án theo mức độ phù hợp với mong muốn của sinh viên. Project sử dụng hàm Weighted scoring, tức tính điểm tổng bằng tổng có trọng số của các điểm thành phần.
+Công thức tổng:
+total = w_weekday * s_weekday
++ w_session * s_session
++ w_teacher * s_teacher
++ w_free_day * s_free_day
+Trong đó:
+s_weekday: điểm theo ngày muốn tránh.
+s_session: điểm theo ca học ưu tiên.
+s_teacher: điểm theo giáo viên ưu tiên.
+s_free_day: điểm theo số ngày nghỉ.
+w_weekday, w_session, w_teacher, w_free_day: trọng số của từng tiêu chí.
+Mỗi điểm thành phần nằm trong khoảng từ 0 đến 100.
+Điểm ngày học:
+Nếu sinh viên chọn các ngày muốn tránh, hệ thống tính tỷ lệ buổi học không rơi vào các ngày đó:
+s_weekday = 100 * (1 - số_buổi_rơi_vào_ngày_tránh / tổng_số_buổi)
+Nếu sinh viên không chọn ngày muốn tránh, điểm này mặc định là 100.
+Điểm ca học:
+Nếu sinh viên chọn ca học ưu tiên, hệ thống tính tỷ lệ buổi học rơi vào các ca đó:
+s_session = 100 * số_buổi_đúng_ca / tổng_số_buổi
+Nếu không chọn ca ưu tiên, điểm mặc định là 100.
+Điểm giáo viên:
+Nếu có danh sách giáo viên ưu tiên, hệ thống tính tỷ lệ lớp học phần trong phương án do các giáo viên đó phụ trách:
+s_teacher = 100 * số_lớp_đúng_giáo_viên / tổng_số_lớp
+Trong project có hai cách liên quan đến giáo viên:
+Chọn giáo viên riêng cho từng môn là ràng buộc cứng, dùng để lọc domain.
+Chọn giáo viên ưu tiên chung là ràng buộc mềm, dùng để tính điểm.
+Điểm ngày nghỉ:
+Điểm ngày nghỉ ưu tiên các thời khóa biểu được gom vào ít ngày học hơn:
+study_days = số ngày trong tuần có ít nhất một buổi học
+free_days = 7 - study_days
+s_free_day = 100 * free_days / 7
+Project định nghĩa các preset trọng số:
+Bảng 1: Các chế độ ưu tiên trong hệ thống
+Preset
+Weekday
+Session
+Teacher
+Free day
+Ý nghĩa
+BALANCED
+0.25
+0.25
+0.25
+0.25
+Cân bằng các tiêu chí
+TEACHER_FIRST
+0.15
+0.15
+0.55
+0.15
+Ưu tiên giáo viên
+SESSION_FIRST
+0.15
+0.55
+0.15
+0.15
+Ưu tiên ca học
+COMPACT_FIRST
+0.15
+0.15
+0.15
+0.55
+Ưu tiên nhiều ngày nghỉ
+AUTO
+Tính động
+Tính động
+Tính động
+Tính động
+Tự chia trọng số theo input
+Chế độ AUTO tự xác định tiêu chí nào đang có input từ sinh viên. Nếu không có tiêu chí nào, trọng số được chia đều. Nếu có một tiêu chí chính, tiêu chí đó được tăng trọng số và các tiêu chí còn lại nhận trọng số phụ. Cách này giúp hệ thống phản ứng phù hợp với mức độ quan tâm thực tế của sinh viên.
+Sau khi tính điểm, danh sách phương án được sắp xếp giảm dần theo score. Phương án có điểm cao hơn được hiển thị trước.
+3.6. Rule-based validation và transaction/locking trong đăng ký thủ công
+Không phải chức năng nào trong project cũng cần thuật toán tìm kiếm. Với đăng ký môn học thủ công, sinh viên đã chọn một lớp cụ thể. Nhiệm vụ của hệ thống là kiểm tra lớp đó có được phép đăng ký hay không. Vì vậy, project sử dụng rule-based validation, tức kiểm tra theo các luật nghiệp vụ định sẵn.
+Các luật trong đăng ký thủ công:
+Sinh viên phải là người dùng đang đăng nhập.
+Học kỳ của lớp học phần phải đang mở.
+Thời điểm hiện tại phải nằm trong cửa sổ đăng ký.
+Sinh viên không được đăng ký trùng cùng một lớp.
+Môn học phải thuộc chương trình đào tạo của sinh viên.
+Nếu môn đã có điểm, sinh viên phải xác nhận học lại.
+Lớp học phần chưa được đầy.
+Sinh viên phải đạt môn tiên quyết.
+Lịch lớp mới không được trùng với lịch các lớp đang đăng ký hoặc đã xác nhận.
+Vấn đề đồng thời:
+Nếu nhiều sinh viên cùng đăng ký một lớp gần đầy, có thể xảy ra tình huống cả hai request cùng đọc hàm còn chỗ, sau đó cùng ghi đăng ký, làm vượt sĩ số. Để tránh điều này, project dùng transaction và row locking.
+Trong quá trình tạo đăng ký, hệ thống:
+Mở transaction.
+Khóa dòng `ClassSection` bằng `select_for_update()`.
+Kiểm tra lại sĩ số sau khi khóa.
+Kiểm tra lại đăng ký trùng.
+Tạo registration.
+Signal cập nhật lại `enrolled_count`.
+Ý nghĩa của transaction/locking:
+Đảm bảo thao tác đăng ký là nguyên tử.
+Tránh race condition khi nhiều request cùng đăng ký.
+Không tạo dữ liệu dở dang nếu có lỗi.
+Bảo vệ sĩ số lớp học phần.
+Như vậy, với đăng ký thủ công, thuật toán tìm kiếm không cần thiết. Giải pháp phù hợp hơn là rule-based validation kết hợp transaction/locking.
+3.7. So sánh các kỹ thuật áp dụng trong project
+Các kỹ thuật trong project có vai trò khác nhau và bổ sung cho nhau:
+Bảng 2: So sánh kỹ thuật áp dụng trong project
+Kỹ thuật
+Áp dụng cho chức năng
+Vai trò
+Kỹ thuật
+CSP
+Tạo TKB tự động
+Mô hình hóa môn, lớp học phần và ràng buộc
+CSP
+Backtracking
+Tạo TKB tự động
+Tìm các tổ hợp lớp học phần hợp lệ
+Backtracking
+MRV
+Tạo TKB tự động
+Chọn môn có ít lớp hợp lệ trước
+MRV
+Kiểm tra ràng buộc sớm
+Tạo TKB tự động, đăng ký thủ công
+Loại nhanh lựa chọn trùng lịch hoặc sai nghiệp vụ
+Kiểm tra ràng buộc sớm
+Weighted scoring
+Tạo TKB tự động
+Chấm điểm và xếp hạng phương án
+Weighted scoring
+Rule-based validation
+Đăng ký thủ công, quản lý lớp, nhập điểm
+Kiểm tra dữ liệu theo luật nghiệp vụ
+Rule-based validation
+Transaction/locking
+Đăng ký thủ công
+Chống vượt sĩ số và chống lỗi đồng thời
+Transaction/locking
+CHƯƠNG 4. PHÂN TÍCH VÀ LỰA CHỌN THUẬT TOÁN
+4.1. Lịch sử bài toán đăng ký môn học
+Đăng ký môn học là nghiệp vụ phổ biến trong các trường đại học theo mô hình tín chỉ. Thay vì học theo một thời khóa biểu cố định cho cả lớp hành chính, sinh viên có quyền chọn môn học, lớp học phần, giáo viên và khung giờ phù hợp với kế hoạch cá nhân. Cách tổ chức này linh hoạt hơn nhưng cũng tạo ra nhiều khó khăn trong quản lý.
+Ở giai đoạn thủ công, sinh viên thường đăng ký trực tiếp bằng giấy hoặc thông qua cán bộ đào tạo. Cách làm này phụ thuộc nhiều vào con người, khó kiểm tra tự động các điều kiện như tiên quyết, sĩ số, trùng lịch. Khi số lượng sinh viên và lớp học phần tăng, cách làm thủ công dễ gây quá tải, nhầm lẫn và chậm cập nhật.
+Sau đó, nhiều hệ thống chuyển sang đăng ký trực tuyến. Sinh viên có thể đăng nhập, xem lớp học phần đang mở và tự gửi yêu cầu đăng ký. Đây là bước cải tiến lớn vì dữ liệu được cập nhật nhanh hơn và có thể kiểm tra tự động một số ràng buộc cơ bản. Tuy nhiên, nếu hệ thống chỉ cho sinh viên tự chọn từng lớp một, sinh viên vẫn phải tự so sánh lịch, tự tránh trùng và tự cân nhắc ưu tiên cá nhân.
+Với các hệ thống hiện đại hơn, bài toán không dừng ở việc cho phép đăng ký. Hệ thống cần hỗ trợ sinh viên ra quyết định. Tạo thời khóa biểu tự động là một chức năng như vậy. Thay vì bắt sinh viên tự thử từng tổ hợp, hệ thống nhận danh sách môn học và ưu tiên cá nhân, sau đó tự tìm các phương án hợp lệ. Điều này giúp giảm thời gian thao tác, giảm lỗi trùng lịch và tăng trải nghiệm người dùng.
+Project này phát triển theo hướng đó. Hệ thống vẫn hỗ trợ đăng ký thủ công, đồng thời bổ sung chức năng tạo thời khóa biểu tự động để gợi ý nhiều phương án hợp lệ cho sinh viên.
+4.2. Các giải pháp đã có
+4.2.1. Đăng ký môn học thủ công
+Đăng ký thủ công là cách sinh viên tự chọn lớp học phần từ danh sách lớp đang mở. Trong project, chức năng này được thể hiện ở màn hình /student/register và API POST /api/registrations/.
+Quy trình cơ bản:
+Sinh viên đăng nhập.
+Chọn hoặc xem học kỳ đang mở.
+Tìm lớp học phần theo môn học.
+Xem giáo viên, lịch học, sĩ số.
+Gửi yêu cầu đăng ký.
+Backend kiểm tra các ràng buộc nghiệp vụ.
+Nếu hợp lệ, tạo bản ghi đăng ký.
+Ưu điểm của đăng ký thủ công:
+Sinh viên kiểm soát trực tiếp lớp muốn đăng ký.
+Cách làm dễ hiểu và quen thuộc.
+Phù hợp khi sinh viên chỉ đăng ký một vài môn.
+Hạn chế:
+Sinh viên phải tự so sánh lịch giữa nhiều lớp.
+Dễ chọn nhầm lớp trùng lịch.
+Tốn thời gian khi số môn và số lớp nhiều.
+Không tự động tối ưu theo ưu tiên cá nhân.
+Project khắc phục một phần hạn chế bằng cách backend kiểm tra trùng lịch, tiên quyết, sĩ số và chương trình đào tạo trước khi tạo đăng ký. Tuy nhiên, đăng ký thủ công vẫn chưa giải quyết việc tìm tổ hợp tốt nhất cho nhiều môn cùng lúc.
+4.2.2. Hệ thống đăng ký môn học trực tuyến cơ bản
+Hệ thống trực tuyến cơ bản thường cung cấp các chức năng:
+Đăng nhập.
+Xem danh sách môn học và lớp học phần.
+Gửi yêu cầu đăng ký.
+Xem lịch sử đăng ký.
+Hủy đăng ký trong thời gian cho phép.
+So với đăng ký thủ công bằng giấy, hệ thống trực tuyến giúp tăng tốc độ xử lý và giảm sai sót nhập liệu. Dữ liệu được lưu trong cơ sở dữ liệu tập trung, giúp admin theo dõi sĩ số, quản lý học kỳ và thống kê số lượng đăng ký.
+Tuy nhiên, nếu hệ thống chỉ dừng ở mức trực tuyến cơ bản, nó vẫn chưa đủ thông minh. Sinh viên vẫn phải tự xử lý bài toán lựa chọn tổ hợp lớp học phần. Một sinh viên muốn học 5 môn có thể phải mở từng môn, xem từng lớp, ghi chú giờ học và tự kiểm tra xung đột. Đây chính là phần có thể tự động hóa bằng thuật toán tìm kiếm ràng buộc.
+4.2.3. Hệ thống có kiểm tra trùng lịch và điều kiện tiên quyết
+Bước nâng cao tiếp theo là kiểm tra ràng buộc nghiệp vụ ở backend. Project hiện đã triển khai nhóm ràng buộc này .
+Các ràng buộc chính:
+Học kỳ phải mở và nằm trong thời gian đăng ký.
+Môn phải thuộc chương trình đào tạo của sinh viên.
+Lớp học phần phải còn chỗ.
+Sinh viên không được đăng ký trùng cùng một lớp.
+Nếu môn đã có điểm, hệ thống yêu cầu xác nhận học lại.
+Nếu môn có tiên quyết, sinh viên phải đạt môn tiên quyết.
+Lịch của lớp mới không được trùng với các lớp đang có hiệu lực.
+Công thức kiểm tra trùng lịch:
+cùng ngày trong tuần
+và left.start_period &lt;= right.end_period
+và right.start_period &lt;= left.end_period
+Giải pháp này đảm bảo dữ liệu đăng ký hợp lệ sau khi sinh viên chọn lớp. Tuy nhiên, nó vẫn là cơ chế kiểm tra sau lựa chọn. Nếu sinh viên chọn sai, hệ thống báo lỗi và sinh viên phải tự chọn lại. Khi số lượng tổ hợp lớn, cách này chưa hỗ trợ tốt cho việc ra quyết định.
+4.2.4. Hệ thống gợi ý thời khóa biểu tự động
+Hệ thống gợi ý thời khóa biểu tự động chủ động tìm phương án thay cho sinh viên. Sinh viên chỉ cần chọn môn học và tiêu chí ưu tiên. Hệ thống sẽ:
+Lọc các môn và lớp học phần hợp lệ.
+Tạo domain cho từng môn.
+Duyệt các tổ hợp lớp học phần không trùng lịch.
+Loại các phương án vi phạm ràng buộc cứng.
+Chấm điểm các phương án theo ràng buộc mềm.
+Trả về danh sách phương án được sắp xếp.
+Ưu điểm:
+Giảm thao tác thủ công cho sinh viên.
+Tự động loại bỏ phương án trùng lịch.
+Có thể đưa ra nhiều phương án để sinh viên lựa chọn.
+Có điểm số và breakdown giúp giải thích vì sao phương án được xếp cao.
+Hạn chế:
+Thuật toán có độ phức tạp tổ hợp.
+Chưa xét các yếu tố nâng cao như khoảng cách phòng học hoặc thời gian di chuyển.
+Chức năng áp dụng phương án hiện gọi đăng ký từng lớp, có thể phát sinh đăng ký thành công một phần nếu một request ở giữa bị lỗi.
+4.3. Phân tích bài toán
+4.3.1. Mô tả bài toán Input / Output / Ràng buộc
+Input của bài toán tạo thời khóa biểu tự động:
+Thông tin sinh viên: ngành, năm nhập học, chương trình đào tạo, lịch sử học tập.
+Học kỳ cần tạo thời khóa biểu.
+Danh sách môn học sinh viên chọn.
+Danh sách lớp học phần đang mở trong học kỳ.
+Lịch học của từng lớp học phần.
+Sĩ số tối đa và sĩ số hiện tại.
+Giáo viên phụ trách lớp học phần.
+Các môn tiên quyết.
+Các ưu tiên cá nhân: ngày muốn tránh, ca học ưu tiên, giáo viên ưu tiên, ưu tiên nhiều ngày nghỉ.
+Output của bài toán là danh sách các phương án thời khóa biểu. Mỗi phương án gồm:
+Danh sách lớp học phần được chọn.
+Điểm tổng.
+Điểm thành phần theo ngày học, ca học, giáo viên và ngày nghỉ.
+Thống kê số ngày học và số ngày nghỉ trong tuần.
+Ràng buộc cứng:
+Sinh viên phải có hồ sơ sinh viên.
+Học kỳ phải được mở và chưa quá hạn đăng ký.
+Môn học phải tồn tại.
+Môn học phải thuộc chương trình đào tạo của sinh viên.
+Sinh viên chưa có điểm của môn học đó.
+Sinh viên phải đạt môn tiên quyết.
+Lớp học phần phải đang mở.
+Lớp học phần chưa đầy.
+Nếu khóa giáo viên cho môn, giáo viên đó phải có lớp đang mở phù hợp.
+Lịch lớp mới không được trùng với lịch đã đăng ký.
+Lịch giữa các lớp trong cùng phương án không được trùng nhau.
+Ràng buộc mềm:
+Hạn chế học vào các ngày sinh viên muốn tránh.
+Ưu tiên ca học mong muốn.
+Ưu tiên giáo viên mong muốn.
+Ưu tiên gom lịch để có nhiều ngày nghỉ.
+Một điểm cần lưu ý là endpoint gợi ý cho phép sinh viên chuẩn bị phương án nếu học kỳ sắp mở, miễn là học kỳ có trạng thái mở và chưa quá thời hạn kết thúc đăng ký. Tuy nhiên, thao tác đăng ký chính thức vẫn kiểm tra đầy đủ thời điểm bắt đầu và kết thúc đăng ký.
+Bài toán đăng ký thủ công:
+Input:
+Sinh viên đang đăng nhập.
+Lớp học phần được chọn.
+Thông tin học kỳ của lớp.
+Lịch học của lớp.
+Lịch đăng ký hiện có của sinh viên.
+Dữ liệu chương trình đào tạo, điểm và môn tiên quyết.
+Output:
+Tạo bản ghi đăng ký nếu hợp lệ.
+Trả lỗi nếu vi phạm ràng buộc.
+Ràng buộc:
+Học kỳ mở và trong thời gian đăng ký.
+Môn thuộc chương trình đào tạo.
+Lớp chưa đầy.
+Không trùng lịch.
+Đủ tiên quyết.
+Không đăng ký trùng cùng lớp.
+4.3.2. Phân tích tác nhân và chức năng theo vai trò
+Project có ba vai trò chính: Admin, Sinh viên và Giáo viên.
+Admin: là người vận hành dữ liệu đào tạo. Các chức năng chính:
+Quản lý tài khoản sinh viên và giáo viên.
+Quản lý ngành đào tạo.
+Quản lý chương trình đào tạo.
+Quản lý môn học và môn tiên quyết.
+Quản lý học kỳ và thời gian đăng ký.
+Quản lý lớp học phần, giáo viên, lịch học, phòng học, sĩ số.
+Theo dõi đăng ký môn học.
+Xem báo cáo thống kê.
+Gửi thông báo.
+Sinh viên: là người trực tiếp đăng ký học. Các chức năng chính:
+Xem dashboard cá nhân.
+Xem chương trình đào tạo.
+Đăng ký môn học thủ công.
+Tạo thời khóa biểu tự động.
+Xem thời khóa biểu.
+Xem lịch sử đăng ký.
+Xem bảng điểm.
+Nhận và gửi thông báo trong phạm vi cho phép.
+Giáo viên: là người phụ trách lớp học phần. Các chức năng chính:
+Xem lịch dạy.
+Xem danh sách lớp được phân công.
+Xem danh sách sinh viên trong lớp.
+Nhập điểm quá trình, giữa kỳ, cuối kỳ.
+Gửi thông báo cho sinh viên trong lớp phụ trách.
+Trong bài toán tạo thời khóa biểu tự động, tác nhân chính là Sinh viên. Admin gián tiếp ảnh hưởng đến kết quả thông qua dữ liệu lớp học phần, lịch học, học kỳ, chương trình đào tạo và môn tiên quyết. Giáo viên ảnh hưởng thông qua việc được phân công vào lớp học phần.
+4.3.3. Mô hình hóa bài toán tạo thời khóa biểu tự động
+Bài toán được mô hình hóa thành CSP như sau:
+Biến:
+X = {course_1, course_2, ..., course_n}
+Mỗi biến là một môn học sinh viên chọn.
+Miền giá trị:
+D(course_i) = {class_section_1, class_section_2, ..., class_section_k}
+Mỗi domain gồm các lớp học phần hợp lệ của môn trong học kỳ đang xét.
+Ràng buộc unary: là ràng buộc áp dụng trên từng biến hoặc từng giá trị:
+Lớp thuộc đúng môn.
+Lớp thuộc đúng học kỳ.
+Lớp có trạng thái OPEN.
+Lớp chưa đầy.
+Lớp đúng giáo viên nếu sinh viên khóa giáo viên cho môn.
+Môn thuộc chương trình đào tạo.
+Môn chưa học.
+Môn thỏa tiên quyết.
+Ràng buộc binary hoặc global: là ràng buộc giữa nhiều lớp được chọn:
+Hai lớp bất kỳ trong phương án không được trùng lịch.
+Lớp mới không được trùng với các lớp sinh viên đã đăng ký trước đó.
+Hàm mục tiêu mềm:
+Sau khi có lời giải hợp lệ, phương án được đánh giá bởi:
+score(assignment) = weighted_sum(weekday, session, teacher, free_day)
+Mô hình này phù hợp với project vì dữ liệu lớp học phần, lịch học, sinh viên và chương trình đào tạo đều đã được biểu diễn bằng các model rõ ràng trong backend.
+4.3.4. Mô hình hóa chức năng đăng ký môn học thủ công
+Khác với chức năng tạo thời khóa biểu tự động, đăng ký môn học thủ công không phải là bài toán tìm kiếm nhiều tổ hợp. Trong chức năng này, sinh viên đã chọn một lớp học phần cụ thể. Nhiệm vụ của hệ thống là kiểm tra xem lựa chọn đó có hợp lệ hay không. Vì vậy, bài toán được mô hình hóa như một bài toán kiểm tra ràng buộc trên một phép chọn đơn.
+Biến quyết định của bài toán:
+x = class_section được sinh viên chọn
+Vì sinh viên đăng ký thủ công từng lớp, hệ thống không cần chọn trong nhiều tổ hợp như chức năng TKB tự động. Hệ thống chỉ cần đánh giá:
+is_valid(student, x) = true hoặc false
+Nếu `is_valid(student, x) = true`, hệ thống tạo bản ghi đăng ký. Nếu bằng `false`, hệ thống trả về lỗi tương ứng.
+Tập ràng buộc cứng:
+1. Ràng buộc tài khoản:
+Sinh viên không được đăng ký thay người khác. Nếu tài khoản chưa có hồ sơ sinh viên, hệ thống từ chối.
+2. Ràng buộc học kỳ:
+Nếu học kỳ chưa mở, chưa đến thời gian đăng ký hoặc đã quá thời hạn đăng ký, hệ thống không cho đăng ký.
+3. Ràng buộc không đăng ký trùng lớp:
+Một sinh viên không được tạo hai bản ghi đăng ký cho cùng một lớp học phần.
+4. Ràng buộc chương trình đào tạo:
+Môn học của lớp phải thuộc chương trình đào tạo phù hợp với ngành và khóa tuyển sinh của sinh viên.
+5. Ràng buộc học lại:
+Nếu môn đã có điểm mà sinh viên chưa xác nhận học lại, backend trả lỗi hỏi sinh viên có muốn học lại không.
+6. Ràng buộc sĩ số:
+Nếu lớp đã đầy, hệ thống từ chối đăng ký.
+7. Ràng buộc tiên quyết:
+Sinh viên được xem là đạt môn tiên quyết khi có điểm tổng kết lớn hơn hoặc bằng 5
+8. Ràng buộc trùng lịch:
+Nếu có giao nhau về thứ và khoảng tiết, hệ thống báo trùng lịch.
+4.4. Phương pháp đánh giá và lựa chọn thuật toán
+4.4.1. Tiêu chí đánh giá
+Các tiêu chí dùng để đánh giá thuật toán cho bài toán tạo thời khóa biểu gồm:
+Tính đúng đắn:
+Phương án trả về không được vi phạm ràng buộc cứng. Đây là tiêu chí quan trọng nhất vì đăng ký sai có thể làm hỏng dữ liệu học tập của sinh viên.
+Khả năng tìm nhiều phương án:
+Hệ thống không chỉ cần trả về một phương án, mà nên trả về nhiều phương án để sinh viên lựa chọn. Các phương án cần khác nhau về lớp học phần, lịch học hoặc mức độ phù hợp.
+Hiệu năng:
+Thuật toán cần chạy đủ nhanh trong bối cảnh số môn sinh viên chọn thường không quá lớn. Project giới hạn số môn trong request để kiểm soát độ phức tạp.
+Khả năng giải thích:
+Sinh viên cần hiểu vì sao phương án được đề xuất. Weighted scoring và breakdown điểm giúp giải thích điều này.
+Khả năng mở rộng ràng buộc:
+Hệ thống nên dễ bổ sung thêm tiêu chí như tránh học tối, ưu tiên phòng học, ưu tiên học ít ngày, hoặc giới hạn khoảng cách giữa các ca.
+Độ phức tạp cài đặt:
+Vì đây là project ứng dụng, thuật toán cần đủ mạnh nhưng không quá phức tạp để triển khai, kiểm thử và bảo trì.
+4.4.2. So sánh các phương pháp
+Bảng 3: So sánh các phương án lựa chọn thuật toán
+Phương pháp
+Ưu điểm
+Hạn chế
+Phù hợp
+Duyệt vét cạn
+Dễ hiểu, thử toàn bộ tổ hợp
+Chậm khi số tổ hợp lớn
+Chỉ phù hợp dữ liệu rất nhỏ
+Greedy
+Nhanh
+Dễ chọn sai, mắc kẹt cục bộ
+Không phù hợp nếu cần đảm bảo ràng buộc
+Backtracking
+Tìm được nhiều phương án hợp lệ
+Có thể chậm ở worst-case
+Phù hợp CSP vừa phải
+Backtracking + MRV
+Giảm nhánh tìm kiếm
+Vẫn có độ phức tạp tổ hợp
+Phù hợp project
+Solver tối ưu
+Có thể tối ưu mạnh
+Cài đặt phức tạp, thêm phụ thuộc
+Chưa cần thiết
+Genetic Algorithm
+Tốt cho không gian rất lớn
+Khó đảm bảo ràng buộc cứng
+Không phù hợp giai đoạn hiện tại
+Rule-based validation
+Rõ ràng, an toàn nghiệp vụ
+Không tự tìm phương án
+Phù hợp đăng ký thủ công
+Transaction/locking
+Chống race condition
+Chỉ xử lý đồng thời, không tối ưu lịch
+Cần thiết cho đăng ký
+Với quy mô và mục tiêu của project, CSP kết hợp Backtracking và MRV là lựa chọn hợp lý. Bài toán có ràng buộc rõ ràng, dữ liệu vừa phải, cần kết quả có thể giải thích và không cần dùng solver bên ngoài.
+4.4.3. Lý do chọn CSP + MRV + Backtracking + Weighted scoring
+Project chọn tổ hợp này vì các lý do sau:
+Thứ nhất, bài toán có cấu trúc CSP tự nhiên. Mỗi môn là một biến, mỗi lớp học phần là một giá trị, các điều kiện nghiệp vụ là ràng buộc. Việc mô hình hóa theo CSP giúp code và báo cáo thống nhất.
+Thứ hai, Backtracking phù hợp với yêu cầu tìm nhiều phương án hợp lệ. Thuật toán có thể lưu lại từng phương án không trùng lịch và tiếp tục tìm phương án khác cho đến khi đạt max_results.
+Thứ ba, MRV giúp giảm số nhánh phải duyệt. Môn có ít lớp hợp lệ được xét trước, qua đó phát hiện sớm trường hợp không thể xếp lịch.
+Thứ tư, Weighted scoring giúp cá nhân hóa kết quả. Không phải sinh viên nào cũng có cùng ưu tiên. Có sinh viên muốn học sáng, có sinh viên muốn nghỉ nhiều ngày, có sinh viên muốn học giáo viên cụ thể. Hàm điểm trọng số cho phép hệ thống phản ánh các ưu tiên đó.
+Thứ năm, giải pháp này dễ tích hợp với kiến trúc hiện có. Backend Django có sẵn các model Course, ClassSection, Schedule, Registration, Grade, Curriculum, StudentProfile. Thuật toán có thể dùng trực tiếp dữ liệu từ ORM, không cần thêm engine phức tạp.
+4.4.4. Lý do chọn Rule-based validation + transaction/locking
+Với đăng ký môn học thủ công, sinh viên đã chọn một lớp học phần cụ thể. Hệ thống không cần tìm kiếm tổ hợp, mà cần kiểm tra xem đăng ký đó có hợp lệ hay không. Vì vậy, rule-based validation là lựa chọn phù hợp.
+Lý do chọn rule-based validation:
+Luật nghiệp vụ rõ ràng và cố định.
+Dễ đưa lỗi cụ thể cho sinh viên.
+Dễ kiểm thử bằng test case.
+Dễ bảo trì trong serializer.
+Lý do chọn transaction/locking:
+Nhiều sinh viên có thể đăng ký cùng một lớp cùng lúc.
+Nếu không khóa dòng lớp học phần, sĩ số có thể bị vượt.
+`select_for_update()` giúp serialize các request cạnh tranh trên cùng lớp.
+Transaction đảm bảo nếu có lỗi thì không tạo bản ghi đăng ký dở dang.
+Do đó, hai nhóm giải pháp được chọn theo đúng bản chất từng chức năng:
+Tạo TKB tự động: cần tìm kiếm và xếp hạng -&gt; CSP + Backtracking + MRV + scoring
+Đăng ký thủ công: cần kiểm tra và ghi dữ liệu an toàn -&gt; rule-based validation + transaction/locking
+CHƯƠNG 5. XÂY DỰNG GIẢI PHÁP VÀ ĐÁNH GIÁ KẾT QUẢ
+5.1. Kiến trúc tổng thể hệ thống
+Hình 1: Kiến trúc tổng thể hệ thống
+Project được xây dựng theo kiến trúc web full-stack gồm ba lớp chính:
+Frontend:
+Frontend sử dụng React, TypeScript, Vite và Zustand. Người dùng tương tác với hệ thống qua các trang riêng theo vai trò. Sinh viên có các trang như đăng ký môn học, tạo thời khóa biểu tự động, xem thời khóa biểu, lịch sử đăng ký và bảng điểm. Admin có các trang quản lý tài khoản, ngành, môn học, học kỳ, lớp học phần, đăng ký, báo cáo và thông báo. Giáo viên có các trang xem lịch dạy, lớp phụ trách và nhập điểm.
+Backend:
+Backend sử dụng Django REST Framework. Các nghiệp vụ được tách thành nhiều app:
+accounts: tài khoản, đăng nhập JWT, phân quyền.
+majors: ngành đào tạo.
+courses: môn học và môn tiên quyết.
+semesters: học kỳ và thời gian đăng ký.
+profiles: hồ sơ sinh viên, giáo viên.
+curriculums: chương trình đào tạo.
+classes: lớp học phần và lịch học.
+registrations: đăng ký môn học và tạo thời khóa biểu tự động.
+grades: điểm và GPA.
+notifications: thông báo.
+Cơ sở dữ liệu:
+Hệ thống sử dụng PostgreSQL. Các bảng dữ liệu chính phản ánh nghiệp vụ đào tạo: người dùng, sinh viên, giáo viên, ngành, chương trình đào tạo, môn học, lớp học phần, lịch học, đăng ký, điểm và thông báo.
+5.2. Công nghệ sử dụng
+Backend:
+Python 3.12+
+Django 5.1.4
+Django REST Framework 3.15.2
+Simple JWT 5.3.1
+drf-spectacular 0.28.0 cho tài liệu OpenAPI
+PostgreSQL 16
+psycopg 3.2.3
+pytest và pytest-django cho kiểm thử
+openpyxl cho import chương trình đào tạo từ Excel
+Frontend:
+React 18.3.1
+TypeScript 5.6.3
+Vite 6.0.5
+React Router DOM 6.28.0
+Zustand 5.0.2
+Axios 1.7.9
+Tailwind CSS 3.4.17
+Triển khai và vận hành:
+Docker và docker-compose.
+Gunicorn cho backend khi chạy container.
+Whitenoise phục vụ static files trong production.
+pgAdmin cho quản trị cơ sở dữ liệu trong môi trường dev.
+Service backup PostgreSQL tự động theo cấu hình docker-compose.
+Các công nghệ này phù hợp với project vì Django REST Framework hỗ trợ xây dựng API nhanh và rõ ràng, React/TypeScript phù hợp để xây dựng giao diện nhiều vai trò, còn PostgreSQL đảm bảo lưu trữ dữ liệu quan hệ có ràng buộc tốt.
+5.3. Xây dựng chức năng đăng ký môn học thủ công
+Khi sinh viên gửi request đăng ký một lớp học phần, backend không tạo đăng ký ngay mà lần lượt kiểm tra các điều kiện nghiệp vụ.
+Quy trình xử lý:
+Xác định sinh viên hiện tại từ tài khoản đăng nhập.
+Xác định học kỳ từ lớp học phần.
+Kiểm tra sinh viên đã đăng ký lớp này chưa.
+Kiểm tra học kỳ có đang mở và đang trong thời gian đăng ký không.
+Kiểm tra môn học có thuộc chương trình đào tạo của sinh viên không.
+Nếu sinh viên đã có điểm môn này, yêu cầu xác nhận học lại.
+Kiểm tra lớp học phần còn chỗ.
+Kiểm tra môn tiên quyết.
+Kiểm tra lịch lớp mới có trùng với lịch các lớp đã đăng ký không.
+Tạo bản ghi đăng ký trong transaction.
+Kiểm tra học kỳ:
+Hệ thống dựa trên Semester.is_open, registration_start và registration_end. Nếu học kỳ chưa mở, chưa đến thời gian đăng ký hoặc đã quá hạn, backend trả lỗi.
+Hình 2. Kiểm tra ràng buộc học kì
+Kiểm tra môn tiên quyết:
+Môn tiên quyết được lưu bằng model Prerequisite. Sinh viên được xem là đạt môn tiên quyết khi có đăng ký đã xác nhận và điểm tổng kết lớn hơn hoặc bằng GRADE_PASSING_SCORE.
+Hình 3: Xem môn tiên quyết
+Kiểm tra trùng lịch:
+Hai lịch được xem là trùng khi:
+weekday giống nhau
+và start_period/end_period giao nhau
+Hình 4: Kiểm tra trùng lịch
+Kiểm tra sĩ số:
+Lớp học phần có hai trường enrolled_count và max_students. Nếu enrolled_count &gt;= max_students, hệ thống từ chối đăng ký.
+Hình 5: Kiểm tra sĩ số lớp
+Xử lý đồng thời:
+Để tránh trường hợp hai request cùng lúc làm vượt sĩ số lớp, project dùng select_for_update() để khóa dòng ClassSection trong transaction. Sau khi khóa, hệ thống kiểm tra lại sĩ số và kiểm tra lại trùng đăng ký trước khi tạo bản ghi.
+Tự động cập nhật sĩ số:
+Project sử dụng signal trong registrations/signals.py. Khi tạo, sửa hoặc xóa registration, hệ thống đếm lại số đăng ký còn hiệu lực với trạng thái PENDING hoặc CONFIRMED, sau đó cập nhật ClassSection.enrolled_count.
+Chức năng đăng ký thủ công là nền tảng quan trọng. Chức năng tạo thời khóa biểu tự động chỉ đề xuất phương án; khi sinh viên áp dụng phương án, backend vẫn dùng logic đăng ký thủ công để đảm bảo an toàn dữ liệu.
+5.4. Xây dựng chức năng tạo thời khóa biểu tự động
+5.4.1. Quy trình tạo thời khóa biểu tự động
+Quy trình tạo thời khóa biểu tự động gồm hai giai đoạn lớn: chuẩn bị dữ liệu và tìm phương án.
+Giai đoạn chuẩn bị dữ liệu:
+Sinh viên mở trang /student/auto.
+Frontend chọn học kỳ đang mở hoặc sắp mở.
+Frontend gọi GET API
+Backend lọc các môn thuộc chương trình đào tạo của sinh viên và có lớp học phần đang mở, còn chỗ.
+Frontend hiển thị danh sách môn, trạng thái môn, giáo viên và các lớp học phần.
+Sinh viên chọn môn, có thể chọn giáo viên cho từng môn hoặc để tự chọn.
+Sinh viên cấu hình ưu tiên: ngày muốn tránh, ca học ưu tiên, tối ưu nhiều ngày nghỉ.
+Giai đoạn tìm phương án:
+Frontend gửi request POST API
+Backend validate input bằng AutoScheduleRequestSerializer.
+Backend chuyển input thành Preferences.
+Hàm suggest_schedules() kiểm tra ràng buộc học kỳ, chương trình đào tạo, môn đã học, môn tiên quyết.
+Backend tạo domain cho từng môn bằng build_domain().
+Backend lấy lịch các lớp sinh viên đã đăng ký làm used_schedules ban đầu.
+Danh sách môn được sắp xếp theo MRV.
+Thuật toán Backtracking tìm các tổ hợp lớp không trùng lịch.
+Mỗi phương án hợp lệ được chấm điểm bằng score_assignment().
+Kết quả được sắp xếp giảm dần theo điểm và trả về frontend.
+Nếu không tìm được phương án, backend trả lỗi kèm chi tiết xung đột. Hàm _build_no_solution_details() tạo thông tin giải thích như môn nào trùng lịch với lịch đã đăng ký hoặc cặp môn nào không có cặp lớp tương thích.
+5.4.2. Cài đặt thuật toán CSP + MRV + Backtracking
+Module chính là backend/apps/registrations/auto_schedule.py.
+Các thành phần dữ liệu:
+PriorityPreset: enum các chế độ ưu tiên.
+Preferences: dataclass chứa ràng buộc mềm và khóa giáo viên theo môn.
+Candidate: dataclass biểu diễn một phương án trả về.
+AutoScheduleError: exception dùng cho lỗi nghiệp vụ.
+Các hàm hỗ trợ:
+get_student_curriculum(): tìm chương trình đào tạo phù hợp với sinh viên.
+get_curriculum_course_ids(): lấy danh sách môn thuộc chương trình đào tạo.
+get_learned_course_ids(): lấy các môn sinh viên đã có điểm.
+get_passed_course_ids(): lấy các môn sinh viên đã đạt.
+get_existing_schedules(): lấy lịch học đã đăng ký trong học kỳ.
+schedules_overlap(): kiểm tra hai lịch có trùng không.
+build_domain(): tạo domain lớp học phần cho một môn.
+_backtrack(): thuật toán tìm kiếm chính.
+score_assignment(): chấm điểm phương án.
+suggest_schedules(): entry point cho chức năng gợi ý.
+Mô hình CSP trong code:
+Variables = courses
+Domains = domains[course.id]
+Assignment = selected
+Constraints = no schedule conflict + business validations
+Solutions = feasible
+MRV:
+Trước khi gọi Backtracking, project sắp xếp môn theo số lớp hợp lệ:
+courses_ordered = sorted(courses, key=lambda c: len(domains[c.id]))
+Backtracking:
+Hàm _backtrack() duyệt từng lớp học phần trong domain của môn hiện tại. Nếu lịch lớp đang xét trùng với used_schedules, lớp đó bị bỏ qua. Nếu không trùng, lớp được thêm vào selected, lịch của lớp được thêm vào used_schedules, sau đó thuật toán gọi đệ quy cho môn tiếp theo.
+Giả mã:
+function suggest_schedules(student, semester, course_ids, prefs):
+    validate semester
+    validate courses in curriculum
+    validate not learned
+    validate prerequisites
+    for each course:
+        domains[course] = build_domain(course, semester, teacher_constraint)
+        cache schedules
+    used_schedules = schedules from existing registrations
+    courses_ordered = sort_by_domain_size(courses)
+    feasible = []
+    backtrack(0, selected=[], used_schedules)
+    candidates = score all feasible assignments
+    return candidates sorted by score desc
+Kiểm tra trùng lịch:
+same weekday
+and left.start_period &lt;= right.end_period
+and right.start_period &lt;= left.end_period
+Project giả định lịch học lặp lại trong học kỳ khi tạo phương án tự động. Với validation tạo lịch học ở module classes, hệ thống còn kiểm tra cả khoảng ngày học để tránh trùng phòng và trùng giáo viên.
+5.4.3. Cài đặt hàm chấm điểm Weighted scoring
+Sau khi có danh sách feasible, project tạo Candidate cho từng phương án.
+Các điểm thành phần:
+Điểm tránh ngày:
+Nếu không chọn ngày tránh: 100
+Nếu có chọn: 100 * (1 - số lịch rơi vào ngày tránh / tổng số lịch)
+Điểm ca học:
+Nếu không chọn ca: 100
+Nếu có chọn: 100 * số lịch đúng ca / tổng số lịch
+Điểm giáo viên:
+Nếu không chọn giáo viên ưu tiên: 100
+Nếu có chọn: 100 * số lớp đúng giáo viên / tổng số lớp
+Điểm ngày nghỉ:
+study_days = số ngày có lịch học
+free_days = 7 - study_days
+s_free_day = 100 * free_days / 7
+Trọng số:
+Trên frontend, nếu sinh viên bật chế độ &quot;TKB tối ưu (nghỉ nhiều ngày)&quot;, request gửi preset COMPACT_FIRST. Nếu không, frontend gửi AUTO để backend tự chia trọng số theo input đã chọn.
+Kết quả scoring có cấu trúc:
+Candidate:
+  class_sections: danh sách lớp học phần
+  score: điểm tổng
+  breakdown:
+    weekday
+    session
+    teacher
+    free_day
+    total
+  stats:
+    study_days
+    free_days
+Nhờ breakdown, sinh viên có thể hiểu phương án tốt ở tiêu chí nào và yếu ở tiêu chí nào.
+5.5. Hiển thị kết quả đề xuất thời khóa biểu
+5.5.1. Giao diện / demo hệ thống
+Hình 6: Giao diện tạo thời khóa biểu tự động
+Các thành phần chính:
+Khu vực chọn dữ liệu:
+Học kỳ đang mở hoặc sắp mở.
+Ô tìm kiếm môn học.
+Bộ lọc chỉ môn chưa học.
+Danh sách môn khả dụng.
+Checkbox chọn môn.
+Chi tiết lớp học phần theo từng giáo viên.
+Tùy chọn khóa giáo viên cho từng môn hoặc để hệ thống tự chọn.
+Khu vực ưu tiên cá nhân:
+Chọn ngày muốn tránh.
+Chọn ca học ưu tiên: sáng, chiều, tối.
+Bật/tắt chế độ tối ưu nhiều ngày nghỉ.
+Khu vực kết quả:
+Danh sách phương án được xếp hạng.
+Điểm tổng.
+Điểm thành phần.
+Số lớp, số ngày học, số ngày nghỉ.
+Nhận xét tự động dựa trên input của sinh viên.
+Mã các lớp học phần trong phương án.
+Nút xem chi tiết.
+Nút áp dụng phương án.
+Khi xem chi tiết, hệ thống dùng component ScheduleGrid để hiển thị thời khóa biểu dạng lưới 7 ngày x 15 tiết. Mỗi buổi học được thể hiện bằng một ô có mã môn, tên môn và phòng học.
+Frontend cũng cho phép lưu phương án vào localStorage để sinh viên xem lại trong cùng học kỳ. Đây là tiện ích giao diện, không ảnh hưởng đến thuật toán backend.
+5.5.2. Kết quả phương án thời khóa biểu được đề xuất
+Một phương án được đề xuất gồm các thông tin:
+Xếp hạng phương án.
+Điểm tổng, ví dụ Điểm 92.50.
+Số lớp học phần được chọn.
+Số ngày học và số ngày nghỉ.
+Breakdown điểm:
+Ngày học.
+Ca học.
+Giáo viên.
+Ngày nghỉ.
+Danh sách lớp học phần, ví dụ CS101.01, MA202.02.
+Bảng preview lịch học.
+Thông tin chi tiết từng lớp: mã môn, tên môn, giáo viên, phòng, thứ, tiết.
+Hình 7: Kết quả phương án tạo thời khóa biểu tự động được đề xuất
+Thông tin này giúp sinh viên biết cần bỏ bớt môn, đổi giáo viên hoặc chọn học kỳ khác.
+5.5.3. Kết quả đăng ký môn tự động theo phương án đã chọn
+Hình 8: Kết quả đăng ký môn tự động theo phương án đã chọn
+5.6. Đánh giá và so sánh kết quả
+5.6.1. Tiêu chí đánh giá
+Hệ thống được đánh giá theo các tiêu chí:
+Tính đúng nghiệp vụ: Phương án đề xuất phải tuân thủ các ràng buộc cứng như học kỳ mở, môn thuộc CTĐT, đủ tiên quyết, lớp chưa đầy và không trùng lịch.
+Tính hữu ích: Hệ thống cần trả về nhiều phương án để sinh viên có lựa chọn, thay vì chỉ trả về một kết quả.
+Tính cá nhân hóa: Kết quả cần phản ánh ưu tiên của sinh viên như ca học, ngày muốn tránh, giáo viên và số ngày nghỉ.
+Khả năng giải thích: Mỗi phương án cần có điểm số và breakdown để sinh viên hiểu lý do xếp hạng.
+Hiệu năng: Thuật toán cần xử lý nhanh trong giới hạn số môn và số lớp học phần thực tế.
+Độ an toàn dữ liệu: Khi áp dụng phương án, backend vẫn kiểm tra lại toàn bộ nghiệp vụ đăng ký thủ công để tránh dữ liệu sai.
+5.6.2. So sánh đăng ký thủ công và tạo thời khóa biểu tự động
+Bảng 4: So sánh đăng ký thủ công và tạo thời khóa biểu tự động
+Tiêu chí
+Đăng ký thủ công
+Tạo TKB tự động
+Cách thao tác
+Sinh viên chọn từng lớp học phần
+Sinh viên chọn môn và ưu tiên
+Kiểm tra trùng lịch
+Backend kiểm tra sau khi chọn lớp
+Thuật toán loại trùng lịch trong quá trình tìm kiếm
+Số phương án
+Một lần đăng ký một lớp
+Có thể trả về nhiều phương án
+Tối ưu ưu tiên cá nhân
+Sinh viên tự cân nhắc
+Hệ thống chấm điểm và sắp xếp
+Phù hợp khi
+Sinh viên biết chính xác lớp muốn học
+Sinh viên cần xếp nhiều môn cùng lúc
+Rủi ro thao tác
+Mất thời gian thử sai
+Phụ thuộc chất lượng dữ liệu lớp học phần
+Khả năng giải thích
+Lỗi nghiệp vụ khi đăng ký không hợp lệ
+Có điểm tổng, breakdown và chi tiết xung đột
+Hai chức năng không thay thế hoàn toàn cho nhau. Đăng ký thủ công phù hợp khi sinh viên đã biết lớp cụ thể. Tạo thời khóa biểu tự động phù hợp khi sinh viên muốn hệ thống gợi ý tổ hợp nhiều lớp. Trong project, hai chức năng được kết hợp: tự động tạo phương án, nhưng khi áp dụng vẫn dùng API đăng ký thủ công để đảm bảo kiểm tra nghiệp vụ cuối cùng.
+5.6.3. Nhận xét và đánh giá tổng thể
+Kết quả đạt được:
+Hệ thống đã mô hình hóa bài toán tạo thời khóa biểu tự động theo CSP.
+Thuật toán Backtracking kết hợp MRV giúp tìm phương án không trùng lịch.
+Các ràng buộc nghiệp vụ quan trọng được kiểm tra ở backend.
+Weighted scoring giúp sắp xếp phương án theo ưu tiên cá nhân.
+Frontend hiển thị kết quả rõ ràng bằng điểm, breakdown và lưới thời khóa biểu.
+Hệ thống có test backend cho nhiều trường hợp quan trọng của thuật toán.
+Ưu điểm:
+Cách tiếp cận phù hợp với bài toán có ràng buộc rõ ràng.
+Không cần mô hình học máy, dữ liệu huấn luyện hay solver phức tạp.
+Dễ giải thích trong báo cáo và demo.
+Dễ mở rộng thêm ràng buộc mềm.
+Tận dụng tốt dữ liệu có sẵn trong hệ thống.
+Hạn chế:
+Backtracking vẫn có độ phức tạp tổ hợp khi số môn và số lớp tăng mạnh.
+Chưa tối ưu toàn cục nếu max_results làm thuật toán dừng sớm.
+Chưa xét khoảng cách phòng học hoặc thời gian di chuyển giữa các buổi.
+Chưa có endpoint apply phương án theo transaction một lần; frontend hiện đăng ký từng lớp.
+Chưa có kiểm thử frontend tự động đầy đủ cho toàn bộ luồng tạo thời khóa biểu.
+Hướng phát triển:
+Bổ sung endpoint POST /api/auto-schedule/apply/ để áp dụng toàn bộ phương án trong một transaction.
+Bổ sung tiêu chí khoảng cách phòng học, số tiết trống giữa các buổi, tránh học tối.
+Bổ sung kiểm thử hiệu năng với số lượng lớp học phần lớn hơn.
+Bổ sung cơ chế đa dạng hóa kết quả để các phương án không quá giống nhau.
+Bổ sung kiểm thử giao diện tự động cho trang /student/auto.
+Tổng kết, project đã xây dựng được chức năng tạo thời khóa biểu tự động dựa trên:
+CSP + MRV + Backtracking + kiểm tra ràng buộc sớm + Weighted scoring
+Giải pháp này đáp ứng tốt mục tiêu của hệ thống đăng ký môn học: hỗ trợ sinh viên tìm phương án học tập hợp lệ, giảm thao tác thủ công, hạn chế trùng lịch và đưa ra kết quả có thể giải thích được.
+KẾT LUẬN
+1. Tóm tắt những nội dung đã thực hiện
+Đề tài tập trung nghiên cứu và xây dựng hệ thống đăng ký môn học có hỗ trợ tạo thời khóa biểu tự động cho sinh viên trong môi trường đào tạo theo tín chỉ. Trên cơ sở phân tích bài toán thực tế, báo cáo đã làm rõ các nhóm người dùng chính của hệ thống gồm quản trị viên, sinh viên và giáo viên, đồng thời xác định các ràng buộc nghiệp vụ quan trọng như học kỳ đăng ký, chương trình đào tạo, môn tiên quyết, sĩ số lớp học phần, trùng lịch, phân quyền người dùng và an toàn dữ liệu.
+Về mặt kỹ thuật, đề tài đã mô hình hóa chức năng tạo thời khóa biểu tự động theo hướng bài toán thỏa mãn ràng buộc CSP. Trong đó, mỗi môn học sinh viên chọn được xem là một biến, miền giá trị là các lớp học phần hợp lệ của môn đó, còn các điều kiện về lịch học, tiên quyết, sĩ số và chương trình đào tạo là các ràng buộc cần thỏa mãn. Để giải bài toán, hệ thống sử dụng thuật toán Backtracking kết hợp heuristic MRV nhằm giảm không gian tìm kiếm, đồng thời áp dụng cơ chế kiểm tra ràng buộc sớm để loại bỏ các nhánh không hợp lệ. Sau khi tìm được các phương án hợp lệ, hệ thống sử dụng hàm Weighted scoring để chấm điểm và sắp xếp kết quả theo ưu tiên cá nhân của sinh viên.
+Ngoài chức năng tạo thời khóa biểu tự động, đề tài cũng xây dựng chức năng đăng ký môn học thủ công với cơ chế kiểm tra ràng buộc nghiệp vụ theo luật và sử dụng transaction kết hợp locking để đảm bảo an toàn dữ liệu khi có nhiều yêu cầu đăng ký đồng thời.
+2. Kết quả đạt được
+Đề tài đã xây dựng được một hệ thống web hoàn chỉnh gồm backend sử dụng Python, Django và Django REST Framework, cơ sở dữ liệu PostgreSQL, cùng frontend sử dụng React và TypeScript. Hệ thống hỗ trợ các chức năng chính như đăng nhập, phân quyền, quản lý ngành đào tạo, chương trình đào tạo, môn học, học kỳ, lớp học phần, đăng ký môn học thủ công, tạo thời khóa biểu tự động, xem thời khóa biểu, xem lịch sử đăng ký, xem bảng điểm, nhập điểm và gửi thông báo.
+Đối với chức năng tạo thời khóa biểu tự động, hệ thống có thể trả về nhiều phương án hợp lệ, hiển thị đầy đủ điểm tổng, điểm thành phần, danh sách lớp học phần được chọn và bản xem trước thời khóa biểu để sinh viên dễ dàng so sánh và lựa chọn. Kết quả thực hiện cho thấy hướng tiếp cận CSP + MRV + Backtracking + kiểm tra ràng buộc sớm + Weighted scoring là phù hợp với bài toán, vì dữ liệu đầu vào có cấu trúc rõ ràng, các ràng buộc nghiệp vụ có thể mô tả bằng luật, và kết quả trả về có thể giải thích được cho người dùng.
+3. Hạn chế của đề tài
+Thuật toán Backtracking vẫn có độ phức tạp tổ hợp khi số lượng môn học và lớp học phần tăng lớn.
+Chức năng tạo thời khóa biểu tự động hiện mới xét các tiêu chí cơ bản như ngày học, ca học, giáo viên và số ngày nghỉ; chưa xét các yếu tố nâng cao như khoảng cách phòng học, thời gian di chuyển, độ ưu tiên của từng môn hoặc các ràng buộc tối ưu sâu hơn.
+Cơ chế kiểm tra ràng buộc sớm mới dừng ở mức loại bỏ nhanh các nhánh xung đột, chưa xây dựng đầy đủ forward checking theo nghĩa cắt tỉa miền giá trị của toàn bộ các biến chưa gán.
+Chức năng áp dụng phương án thời khóa biểu hiện vẫn thực hiện bằng cách gửi yêu cầu đăng ký từng lớp học phần, nên có thể phát sinh trường hợp đăng ký thành công một phần nếu một yêu cầu ở giữa bị lỗi.
+Một số chức năng mở rộng như xuất báo cáo, kiểm thử giao diện tự động và tối ưu hiệu năng ở quy mô lớn vẫn chưa được hoàn thiện đầy đủ.
+4. Hướng phát triển
+Xây dựng endpoint áp dụng toàn bộ phương án thời khóa biểu trong một transaction để đảm bảo tính nguyên tử khi đăng ký.
+Bổ sung thêm các tiêu chí đánh giá nâng cao như khoảng cách phòng học, số tiết trống giữa các buổi, tránh học buổi tối hoặc ưu tiên một số môn học quan trọng.
+Mở rộng kiểm thử hiệu năng đối với dữ liệu có số lượng lớp học phần lớn hơn và bổ sung kiểm thử giao diện tự động cho các chức năng quan trọng.
+Nghiên cứu thêm các kỹ thuật tối ưu nâng cao để cải thiện hiệu quả tìm kiếm khi bài toán có quy mô lớn hơn.
+Trong tương lai, có thể xem xét kết hợp thêm các phương pháp phân tích dữ liệu hoặc học máy để hỗ trợ dự báo nhu cầu đăng ký môn học và hỗ trợ nhà trường trong việc mở lớp hợp lý hơn.
+TÀI LIỆU THAM KHẢO
+a- Sách:
+[1]. Russell, Stuart J.; Norvig, Peter. Artificial Intelligence: A Modern Approach. 4th Edition. Hoboken: Pearson. 2021.
+[2]. Poole, David L.; Mackworth, Alan K.. Artificial Intelligence: Foundations of Computational Agents. 3rd Edition. Cambridge: Cambridge University Press. 2023.
+[3]. Dechter, Rina. Constraint Processing. San Francisco: Morgan Kaufmann Publishers. 2003.
+b- Tạp chí, bài báo hội nghị:
+[4]. Kumar, Vipin. “Algorithms for Constraint-Satisfaction Problems: A Survey.” AI Magazine. vol.13. no.1. pp.32-44. 1992.
+[5]. Schaerf, Andrea. “A survey of automated timetabling.” Artificial Intelligence Review. vol.13. no.2. pp.87-127. 1999.
+[6]. Burke, Edmund K.; Petrovic, Sanja. “Recent research directions in automated timetabling.” European Journal of Operational Research. vol.140. no.2. pp.266-280. 2002.
+[7]. Carter, Michael W.; Laporte, Gilbert. “Recent developments in practical course timetabling.” Practice and Theory of Automated Timetabling. vol.1408. pp.3-19. 1998.
+c- Website tham khảo:
+[8]. Stanford Institute for Human-Centered Artificial Intelligence. “The 2025 AI Index Report.” Stanford HAI. 2025.
+[9]. Nobel Prize. “The Nobel Prize in Physics 2024.” NobelPrize.org. 2024.
+[10]. Nobel Prize. “The Nobel Prize in Chemistry 2024.” NobelPrize.org. 2024.
+[11]. Trường Đại học Bách khoa - ĐHQG TP.HCM. “Đăng ký môn học - Quy trình, hướng dẫn chung.” HCMUT. 2026.
+[12]. Đăng ký môn học “ Đại học Thủ Dầu Một”
