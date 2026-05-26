@@ -11,9 +11,18 @@ Flow:
      - Validate password mới (min 8 ký tự, dùng Django password validators)
      - Đổi mật khẩu (set_password → hash PBKDF2)
      - Xoá PIN khỏi cache (chống re-use)
+
+Email backend:
+  - Render Free chặn outbound SMTP (port 25/465/587). Phải dùng HTTP API.
+  - Nếu env RESEND_API_KEY được set → gửi qua Resend HTTPS API (port 443).
+  - Ngược lại → fallback Django send_mail (dev local dùng console backend).
 """
+import json
+import logging
 import secrets
 import string
+import urllib.error
+import urllib.request
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -26,6 +35,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import BaseThrottle
 from rest_framework.views import APIView
+
+logger = logging.getLogger("dkmh.password_reset")
 
 User = get_user_model()
 
@@ -48,8 +59,45 @@ def _generate_pin() -> str:
     return "".join(secrets.choice(string.digits) for _ in range(PIN_LENGTH))
 
 
+def _send_via_resend(api_key: str, from_email: str, to_email: str, subject: str, body: str) -> None:
+    """Gửi email qua Resend HTTPS API (port 443).
+
+    Dùng khi production trên Render (chặn outbound SMTP).
+    Doc: https://resend.com/docs/api-reference/emails/send-email
+    """
+    payload = {
+        "from": from_email,
+        "to": [to_email],
+        "subject": subject,
+        "text": body,
+    }
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as response:
+            response.read()
+    except urllib.error.HTTPError as exc:
+        # Resend trả 422 nếu sender email không verified, v.v.
+        body_err = exc.read().decode("utf-8", errors="ignore")
+        logger.error("Resend API error %s: %s", exc.code, body_err)
+        raise RuntimeError(f"Resend API error: {exc.code} {body_err}") from exc
+    except urllib.error.URLError as exc:
+        logger.error("Resend network error: %s", exc)
+        raise RuntimeError(f"Resend network error: {exc.reason}") from exc
+
+
 def _send_pin_email(user: User, pin: str) -> None:
     """Gửi PIN qua email.
+
+    - Production: Resend HTTPS API (nếu env RESEND_API_KEY set).
+    - Dev/local: Django send_mail (console backend in PIN ra log).
 
     Subject + body tiếng Việt. PIN hết hạn 10 phút.
     """
@@ -62,13 +110,20 @@ def _send_pin_email(user: User, pin: str) -> None:
         f"Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.\n\n"
         f"---\nHệ thống Đăng ký Môn học"
     )
-    send_mail(
-        subject=subject,
-        message=body,
-        from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
-        recipient_list=[user.email],
-        fail_silently=False,
-    )
+
+    resend_api_key = getattr(settings, "RESEND_API_KEY", "")
+    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "onboarding@resend.dev")
+
+    if resend_api_key:
+        _send_via_resend(resend_api_key, from_email, user.email, subject, body)
+    else:
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=from_email,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
 
 
 # ───────────────────────── Throttle ─────────────────────────

@@ -92,6 +92,7 @@ export interface AutoScheduleRequest {
   semester: number;
   course_ids: number[];
   avoid_weekdays?: number[];
+  preferred_weekdays?: number[];
   preferred_sessions?: Session[];
   preferred_teacher_ids?: number[];
   preset?: PriorityPreset;

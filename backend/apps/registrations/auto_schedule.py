@@ -55,6 +55,7 @@ AUTO_FILLER_WEIGHT = 0.15
 class Preferences:
     """Soft constraints + preset + per-course hard filter GV."""
     avoid_weekdays: frozenset[int] = field(default_factory=frozenset)
+    preferred_weekdays: frozenset[int] = field(default_factory=frozenset)
     preferred_sessions: frozenset[str] = field(default_factory=frozenset)
     preferred_teacher_ids: frozenset[int] = field(default_factory=frozenset)
     preset: PriorityPreset = PriorityPreset.BALANCED
@@ -70,7 +71,7 @@ class Preferences:
     def _compute_auto_weights(self) -> tuple[float, float, float, float]:
         """Tự chia trọng số dựa trên tiêu chí SV khai báo input.
 
-        - Weekday "active" nếu có avoid_weekdays.
+        - Weekday "active" nếu có avoid_weekdays HOẶC preferred_weekdays.
         - Session "active" nếu có preferred_sessions.
         - Teacher "active" nếu có preferred_teacher_ids hoặc course_teacher_constraints.
         - Free_day không có UI input → luôn nhận trọng số filler.
@@ -80,7 +81,7 @@ class Preferences:
         - K ≥ 1 → main = (1 − (4−K) × 0.15) / K cho cái active, 0.15 cho cái còn lại.
         """
         active = (
-            bool(self.avoid_weekdays),         # weekday
+            bool(self.avoid_weekdays) or bool(self.preferred_weekdays),  # weekday
             bool(self.preferred_sessions),     # session
             bool(self.preferred_teacher_ids) or bool(self.course_teacher_constraints),  # teacher
             False,                             # free_day không có input trực tiếp
@@ -493,11 +494,44 @@ def _backtrack(
 # ───────────────────────── Scoring ─────────────────────────
 
 
-def _score_weekday(schedules: list[Schedule], avoid: frozenset[int]) -> float:
-    if not schedules or not avoid:
+def _score_weekday(
+    schedules: list[Schedule],
+    avoid: frozenset[int],
+    preferred: frozenset[int],
+) -> float:
+    """Điểm theo thứ trong tuần — kết hợp 2 tiêu chí:
+
+    - `avoid`: ngày SV muốn TRÁNH → càng ít buổi rơi vào ngày tránh càng cao điểm.
+    - `preferred`: ngày SV muốn HỌC → càng nhiều buổi rơi vào ngày ưu tiên càng cao điểm.
+
+    Nếu chỉ có avoid → tính theo penalty.
+    Nếu chỉ có preferred → tính theo bonus.
+    Nếu có cả 2 → trung bình.
+    Nếu không có gì → 100 (full điểm).
+    """
+    if not schedules:
         return 100.0
-    hits = sum(1 for s in schedules if s.weekday in avoid)
-    return 100.0 * (1.0 - hits / len(schedules))
+
+    has_avoid = bool(avoid)
+    has_preferred = bool(preferred)
+    if not has_avoid and not has_preferred:
+        return 100.0
+
+    n = len(schedules)
+    avoid_score = 100.0
+    preferred_score = 100.0
+
+    if has_avoid:
+        avoid_hits = sum(1 for s in schedules if s.weekday in avoid)
+        avoid_score = 100.0 * (1.0 - avoid_hits / n)
+
+    if has_preferred:
+        pref_hits = sum(1 for s in schedules if s.weekday in preferred)
+        preferred_score = 100.0 * pref_hits / n
+
+    if has_avoid and has_preferred:
+        return (avoid_score + preferred_score) / 2.0
+    return avoid_score if has_avoid else preferred_score
 
 
 def _score_session(schedules: list[Schedule], preferred: frozenset[str]) -> float:
@@ -539,7 +573,7 @@ def score_assignment(
     """Return (total, breakdown, stats)."""
     schedules = [s for cs in class_sections for s in schedules_cache[cs.id]]
 
-    s_weekday = _score_weekday(schedules, prefs.avoid_weekdays)
+    s_weekday = _score_weekday(schedules, prefs.avoid_weekdays, prefs.preferred_weekdays)
     s_session = _score_session(schedules, prefs.preferred_sessions)
     s_teacher = _score_teacher(class_sections, prefs.preferred_teacher_ids)
     s_free_day, study_days, free_days = _score_free_day(schedules)

@@ -44,6 +44,7 @@ type SavedSchedulePlan = {
 };
 type AutoScheduleInputContext = {
   avoidWeekdays: Set<number>;
+  preferredWeekdays: Set<number>;
   preferredSessions: Set<Session>;
   optimizeFreeDays: boolean;
   lockedTeacherCount: number;
@@ -134,6 +135,17 @@ function summarizeCandidateByInput(
     }
   }
 
+  if (input.preferredWeekdays.size > 0) {
+    const matched = Array.from(input.preferredWeekdays).filter((day) => weekdays.has(day));
+    if (matched.length === input.preferredWeekdays.size) {
+      notes.push("xếp được đủ các ngày bạn muốn học");
+    } else if (matched.length > 0) {
+      notes.push(`khớp ${matched.length}/${input.preferredWeekdays.size} ngày bạn ưu tiên`);
+    } else {
+      notes.push("chưa có lớp rơi vào ngày bạn ưu tiên");
+    }
+  }
+
   if (input.preferredSessions.size > 0) {
     const matched = Array.from(input.preferredSessions).filter((session) => sessions.has(session));
     const actualSessions = Array.from(sessions);
@@ -209,6 +221,7 @@ export default function StudentAutoSchedulePage() {
 
   // Preferences
   const [avoidWeekdays, setAvoidWeekdays] = useState<Set<number>>(new Set());
+  const [preferredWeekdays, setPreferredWeekdays] = useState<Set<number>>(new Set());
   const [preferredSessions, setPreferredSessions] = useState<Set<Session>>(new Set());
   const [optimizeFreeDays, setOptimizeFreeDays] = useState(false);
 
@@ -334,6 +347,7 @@ export default function StudentAutoSchedulePage() {
         semester: Number(semesterId),
         course_ids: Array.from(selectedCourseIds),
         avoid_weekdays: Array.from(avoidWeekdays),
+        preferred_weekdays: Array.from(preferredWeekdays),
         preferred_sessions: Array.from(preferredSessions),
         preset: optimizeFreeDays ? "COMPACT_FIRST" : "AUTO",
         course_teacher_constraints: constraints,
@@ -359,7 +373,7 @@ export default function StudentAutoSchedulePage() {
     } finally {
       setSearching(false);
     }
-  }, [semesterId, selectedCourseIds, teacherByCourse, avoidWeekdays, preferredSessions, optimizeFreeDays]);
+  }, [semesterId, selectedCourseIds, teacherByCourse, avoidWeekdays, preferredWeekdays, preferredSessions, optimizeFreeDays]);
 
   const displayed = useMemo(() => {
     return [...results].sort((a, b) => b.breakdown[sortKey] - a.breakdown[sortKey]);
@@ -367,11 +381,12 @@ export default function StudentAutoSchedulePage() {
 
   const inputContext = useMemo<AutoScheduleInputContext>(() => ({
     avoidWeekdays,
+    preferredWeekdays,
     preferredSessions,
     optimizeFreeDays,
     lockedTeacherCount: teacherByCourse.size,
     selectedCourseCount: selectedCourseIds.size,
-  }), [avoidWeekdays, preferredSessions, optimizeFreeDays, teacherByCourse.size, selectedCourseIds.size]);
+  }), [avoidWeekdays, preferredWeekdays, preferredSessions, optimizeFreeDays, teacherByCourse.size, selectedCourseIds.size]);
 
   const selectedCourseSummaries = useMemo<SelectedCourseSummary[]>(() => {
     const byId = new Map(availableCourses.map((course) => [course.course_id, course]));
@@ -526,6 +541,8 @@ export default function StudentAutoSchedulePage() {
           cohortYear={cohortYear}
           avoidWeekdays={avoidWeekdays}
           setAvoidWeekdays={setAvoidWeekdays}
+          preferredWeekdays={preferredWeekdays}
+          setPreferredWeekdays={setPreferredWeekdays}
           preferredSessions={preferredSessions}
           setPreferredSessions={setPreferredSessions}
           optimizeFreeDays={optimizeFreeDays}
@@ -883,6 +900,8 @@ interface FormViewProps {
   cohortYear: number | null;
   avoidWeekdays: Set<number>;
   setAvoidWeekdays: (s: Set<number>) => void;
+  preferredWeekdays: Set<number>;
+  setPreferredWeekdays: (s: Set<number>) => void;
   preferredSessions: Set<Session>;
   setPreferredSessions: (s: Set<Session>) => void;
   optimizeFreeDays: boolean;
@@ -909,6 +928,7 @@ function FormView(props: FormViewProps) {
     filterCurriculumSemester, setFilterCurriculumSemester,
     cohortYear,
     avoidWeekdays, setAvoidWeekdays,
+    preferredWeekdays, setPreferredWeekdays,
     preferredSessions, setPreferredSessions,
     optimizeFreeDays, setOptimizeFreeDays,
     toggleSet,
@@ -1121,20 +1141,74 @@ function FormView(props: FormViewProps) {
             <div>
               <Label>Tránh ngày trong tuần</Label>
               <div className="grid grid-cols-7 gap-1.5">
-                {WEEKDAYS.map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => toggleSet(avoidWeekdays, d, setAvoidWeekdays)}
-                    className={`px-2 py-2 rounded text-[12px] border ${
-                      avoidWeekdays.has(d)
-                        ? "bg-navy-600 text-white border-navy-600"
-                        : "bg-card border-line text-ink-muted hover:border-navy-400"
-                    }`}
-                  >
-                    {formatWeekday(d)}
-                  </button>
-                ))}
+                {WEEKDAYS.map((d) => {
+                  const isPreferred = preferredWeekdays.has(d);
+                  const isAvoided = avoidWeekdays.has(d);
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => {
+                        // Nếu đang ở "ngày muốn học" → bỏ đi rồi mới add vào "tránh"
+                        if (isPreferred) {
+                          toggleSet(preferredWeekdays, d, setPreferredWeekdays);
+                        }
+                        toggleSet(avoidWeekdays, d, setAvoidWeekdays);
+                      }}
+                      disabled={isPreferred}
+                      className={`px-2 py-2 rounded text-[12px] border transition-colors ${
+                        isAvoided
+                          ? "bg-navy-600 text-white border-navy-600"
+                          : isPreferred
+                          ? "bg-surface border-line text-ink-faint cursor-not-allowed"
+                          : "bg-card border-line text-ink-muted hover:border-navy-400"
+                      }`}
+                      title={isPreferred ? "Đang ưu tiên ở mục dưới" : undefined}
+                    >
+                      {formatWeekday(d)}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="text-[11.5px] text-ink-muted mt-1.5">
+                Chọn các thứ bạn KHÔNG muốn xếp lịch học.
+              </div>
+            </div>
+
+            <div>
+              <Label>Ngày muốn học</Label>
+              <div className="grid grid-cols-7 gap-1.5">
+                {WEEKDAYS.map((d) => {
+                  const isAvoided = avoidWeekdays.has(d);
+                  const isPreferred = preferredWeekdays.has(d);
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => {
+                        // Nếu đang ở "tránh" → bỏ đi rồi mới add vào "muốn học"
+                        if (isAvoided) {
+                          toggleSet(avoidWeekdays, d, setAvoidWeekdays);
+                        }
+                        toggleSet(preferredWeekdays, d, setPreferredWeekdays);
+                      }}
+                      disabled={isAvoided}
+                      className={`px-2 py-2 rounded text-[12px] border transition-colors ${
+                        isPreferred
+                          ? "bg-emerald-600 text-white border-emerald-600"
+                          : isAvoided
+                          ? "bg-surface border-line text-ink-faint cursor-not-allowed"
+                          : "bg-card border-line text-ink-muted hover:border-emerald-400"
+                      }`}
+                      title={isAvoided ? "Đang tránh ở mục trên" : undefined}
+                    >
+                      {formatWeekday(d)}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="text-[11.5px] text-ink-muted mt-1.5">
+                Hệ thống sẽ ưu tiên xếp các môn vào ngày bạn chọn (vd. chọn Chủ nhật → các lớp có buổi CN được điểm cao hơn).
               </div>
             </div>
 

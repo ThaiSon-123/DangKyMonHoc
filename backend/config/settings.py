@@ -154,11 +154,16 @@ CACHES = {
 }
 
 # ──────────────────────── Email (cho quên mật khẩu) ────────────────────────
-# Dev mặc định: console backend → email in ra log thay vì gửi thật.
-# Production: set EMAIL_BACKEND=smtp + EMAIL_HOST + EMAIL_HOST_USER + EMAIL_HOST_PASSWORD.
-# Gmail SMTP: EMAIL_HOST=smtp.gmail.com EMAIL_PORT=587 EMAIL_USE_TLS=True
-#             EMAIL_HOST_USER=<gmail của anh>
-#             EMAIL_HOST_PASSWORD=<App Password 16 ký tự, KHÔNG phải mật khẩu Gmail>
+# 3 chế độ:
+#   1. Dev local (default): console backend — email in ra docker logs.
+#   2. Production Render: dùng RESEND_API_KEY (HTTPS API port 443).
+#      Render Free chặn SMTP outbound nên KHÔNG dùng được Gmail/Brevo SMTP.
+#   3. Self-hosted với SMTP riêng: set EMAIL_BACKEND=smtp + EMAIL_HOST_*.
+#
+# Setup Resend (production):
+#   - resend.com → tạo API key → set env RESEND_API_KEY=re_xxxxx
+#   - DEFAULT_FROM_EMAIL=onboarding@resend.dev (test) hoặc domain đã verified
+RESEND_API_KEY = config("RESEND_API_KEY", default="")
 EMAIL_BACKEND = config(
     "EMAIL_BACKEND",
     default="django.core.mail.backends.console.EmailBackend",
@@ -170,7 +175,7 @@ EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 DEFAULT_FROM_EMAIL = config(
     "DEFAULT_FROM_EMAIL",
-    default="ĐKMH <noreply@dkmh.local>",
+    default="ĐKMH <onboarding@resend.dev>",
 )
 
 SIMPLE_JWT = {

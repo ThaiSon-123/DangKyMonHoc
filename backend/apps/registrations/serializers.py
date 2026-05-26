@@ -288,6 +288,12 @@ class AutoScheduleRequestSerializer(serializers.Serializer):
         required=False,
         default=list,
     )
+    preferred_weekdays = serializers.ListField(
+        child=serializers.IntegerField(min_value=0, max_value=6),
+        required=False,
+        default=list,
+        help_text="Danh sách thứ trong tuần (0=T2, 6=CN) SV muốn ưu tiên xếp lịch học vào.",
+    )
     preferred_sessions = serializers.ListField(
         child=serializers.ChoiceField(choices=["MORNING", "AFTERNOON", "EVENING"]),
         required=False,
@@ -314,6 +320,7 @@ class AutoScheduleRequestSerializer(serializers.Serializer):
         constraints = {int(k): int(t) for k, t in raw_constraints.items()}
         return Preferences(
             avoid_weekdays=frozenset(v.get("avoid_weekdays", [])),
+            preferred_weekdays=frozenset(v.get("preferred_weekdays", [])),
             preferred_sessions=frozenset(v.get("preferred_sessions", [])),
             preferred_teacher_ids=frozenset(v.get("preferred_teacher_ids", [])),
             preset=PriorityPreset(v.get("preset", PriorityPreset.BALANCED.value)),
